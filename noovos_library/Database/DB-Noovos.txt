@@ -1,0 +1,101 @@
+DB Name: noovosdb
+IP: 77.68.13.150
+Port: 5432
+user: noovos_dev
+temp pw: strong_dev_password
+
+
+== Get Table Schema ==
+SELECT column_name, data_type, is_nullable, character_maximum_length
+FROM information_schema.columns
+WHERE table_name = 'available_slot';
+
+== get Table Names ==
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_type = 'BASE TABLE';
+
+== TABLES ==
+app_user
+
+
+
+
+-- Legacy (still exist)
+service_staff
+business
+service
+staff
+payment
+customer_notes
+reviews
+notifications
+subscription
+audit_log
+synonyms
+search_logs
+available_slot
+booking
+
+
+
+
+
+
+
+
+== Search Function ==
+DECLARE
+    ts_query tsquery;
+BEGIN
+    -- Step 1: Trim the input to remove leading/trailing whitespace
+    search_term := trim(search_term);
+
+    -- Log the search query
+    INSERT INTO search_logs (search_term) VALUES (search_term);
+
+    -- Step 2: Convert the plain text input to a tsquery safely
+    ts_query := plainto_tsquery('english', search_term);
+
+    -- Perform the search and return results
+    RETURN QUERY
+    SELECT 
+        service.id AS service_id,  
+        service.service_name::TEXT,  
+        business.name::TEXT AS business_name,  
+        service.description::TEXT AS service_description,  
+        service.service_image::TEXT AS service_image,  
+        business.profile_picture::TEXT AS business_profile,  
+        service.price::NUMERIC AS cost,  
+        business.city::TEXT,  
+        business.postcode::TEXT,  
+        ts_rank(
+            to_tsvector('english', service.service_name) || to_tsvector('english', service.description), 
+            ts_query
+        ) AS rank_text,
+        GREATEST(
+            similarity(service.service_name, search_term),   
+            similarity(service.description, search_term)
+        ) AS rank_fuzzy,  
+        GREATEST(
+            word_similarity(service.service_name, search_term), 
+            word_similarity(service.description, search_term)
+        ) AS rank_word_similarity  
+    FROM service
+    JOIN business ON service.business_id = business.id  
+    WHERE 
+          GREATEST(
+               word_similarity(service.service_name, search_term), 
+               word_similarity(service.description, search_term)
+          ) > 0.20  
+       OR to_tsvector('english', service.service_name) @@ ts_query
+       OR GREATEST(
+               similarity(service.service_name, search_term),   
+               similarity(service.description, search_term)
+          ) > 0.20
+    ORDER BY rank_word_similarity DESC, rank_text DESC, rank_fuzzy DESC
+    LIMIT 10;
+END;
+
+
