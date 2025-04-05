@@ -1,0 +1,31 @@
+== Test User 1 ==============================
+test1@test.com
+1234
+
+ID: 10
+======================================
+http://localhost:3000/login_user
+{
+  "email": "test1@test.com",
+  "password": "1234"
+}
+======================================
+
+== Register User ==============================
+http://localhost:3000/register_user
+{
+  "first_name": "John",
+  "last_name": "Doe",
+  "email": "john.doe@example.com",
+  "password": "password123",
+  "mobile": "1234567890"
+}
+======================================
+
+== Login User ==============================
+http://localhost:3000/login_user
+{
+  "email": "john.doe@example.com",
+  "password": "password123"
+}
+======================================
