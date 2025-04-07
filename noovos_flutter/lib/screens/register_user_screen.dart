@@ -7,8 +7,6 @@ Once registered, it goes straight to the dashboard
 import 'package:flutter/material.dart';
 import '../api/register_user_api.dart';
 import '../styles/app_styles.dart';
-import '../config/app_config.dart';
-import 'settings_screen.dart';
 
 class RegisterUserScreen extends StatefulWidget {
   const RegisterUserScreen({Key? key}) : super(key: key);
@@ -327,25 +325,7 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
                     ],
                   ),
 
-                  // Development settings button
-                  if (AppConfig.developmentMode) ...[
-                    const SizedBox(height: 20),
-                    const Divider(),
-                    const SizedBox(height: 10),
-                    TextButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                        );
-                      },
-                      icon: const Icon(Icons.settings, size: 16),
-                      label: const Text('Developer Settings', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey,
-                      ),
-                    ),
-                  ],
+
                 ],
               ),
             ),

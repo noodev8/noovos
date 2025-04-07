@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'screens/login_user_screen.dart';
 import 'screens/register_user_screen.dart';
 import 'screens/dashboard_screen.dart';
-import 'screens/settings_screen.dart';
 import 'helpers/auth_helper.dart';
 import 'styles/app_styles.dart';
 
@@ -86,6 +85,7 @@ class _MyAppState extends State<MyApp> {
     }
 
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Noovos',
       theme: ThemeData(
         primaryColor: AppStyles.primaryColor,
@@ -97,7 +97,6 @@ class _MyAppState extends State<MyApp> {
         '/login': (context) => const LoginUserScreen(),
         '/register': (context) => const RegisterUserScreen(),
         '/dashboard': (context) => const DashboardScreen(),
-        '/settings': (context) => const SettingsScreen(),
       },
     );
   }

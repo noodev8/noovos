@@ -21,7 +21,7 @@ Success Response:
       "service_description": "A deep...",   // string, description of the service
       "service_image": "url/to/image.jpg",  // string, URL to service image
       "business_profile": "url/to/image.jpg", // string, URL to business profile image
-      "cost": 75.00,                        // numeric, price of the service
+      "cost": 75.00,                        // number, price of the service (always returned as a number, not string)
       "city": "London",                     // string, city of the business
       "postcode": "W1A 1AA"                 // string, postcode of the business
     },
@@ -74,47 +74,47 @@ router.post('/', auth, async (req, res) => {
                 SELECT plainto_tsquery('english', search_term) AS ts_query, search_term
                 FROM insert_log
             )
-            SELECT 
-                service.id AS service_id,  
-                service.service_name::TEXT,  
-                business.name::TEXT AS business_name,  
-                service.description::TEXT AS service_description,  
-                service.service_image::TEXT AS service_image,  
-                business.profile_picture::TEXT AS business_profile,  
-                service.price::NUMERIC AS cost,  
-                business.city::TEXT,  
-                business.postcode::TEXT,  
+            SELECT
+                service.id AS service_id,
+                service.service_name::TEXT,
+                business.name::TEXT AS business_name,
+                service.description::TEXT AS service_description,
+                service.service_image::TEXT AS service_image,
+                business.profile_picture::TEXT AS business_profile,
+                service.price::NUMERIC AS cost,
+                business.city::TEXT,
+                business.postcode::TEXT,
                 ts_rank(
-                    to_tsvector('english', service.service_name) || to_tsvector('english', service.description), 
+                    to_tsvector('english', service.service_name) || to_tsvector('english', service.description),
                     sq.ts_query
                 ) AS rank_text,
                 GREATEST(
-                    similarity(service.service_name, sq.search_term),   
+                    similarity(service.service_name, sq.search_term),
                     similarity(service.description, sq.search_term)
-                ) AS rank_fuzzy,  
+                ) AS rank_fuzzy,
                 GREATEST(
-                    word_similarity(service.service_name, sq.search_term), 
+                    word_similarity(service.service_name, sq.search_term),
                     word_similarity(service.description, sq.search_term)
-                ) AS rank_word_similarity  
-            FROM 
+                ) AS rank_word_similarity
+            FROM
                 service
-            JOIN 
+            JOIN
                 business ON service.business_id = business.id
             CROSS JOIN
                 search_query sq
-            WHERE 
+            WHERE
                 GREATEST(
-                    word_similarity(service.service_name, sq.search_term), 
+                    word_similarity(service.service_name, sq.search_term),
                     word_similarity(service.description, sq.search_term)
-                ) > 0.20  
+                ) > 0.20
                 OR to_tsvector('english', service.service_name) @@ sq.ts_query
                 OR GREATEST(
-                    similarity(service.service_name, sq.search_term),   
+                    similarity(service.service_name, sq.search_term),
                     similarity(service.description, sq.search_term)
                 ) > 0.20
-            ORDER BY 
-                rank_word_similarity DESC, 
-                rank_text DESC, 
+            ORDER BY
+                rank_word_similarity DESC,
+                rank_text DESC,
                 rank_fuzzy DESC
             LIMIT 10;
         `;
@@ -132,7 +132,7 @@ router.post('/', auth, async (req, res) => {
         }
 
         // Process the results to simplify the response
-        // Remove the ranking fields as they are not needed in the response
+        // Remove the ranking fields and ensure numeric values for cost
         const processedResults = searchResults.rows.map(row => {
             // Create a new object without the ranking fields
             const {
@@ -141,8 +141,16 @@ router.post('/', auth, async (req, res) => {
                 rank_word_similarity,
                 ...resultWithoutRanking
             } = row;
-            
-            return resultWithoutRanking;
+
+            // Ensure cost is returned as a number, not a string
+            // PostgreSQL numeric types might be serialized as strings in some cases
+            return {
+                ...resultWithoutRanking,
+                // Convert cost to a number if it's a string or any other type
+                cost: typeof resultWithoutRanking.cost === 'string'
+                    ? parseFloat(resultWithoutRanking.cost)
+                    : Number(resultWithoutRanking.cost)
+            };
         });
 
         // Return success response with search results
@@ -160,7 +168,7 @@ router.post('/', auth, async (req, res) => {
             code: error.code,
             detail: error.detail
         });
-        
+
         // Return error response
         return res.status(500).json({
             return_code: "SERVER_ERROR",

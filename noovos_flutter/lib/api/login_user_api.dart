@@ -6,25 +6,18 @@ Communicates with the login_user endpoint on the server
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../helpers/auth_helper.dart';
-import '../helpers/config_helper.dart';
+import '../config/app_config.dart';
 
 class LoginUserApi {
-  // Get base URL from config helper
-  static Future<String> getBaseUrl() async {
-    return await ConfigHelper.getApiBaseUrl();
-  }
+  // Base URL for the API
+  static final String _baseUrl = AppConfig.apiBaseUrl;
 
   // Login user
   static Future<Map<String, dynamic>> loginUser(String email, String password) async {
     try {
 
-      // Use explicit approach to construct the URL
-      final url = Uri(
-        scheme: 'http',
-        host: '192.168.1.88',
-        port: 3000,
-        path: '/login_user',
-      );
+      // Construct the full URL
+      final url = Uri.parse('$_baseUrl/login_user');
 
       // Create request body
       final body = jsonEncode({

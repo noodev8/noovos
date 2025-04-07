@@ -17,7 +17,7 @@ pool.connect()
         return client
             .query('SELECT NOW() as now')
             .then(res => {
-                console.log("✅ Database query successful:", res.rows[0]);
+                // console.log("✅ Database query successful:", res.rows[0]);
                 // Log database connection details (without password)
                 console.log("✅ Database connection details:", {
                     user: process.env.DB_USER,

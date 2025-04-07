@@ -7,8 +7,6 @@ Once logged in, it goes straight to the dashboard
 import 'package:flutter/material.dart';
 import '../api/login_user_api.dart';
 import '../styles/app_styles.dart';
-import '../config/app_config.dart';
-import 'settings_screen.dart';
 
 class LoginUserScreen extends StatefulWidget {
   const LoginUserScreen({Key? key}) : super(key: key);
@@ -251,25 +249,7 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
                     ],
                   ),
 
-                  // Development settings button
-                  if (AppConfig.developmentMode) ...[
-                    const SizedBox(height: 20),
-                    const Divider(),
-                    const SizedBox(height: 10),
-                    TextButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                        );
-                      },
-                      icon: const Icon(Icons.settings, size: 16),
-                      label: const Text('Developer Settings', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey,
-                      ),
-                    ),
-                  ],
+
                 ],
               ),
             ),
