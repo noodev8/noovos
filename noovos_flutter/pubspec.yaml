@@ -44,6 +44,9 @@ dependencies:
   # Provider for state management
   provider: ^6.1.2
 
+  # Cached network image for efficient image loading
+  cached_network_image: ^3.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

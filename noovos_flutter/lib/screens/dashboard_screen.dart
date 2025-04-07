@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../helpers/auth_helper.dart';
 import '../styles/app_styles.dart';
 import '../api/search_business_api.dart';
+import '../helpers/image_helper.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -449,26 +450,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Service image or placeholder
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: 80,
+                    height: 80,
                     color: Colors.grey[200],
-                    image: serviceImage != null && serviceImage.isNotEmpty
-                        ? DecorationImage(
-                            image: NetworkImage(serviceImage),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: serviceImage == null || serviceImage.isEmpty
-                      ? const Icon(
+                    child: ImageHelper.getCachedNetworkImage(
+                      imageUrl: serviceImage,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      placeholder: Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.grey[400],
+                        ),
+                      ),
+                      errorWidget: const Center(
+                        child: Icon(
                           Icons.spa,
                           size: 40,
                           color: Colors.grey,
-                        )
-                      : null,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 15),
 
@@ -491,26 +498,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Row(
                         children: [
                           // Business profile image
-                          Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
+                          ClipOval(
+                            child: Container(
+                              width: 20,
+                              height: 20,
                               color: Colors.grey[200],
-                              image: businessProfile != null && businessProfile.isNotEmpty
-                                  ? DecorationImage(
-                                      image: NetworkImage(businessProfile),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
-                            ),
-                            child: businessProfile == null || businessProfile.isEmpty
-                                ? const Icon(
+                              child: ImageHelper.getCachedNetworkImage(
+                                imageUrl: businessProfile,
+                                width: 20,
+                                height: 20,
+                                fit: BoxFit.cover,
+                                placeholder: Center(
+                                  child: SizedBox(
+                                    width: 10,
+                                    height: 10,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1,
+                                      color: Colors.grey[400],
+                                    ),
+                                  ),
+                                ),
+                                errorWidget: const Center(
+                                  child: Icon(
                                     Icons.business,
                                     size: 12,
                                     color: Colors.grey,
-                                  )
-                                : null,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 5),
 

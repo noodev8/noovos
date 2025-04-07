@@ -20,14 +20,13 @@ WHERE table_schema = 'public'
 app_user
 business
 search_log
+service
 
 
 
 
 -- Legacy (still exist)
 service_staff
-business
-service
 staff
 payment
 customer_notes
