@@ -1,0 +1,19 @@
+flowchart TD
+    Entry(("App Start"))
+    Login["Login"]
+    Register["Register"]
+    Dashboard["Dashboard Search"]
+    SalonDetail["Salon Detail"]
+    SalonService["Salon Service"]
+    Booking["Booking"]
+
+    Entry --> Dashboard
+    Entry --> Login
+    Login --> Register
+    Login --> Dashboard
+    Register --> Dashboard
+
+    Dashboard --> SalonDetail
+    Dashboard --> SalonService
+    SalonDetail --> SalonService
+    SalonService --> Booking

@@ -18,6 +18,8 @@ WHERE table_schema = 'public'
 
 == TABLES ==
 app_user
+business
+search_log
 
 
 
@@ -34,7 +36,6 @@ notifications
 subscription
 audit_log
 synonyms
-search_logs
 available_slot
 booking
 
@@ -46,56 +47,59 @@ booking
 
 
 == Search Function ==
-DECLARE
-    ts_query tsquery;
-BEGIN
-    -- Step 1: Trim the input to remove leading/trailing whitespace
-    search_term := trim(search_term);
-
-    -- Log the search query
-    INSERT INTO search_logs (search_term) VALUES (search_term);
-
-    -- Step 2: Convert the plain text input to a tsquery safely
-    ts_query := plainto_tsquery('english', search_term);
-
-    -- Perform the search and return results
-    RETURN QUERY
-    SELECT 
-        service.id AS service_id,  
-        service.service_name::TEXT,  
-        business.name::TEXT AS business_name,  
-        service.description::TEXT AS service_description,  
-        service.service_image::TEXT AS service_image,  
-        business.profile_picture::TEXT AS business_profile,  
-        service.price::NUMERIC AS cost,  
-        business.city::TEXT,  
-        business.postcode::TEXT,  
-        ts_rank(
-            to_tsvector('english', service.service_name) || to_tsvector('english', service.description), 
-            ts_query
-        ) AS rank_text,
-        GREATEST(
-            similarity(service.service_name, search_term),   
-            similarity(service.description, search_term)
-        ) AS rank_fuzzy,  
-        GREATEST(
-            word_similarity(service.service_name, search_term), 
-            word_similarity(service.description, search_term)
-        ) AS rank_word_similarity  
-    FROM service
-    JOIN business ON service.business_id = business.id  
-    WHERE 
-          GREATEST(
-               word_similarity(service.service_name, search_term), 
-               word_similarity(service.description, search_term)
-          ) > 0.20  
-       OR to_tsvector('english', service.service_name) @@ ts_query
-       OR GREATEST(
-               similarity(service.service_name, search_term),   
-               similarity(service.description, search_term)
-          ) > 0.20
-    ORDER BY rank_word_similarity DESC, rank_text DESC, rank_fuzzy DESC
-    LIMIT 10;
-END;
-
-
+-- Define your test search term
+WITH search_input AS (
+    SELECT trim('masage') AS search_term
+),
+insert_log AS (
+    INSERT INTO search_log (search_term)
+    SELECT search_term FROM search_input
+    RETURNING search_term
+),
+search_query AS (
+    SELECT plainto_tsquery('english', search_term) AS ts_query, search_term
+    FROM insert_log
+)
+SELECT 
+    service.id AS service_id,  
+    service.service_name::TEXT,  
+    business.name::TEXT AS business_name,  
+    service.description::TEXT AS service_description,  
+    service.service_image::TEXT AS service_image,  
+    business.profile_picture::TEXT AS business_profile,  
+    service.price::NUMERIC AS cost,  
+    business.city::TEXT,  
+    business.postcode::TEXT,  
+    ts_rank(
+        to_tsvector('english', service.service_name) || to_tsvector('english', service.description), 
+        sq.ts_query
+    ) AS rank_text,
+    GREATEST(
+        similarity(service.service_name, sq.search_term),   
+        similarity(service.description, sq.search_term)
+    ) AS rank_fuzzy,  
+    GREATEST(
+        word_similarity(service.service_name, sq.search_term), 
+        word_similarity(service.description, sq.search_term)
+    ) AS rank_word_similarity  
+FROM 
+    service
+JOIN 
+    business ON service.business_id = business.id
+CROSS JOIN
+    search_query sq
+WHERE 
+    GREATEST(
+        word_similarity(service.service_name, sq.search_term), 
+        word_similarity(service.description, sq.search_term)
+    ) > 0.20  
+    OR to_tsvector('english', service.service_name) @@ sq.ts_query
+    OR GREATEST(
+        similarity(service.service_name, sq.search_term),   
+        similarity(service.description, sq.search_term)
+    ) > 0.20
+ORDER BY 
+    rank_word_similarity DESC, 
+    rank_text DESC, 
+    rank_fuzzy DESC
+LIMIT 10;
