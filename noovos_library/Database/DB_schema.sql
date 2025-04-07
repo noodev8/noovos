@@ -5,7 +5,7 @@
 -- Dumped from database version 11.18 (Debian 11.18-0+deb10u1)
 -- Dumped by pg_dump version 17.1
 
--- Started on 2025-04-05 15:37:22
+-- Started on 2025-04-07 09:41:37
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -451,17 +451,17 @@ ALTER SEQUENCE public.reviews_id_seq OWNED BY public.reviews.id;
 
 --
 -- TOC entry 221 (class 1259 OID 20615)
--- Name: search_logs; Type: TABLE; Schema: public; Owner: noovos_dev
+-- Name: search_log; Type: TABLE; Schema: public; Owner: noovos_dev
 --
 
-CREATE TABLE public.search_logs (
+CREATE TABLE public.search_log (
     id integer NOT NULL,
     search_term text NOT NULL,
     search_timestamp timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
 
-ALTER TABLE public.search_logs OWNER TO noovos_dev;
+ALTER TABLE public.search_log OWNER TO noovos_dev;
 
 --
 -- TOC entry 220 (class 1259 OID 20613)
@@ -485,7 +485,7 @@ ALTER SEQUENCE public.search_logs_id_seq OWNER TO noovos_dev;
 -- Name: search_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
 
-ALTER SEQUENCE public.search_logs_id_seq OWNED BY public.search_logs.id;
+ALTER SEQUENCE public.search_logs_id_seq OWNED BY public.search_log.id;
 
 
 --
@@ -802,10 +802,10 @@ ALTER TABLE ONLY public.reviews ALTER COLUMN id SET DEFAULT nextval('public.revi
 
 --
 -- TOC entry 2995 (class 2604 OID 20618)
--- Name: search_logs id; Type: DEFAULT; Schema: public; Owner: noovos_dev
+-- Name: search_log id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
-ALTER TABLE ONLY public.search_logs ALTER COLUMN id SET DEFAULT nextval('public.search_logs_id_seq'::regclass);
+ALTER TABLE ONLY public.search_log ALTER COLUMN id SET DEFAULT nextval('public.search_logs_id_seq'::regclass);
 
 
 --
@@ -940,10 +940,10 @@ ALTER TABLE ONLY public.reviews
 
 --
 -- TOC entry 3050 (class 2606 OID 20624)
--- Name: search_logs search_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
+-- Name: search_log search_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
-ALTER TABLE ONLY public.search_logs
+ALTER TABLE ONLY public.search_log
     ADD CONSTRAINT search_logs_pkey PRIMARY KEY (id);
 
 
@@ -1394,7 +1394,7 @@ REVOKE USAGE ON SCHEMA public FROM PUBLIC;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
 
--- Completed on 2025-04-05 15:37:24
+-- Completed on 2025-04-07 09:41:38
 
 --
 -- PostgreSQL database dump complete

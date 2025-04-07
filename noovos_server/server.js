@@ -28,10 +28,12 @@ const pool = require('./db');
 // Import routes
 const login_user = require('./routes/login_user');
 const register_user = require('./routes/register_user');
+const search_business = require('./routes/search_business');
 
 // Set up routes
 app.use('/login_user', login_user);
 app.use('/register_user', register_user);
+app.use('/search_business', search_business);
 
 // Root route
 app.get('/', (req, res) => {

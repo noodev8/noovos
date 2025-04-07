@@ -29,3 +29,13 @@ http://localhost:3000/login_user
   "password": "password123"
 }
 ======================================
+
+== Search Business ==============================
+http://localhost:3000/search_business
+Headers:
+Authorization: Bearer <your_token_here>
+
+{
+  "search_term": "massage"
+}
+======================================
