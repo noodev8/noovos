@@ -9,10 +9,10 @@ Provides option to login for booking services
 import 'package:flutter/material.dart';
 import '../helpers/auth_helper.dart';
 import '../styles/app_styles.dart';
-import '../api/search_business_api.dart';
+
 import '../api/get_categories_api.dart';
 import '../helpers/image_helper.dart';
-import '../screens/category_services_screen.dart';
+import '../screens/service_results_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -149,7 +149,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // Handle search
-  Future<void> _handleSearch() async {
+  void _handleSearch() {
     // Get the search term and location
     final searchTerm = _searchController.text.trim();
     final location = _locationController.text.trim();
@@ -165,76 +165,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Clear previous error message
     setState(() {
       _searchErrorMessage = null;
-      _isSearching = true;
+      _isSearching = false; // Reset search state
     });
 
-    try {
-      // Call the search API
-      // Note: Currently the API only supports searchTerm, but we're preparing for location support
-      final result = await SearchBusinessApi.searchBusiness(searchTerm);
-
-      // Check if search was successful
-      if (result['success']) {
-        // Get the search results
-        final data = result['data'];
-
-        setState(() {
-          // Check if there are results
-          if (data['return_code'] == 'SUCCESS') {
-            _searchResults = data['results'];
-
-            // If location was provided, we would filter results here
-            // This is a placeholder for future location filtering
-            if (location.isNotEmpty) {
-              // For now, just show a message that location filtering is coming soon
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Location filtering coming soon!'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            }
-          } else {
-            // No results found
-            _searchResults = [];
-            _searchErrorMessage = 'No results found for "$searchTerm"';
-            if (location.isNotEmpty) {
-              _searchErrorMessage = '$_searchErrorMessage in "$location"';
-            }
-          }
-          _isSearching = false;
-        });
-      } else {
-        // Handle error
-        setState(() {
-          _searchResults = [];
-          _searchErrorMessage = result['message'];
-          _isSearching = false;
-        });
-
-        // Check if unauthorized
-        if (result['return_code'] == 'UNAUTHORIZED') {
-          // Redirect to login
-          if (mounted) {
-            // Perform logout
-            await AuthHelper.logout();
-
-            // Navigate to login if still mounted
-            if (mounted) {
-              // Use a separate function to avoid BuildContext across async gap warning
-              _navigateToLogin();
-            }
-          }
-        }
-      }
-    } catch (e) {
-      // Handle error
-      setState(() {
-        _searchResults = [];
-        _searchErrorMessage = 'An error occurred: $e';
-        _isSearching = false;
-      });
-    }
+    // Navigate to service results screen with search term and location
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ServiceResultsScreen(
+          searchTerm: searchTerm,
+          location: location.isNotEmpty ? location : null,
+        ),
+      ),
+    );
   }
 
   // Clear search results
@@ -246,33 +189,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  // Navigate to login screen
-  void _navigateToLogin() {
-    Navigator.pushReplacementNamed(context, '/login');
-  }
+
 
   // Handle login
   void _handleLogin() {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
-  // Navigate to category services screen
+  // Navigate to service results screen with category
   void _navigateToCategoryServices(Map<String, dynamic> category) {
-    // Extract category data
-    final categoryId = category['id'];
-    final categoryName = category['name'] ?? 'Unknown Category';
-    final categoryDescription = category['description'];
-    final categoryIconUrl = category['icon_url'];
-
-    // Navigate to category services screen
+    // Navigate to service results screen with category
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CategoryServicesScreen(
-          categoryId: categoryId,
-          categoryName: categoryName,
-          categoryDescription: categoryDescription,
-          categoryIconUrl: categoryIconUrl,
+        builder: (context) => ServiceResultsScreen(
+          category: category,
         ),
       ),
     );

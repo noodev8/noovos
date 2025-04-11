@@ -33,7 +33,7 @@ http://localhost:3000/login_user
 == Search Business ==============================
 http://localhost:3000/search_business
 Headers:
-Authorization: Bearer <your_token_here>
+Content-Type: application/json
 
 {
   "search_term": "massage"

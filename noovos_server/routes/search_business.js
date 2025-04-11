@@ -4,6 +4,7 @@ API Route: search_business
 =======================================================================================================================================
 Method: POST
 Purpose: Searches for businesses and services based on a search term. Returns a list of salons and services.
+Note: This API does not require authentication.
 =======================================================================================================================================
 Request Payload:
 {
@@ -40,14 +41,11 @@ Return Codes:
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const auth = require('../middleware/auth');
-
 // POST /search_business
-router.post('/', auth, async (req, res) => {
+router.post('/', async (req, res) => {
     try {
-        // Extract search term and user_id from request body
+        // Extract search term from request body
         const { search_term } = req.body;
-        const user_id = req.user.id;
 
         // Check if search term is provided
         if (!search_term || search_term.trim() === '') {
@@ -66,9 +64,9 @@ router.post('/', auth, async (req, res) => {
                 SELECT trim($1) AS search_term
             ),
             insert_log AS (
-                INSERT INTO search_log (search_term, search_user)
-                SELECT search_term, $2 FROM search_input
-                RETURNING search_term, search_user
+                INSERT INTO search_log (search_term)
+                SELECT search_term FROM search_input
+                RETURNING search_term
             ),
             search_query AS (
                 SELECT plainto_tsquery('english', search_term) AS ts_query, search_term
@@ -119,8 +117,8 @@ router.post('/', auth, async (req, res) => {
             LIMIT 10;
         `;
 
-        // Execute the query with the search term and user_id parameters
-        const searchResults = await pool.query(searchQuery, [trimmedSearchTerm, user_id]);
+        // Execute the query with the search term parameter
+        const searchResults = await pool.query(searchQuery, [trimmedSearchTerm]);
 
         // Check if there are any results
         if (searchResults.rows.length === 0) {
