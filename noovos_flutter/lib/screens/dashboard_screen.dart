@@ -12,6 +12,7 @@ import '../styles/app_styles.dart';
 import '../api/search_business_api.dart';
 import '../api/get_categories_api.dart';
 import '../helpers/image_helper.dart';
+import '../screens/category_services_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -255,7 +256,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
-  // Note: Category selection is temporarily disabled
+  // Navigate to category services screen
+  void _navigateToCategoryServices(Map<String, dynamic> category) {
+    // Extract category data
+    final categoryId = category['id'];
+    final categoryName = category['name'] ?? 'Unknown Category';
+    final categoryDescription = category['description'];
+    final categoryIconUrl = category['icon_url'];
+
+    // Navigate to category services screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategoryServicesScreen(
+          categoryId: categoryId,
+          categoryName: categoryName,
+          categoryDescription: categoryDescription,
+          categoryIconUrl: categoryIconUrl,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -492,8 +513,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: InkWell(
-        // Temporarily disable the onTap action
-        onTap: null, // () => _handleCategorySelection(category),
+        // Navigate to category services screen when tapped
+        onTap: () => _navigateToCategoryServices(category),
         borderRadius: BorderRadius.circular(10),
         child: Container(
           width: 130,
