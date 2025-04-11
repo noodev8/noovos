@@ -109,10 +109,28 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
     }
   }
 
+  // Navigate to dashboard
+  void _navigateToDashboard() {
+    Navigator.pushReplacementNamed(context, '/dashboard');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppStyles.backgroundColor,
+      appBar: AppBar(
+        title: const Text('Login'),
+        backgroundColor: AppStyles.primaryColor,
+        foregroundColor: Colors.white,
+        actions: [
+          // Dashboard button
+          TextButton.icon(
+            icon: const Icon(Icons.search, color: Colors.white),
+            label: const Text('Search', style: TextStyle(color: Colors.white)),
+            onPressed: _navigateToDashboard,
+          ),
+        ],
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),

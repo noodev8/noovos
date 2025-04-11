@@ -1,9 +1,9 @@
 /*
-Show the dashboard screen after user login
+Show the dashboard/search screen
 This is the main screen of the application
-Allows the user to search for businesses and services
+Allows users to search for businesses and services without requiring login
 Displays search results in a list
-Allows the user to log out
+Provides option to login for booking services
 */
 
 import 'package:flutter/material.dart';
@@ -20,11 +20,8 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  // User data
-  Map<String, dynamic>? _userData;
-
   // Loading state
-  bool _isLoading = true;
+  bool _isLoading = false;
 
   // Search state
   bool _isSearching = false;
@@ -38,10 +35,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Search error message
   String? _searchErrorMessage;
 
+  // Login state
+  bool _isLoggedIn = false;
+
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _checkLoginStatus();
   }
 
   @override
@@ -51,32 +51,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  // Load user data
-  Future<void> _loadUserData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+  // Check if user is logged in
+  Future<void> _checkLoginStatus() async {
     try {
-      final userData = await AuthHelper.getUserData();
+      final isLoggedIn = await AuthHelper.isLoggedIn();
 
       setState(() {
-        _userData = userData;
-        _isLoading = false;
+        _isLoggedIn = isLoggedIn;
       });
     } catch (e) {
+      // Handle error silently
       setState(() {
-        _isLoading = false;
+        _isLoggedIn = false;
       });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading user data: $e'),
-            backgroundColor: AppStyles.errorColor,
-          ),
-        );
-      }
     }
   }
 
@@ -194,206 +181,157 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
+  // Handle login
+  void _handleLogin() {
+    Navigator.pushReplacementNamed(context, '/login');
+  }
+
   @override
   Widget build(BuildContext context) {
 
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: const Text('Search Services'),
         backgroundColor: AppStyles.primaryColor,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _isLoading ? null : _handleLogout,
-            tooltip: 'Logout',
-          ),
+          // Show login or logout button based on login status
+          _isLoggedIn
+              ? IconButton(
+                  icon: const Icon(Icons.logout),
+                  onPressed: _handleLogout,
+                  tooltip: 'Logout',
+                )
+              : TextButton.icon(
+                  icon: const Icon(Icons.person, color: Colors.white),
+                  label: const Text('Profile', style: TextStyle(color: Colors.white)),
+                  onPressed: _handleLogin,
+                ),
         ],
       ),
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(),
             )
-          : _userData == null
-              ? const Center(
-                  child: Text('No user data found'),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Welcome message
-                      Text(
-                        'Welcome, ${_userData!['name']}!',
-                        style: AppStyles.headingStyle,
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Search section
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: AppStyles.cardDecoration,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Search heading
-                            const Text(
-                              'Find Salons & Services',
-                              style: AppStyles.subheadingStyle,
-                            ),
-                            const SizedBox(height: 15),
-
-                            // Search description
-                            const Text(
-                              'Search for salons and services near you',
-                              style: AppStyles.bodyStyle,
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Search input and button
-                            Row(
-                              children: [
-                                // Search input field
-                                Expanded(
-                                  child: TextField(
-                                    controller: _searchController,
-                                    decoration: AppStyles.inputDecoration(
-                                      'Search',
-                                      hint: 'e.g. massage, haircut, spa',
-                                      prefixIcon: const Icon(Icons.search),
-                                    ),
-                                    onSubmitted: (_) => _handleSearch(),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-
-                                // Search button
-                                ElevatedButton(
-                                  onPressed: _isSearching ? null : _handleSearch,
-                                  style: AppStyles.primaryButtonStyle,
-                                  child: _isSearching
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : const Text('Search'),
-                                ),
-                              ],
-                            ),
-
-                            // Error message
-                            if (_searchErrorMessage != null) ...[
-                              const SizedBox(height: 15),
-                              Text(
-                                _searchErrorMessage!,
-                                style: const TextStyle(
-                                  color: AppStyles.errorColor,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-
-                      // Search results section
-                      if (_searchResults.isNotEmpty) ...[
-                        // Results heading with clear button
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Search Results',
-                              style: AppStyles.subheadingStyle,
-                            ),
-                            TextButton.icon(
-                              onPressed: _clearSearch,
-                              icon: const Icon(Icons.clear, size: 16),
-                              label: const Text('Clear'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppStyles.secondaryTextColor,
-                              ),
-                            ),
-                          ],
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Search section
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: AppStyles.cardDecoration,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Search heading
+                        const Text(
+                          'Find Salons & Services',
+                          style: AppStyles.subheadingStyle,
                         ),
                         const SizedBox(height: 15),
 
-                        // Results list
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _searchResults.length,
-                          itemBuilder: (context, index) {
-                            // Get the result
-                            final result = _searchResults[index];
-
-                            // Build the result card
-                            return _buildSearchResultCard(result);
-                          },
+                        // Search description
+                        const Text(
+                          'Search for salons and services near you',
+                          style: AppStyles.bodyStyle,
                         ),
-                      ],
+                        const SizedBox(height: 20),
 
-                      const SizedBox(height: 30),
-
-                      // User info card
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: AppStyles.cardDecoration,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        // Search input and button
+                        Row(
                           children: [
-                            const Text(
-                              'Your Profile',
-                              style: AppStyles.subheadingStyle,
+                            // Search input field
+                            Expanded(
+                              child: TextField(
+                                controller: _searchController,
+                                decoration: AppStyles.inputDecoration(
+                                  'Search',
+                                  hint: 'e.g. massage, haircut, spa',
+                                  prefixIcon: const Icon(Icons.search),
+                                ),
+                                onSubmitted: (_) => _handleSearch(),
+                              ),
                             ),
-                            const SizedBox(height: 15),
-                            _buildProfileItem('ID', _userData!['id'].toString()),
-                            _buildProfileItem('Name', _userData!['name']),
-                            _buildProfileItem('Email', _userData!['email']),
-                            _buildProfileItem('Account Level', _userData!['account_level']),
+                            const SizedBox(width: 10),
+
+                            // Search button
+                            ElevatedButton(
+                              onPressed: _isSearching ? null : _handleSearch,
+                              style: AppStyles.primaryButtonStyle,
+                              child: _isSearching
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text('Search'),
+                            ),
                           ],
                         ),
-                      ),
+
+                        // Error message
+                        if (_searchErrorMessage != null) ...[
+                          const SizedBox(height: 15),
+                          Text(
+                            _searchErrorMessage!,
+                            style: const TextStyle(
+                              color: AppStyles.errorColor,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+
+                  // Search results section
+                  if (_searchResults.isNotEmpty) ...[
+                    // Results heading with clear button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Search Results',
+                          style: AppStyles.subheadingStyle,
+                        ),
+                        TextButton.icon(
+                          onPressed: _clearSearch,
+                          icon: const Icon(Icons.clear, size: 16),
+                          label: const Text('Clear'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppStyles.secondaryTextColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Results list
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _searchResults.length,
+                      itemBuilder: (context, index) {
+                        // Get the result
+                        final result = _searchResults[index];
+
+                        // Build the result card
+                        return _buildSearchResultCard(result);
+                      },
+                    ),
+                  ],
 
 
                     ],
                   ),
                 ),
-    );
-  }
-
-  // Build profile item
-  Widget _buildProfileItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppStyles.secondaryTextColor,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: AppStyles.bodyStyle,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

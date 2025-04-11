@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'screens/login_user_screen.dart';
 import 'screens/register_user_screen.dart';
 import 'screens/dashboard_screen.dart';
-import 'helpers/auth_helper.dart';
 import 'styles/app_styles.dart';
 
 void main() {
@@ -23,8 +22,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  // Initial route
-  String _initialRoute = '/login';
+  // Initial route - always start with dashboard
+  String _initialRoute = '/dashboard';
 
   // Loading state
   bool _isLoading = true;
@@ -32,24 +31,23 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _checkAuth();
+    _setupMockData();
   }
 
-  // Check if user is already logged in
-  Future<void> _checkAuth() async {
+  // Setup for dashboard
+  Future<void> _setupMockData() async {
     try {
-      final isLoggedIn = await AuthHelper.isLoggedIn();
-
+      // Just set the initial route to dashboard without creating mock user data
+      // since we've redesigned the dashboard to work without user data
       if (mounted) {
         setState(() {
-          _initialRoute = isLoggedIn ? '/dashboard' : '/login';
+          _initialRoute = '/dashboard';
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _initialRoute = '/login';
           _isLoading = false;
         });
       }
