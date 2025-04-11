@@ -30,8 +30,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Search results
   List<dynamic> _searchResults = [];
 
-  // Search controller
+  // Search controllers
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
 
   // Search error message
   String? _searchErrorMessage;
@@ -96,8 +97,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
-    // Clean up the controller when the widget is disposed
+    // Clean up the controllers when the widget is disposed
     _searchController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
@@ -147,13 +149,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Handle search
   Future<void> _handleSearch() async {
-    // Get the search term
+    // Get the search term and location
     final searchTerm = _searchController.text.trim();
+    final location = _locationController.text.trim();
 
     // Check if search term is empty
     if (searchTerm.isEmpty) {
       setState(() {
-        _searchErrorMessage = 'Please enter a search term';
+        _searchErrorMessage = 'Please enter a service or salon name';
       });
       return;
     }
@@ -166,6 +169,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       // Call the search API
+      // Note: Currently the API only supports searchTerm, but we're preparing for location support
       final result = await SearchBusinessApi.searchBusiness(searchTerm);
 
       // Check if search was successful
@@ -177,10 +181,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // Check if there are results
           if (data['return_code'] == 'SUCCESS') {
             _searchResults = data['results'];
+
+            // If location was provided, we would filter results here
+            // This is a placeholder for future location filtering
+            if (location.isNotEmpty) {
+              // For now, just show a message that location filtering is coming soon
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Location filtering coming soon!'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
           } else {
             // No results found
             _searchResults = [];
             _searchErrorMessage = 'No results found for "$searchTerm"';
+            if (location.isNotEmpty) {
+              _searchErrorMessage = '$_searchErrorMessage in "$location"';
+            }
           }
           _isSearching = false;
         });
@@ -244,7 +263,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Search Services'),
+        title: const Text('Noovos'),
         backgroundColor: AppStyles.primaryColor,
         foregroundColor: Colors.white,
         actions: [
@@ -292,15 +311,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Search input field
+                        // Service search field
                         TextField(
                           controller: _searchController,
                           decoration: AppStyles.inputDecoration(
-                            'Search',
-                            hint: 'e.g. massage, haircut, spa',
+                            'Service or Salon',
+                            hint: 'e.g. massage, haircut, spa, salon name',
                             prefixIcon: const Icon(Icons.search),
                           ),
                           onSubmitted: (_) => _handleSearch(),
+                        ),
+                        const SizedBox(height: 15),
+
+                        // Location search field
+                        TextField(
+                          controller: _locationController,
+                          decoration: AppStyles.inputDecoration(
+                            'Location',
+                            hint: 'Town, City or Postcode (optional)',
+                            prefixIcon: const Icon(Icons.location_on_outlined),
+                          ),
                         ),
                         const SizedBox(height: 15),
 

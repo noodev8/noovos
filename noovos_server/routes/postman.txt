@@ -47,3 +47,13 @@ Content-Type: application/json
 
 {}
 ======================================
+
+== Search Category Service ==============================
+http://localhost:3000/search_category_service
+Headers:
+Content-Type: application/json
+
+{
+  "category_id": 1
+}
+======================================

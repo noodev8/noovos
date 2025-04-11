@@ -30,12 +30,14 @@ const login_user = require('./routes/login_user');
 const register_user = require('./routes/register_user');
 const search_business = require('./routes/search_business');
 const get_categories = require('./routes/get_categories');
+const search_category_service = require('./routes/search_category_service');
 
 // Set up routes
 app.use('/login_user', login_user);
 app.use('/register_user', register_user);
 app.use('/search_business', search_business);
 app.use('/get_categories', get_categories);
+app.use('/search_category_service', search_category_service);
 
 // Root route
 app.get('/', (req, res) => {

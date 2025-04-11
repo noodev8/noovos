@@ -5,7 +5,7 @@
 -- Dumped from database version 11.18 (Debian 11.18-0+deb10u1)
 -- Dumped by pg_dump version 17.1
 
--- Started on 2025-04-11 22:27:52
+-- Started on 2025-04-12 00:08:06
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -546,7 +546,8 @@ CREATE TABLE public.service (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     service_image text,
-    buffer_time integer DEFAULT 0
+    buffer_time integer DEFAULT 0,
+    category_id integer
 );
 
 
@@ -1461,7 +1462,7 @@ REVOKE USAGE ON SCHEMA public FROM PUBLIC;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
 
--- Completed on 2025-04-11 22:27:54
+-- Completed on 2025-04-12 00:08:08
 
 --
 -- PostgreSQL database dump complete
