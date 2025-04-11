@@ -16,7 +16,6 @@ class AppConfig {
   // static const String apiBaseUrl = 'https://api.noovos.com';
 
   // Image Server URL
-  // static const String imageBaseUrl = 'https://noovosimage.brookfieldcomfort.com';
   static const String imageBaseUrl = 'https://noovos.brookfieldcomfort.com/image';
 
   // App Settings

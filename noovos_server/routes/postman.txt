@@ -39,3 +39,11 @@ Authorization: Bearer <your_token_here>
   "search_term": "massage"
 }
 ======================================
+
+== Get Categories ==============================
+http://localhost:3000/get_categories
+Headers:
+Content-Type: application/json
+
+{}
+======================================

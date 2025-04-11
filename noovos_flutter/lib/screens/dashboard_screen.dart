@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../helpers/auth_helper.dart';
 import '../styles/app_styles.dart';
 import '../api/search_business_api.dart';
+import '../api/get_categories_api.dart';
 import '../helpers/image_helper.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -38,10 +39,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Login state
   bool _isLoggedIn = false;
 
+  // Categories state
+  bool _isLoadingCategories = false;
+  List<dynamic> _categories = [];
+  String? _categoriesErrorMessage;
+
   @override
   void initState() {
     super.initState();
     _checkLoginStatus();
+    _loadCategories();
+  }
+
+  // Load categories
+  Future<void> _loadCategories() async {
+    setState(() {
+      _isLoadingCategories = true;
+      _categoriesErrorMessage = null;
+    });
+
+    try {
+      // Call the API to get categories
+      final result = await GetCategoriesApi.getCategories();
+
+      // Check if the request was successful
+      if (result['success']) {
+        final data = result['data'];
+
+        setState(() {
+          // Check if there are categories
+          if (data['return_code'] == 'SUCCESS') {
+            _categories = data['categories'];
+          } else {
+            // No categories found
+            _categories = [];
+          }
+          _isLoadingCategories = false;
+        });
+      } else {
+        // Handle error
+        setState(() {
+          _categories = [];
+          _categoriesErrorMessage = result['message'];
+          _isLoadingCategories = false;
+        });
+      }
+    } catch (e) {
+      // Handle error
+      setState(() {
+        _categories = [];
+        _categoriesErrorMessage = 'An error occurred: $e';
+        _isLoadingCategories = false;
+      });
+    }
   }
 
   @override
@@ -186,6 +236,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
+  // Note: Category selection is temporarily disabled
+
   @override
   Widget build(BuildContext context) {
 
@@ -240,39 +292,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Search input and button
-                        Row(
-                          children: [
-                            // Search input field
-                            Expanded(
-                              child: TextField(
-                                controller: _searchController,
-                                decoration: AppStyles.inputDecoration(
-                                  'Search',
-                                  hint: 'e.g. massage, haircut, spa',
-                                  prefixIcon: const Icon(Icons.search),
-                                ),
-                                onSubmitted: (_) => _handleSearch(),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
+                        // Search input field
+                        TextField(
+                          controller: _searchController,
+                          decoration: AppStyles.inputDecoration(
+                            'Search',
+                            hint: 'e.g. massage, haircut, spa',
+                            prefixIcon: const Icon(Icons.search),
+                          ),
+                          onSubmitted: (_) => _handleSearch(),
+                        ),
+                        const SizedBox(height: 15),
 
-                            // Search button
-                            ElevatedButton(
-                              onPressed: _isSearching ? null : _handleSearch,
-                              style: AppStyles.primaryButtonStyle,
-                              child: _isSearching
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Text('Search'),
-                            ),
-                          ],
+                        // Search button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isSearching ? null : _handleSearch,
+                            style: AppStyles.primaryButtonStyle,
+                            child: _isSearching
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('Search'),
+                          ),
                         ),
 
                         // Error message
@@ -290,6 +338,73 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
+
+                  // Categories section
+                  if (_isLoadingCategories) ...[
+                    // Loading indicator
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                  ] else if (_categoriesErrorMessage != null) ...[
+                    // Error message
+                    Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        color: AppStyles.errorColor.withAlpha(25),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppStyles.errorColor.withAlpha(50)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            color: AppStyles.errorColor,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Error loading categories: $_categoriesErrorMessage',
+                              style: const TextStyle(
+                                color: AppStyles.errorColor,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else if (_categories.isNotEmpty) ...[
+                    // Categories heading
+                    const Text(
+                      'Browse by Category',
+                      style: AppStyles.subheadingStyle,
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Categories description
+                    const Text(
+                      'Select a category to find services',
+                      style: AppStyles.bodyStyle,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Categories horizontal list
+                    SizedBox(
+                      height: 200,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _categories.length,
+                        itemBuilder: (context, index) {
+                          return _buildCategoryCard(_categories[index]);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                  ],
 
                   // Search results section
                   if (_searchResults.isNotEmpty) ...[
@@ -332,6 +447,93 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
+    );
+  }
+
+  // Build category card
+  Widget _buildCategoryCard(Map<String, dynamic> category) {
+    // Extract data from category
+    final categoryName = category['name'] ?? 'Unknown Category';
+    final categoryDescription = category['description'] ?? '';
+    final categoryImage = category['icon_url']; // This might be null
+
+    return Card(
+      margin: const EdgeInsets.only(right: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: InkWell(
+        // Temporarily disable the onTap action
+        onTap: null, // () => _handleCategorySelection(category),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 130,
+          height: 180,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Category image or icon
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: AppStyles.primaryColor.withAlpha(25),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: categoryImage != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: ImageHelper.getCachedNetworkImage(
+                        imageUrl: categoryImage,
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                        errorWidget: const Icon(
+                          Icons.category,
+                          color: AppStyles.primaryColor,
+                          size: 30,
+                        ),
+                      ),
+                    )
+                  : const Icon(
+                      Icons.category,
+                      color: AppStyles.primaryColor,
+                      size: 30,
+                    ),
+              ),
+              const SizedBox(height: 10),
+
+              // Category name
+              Text(
+                categoryName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              // Category description (if available)
+              if (categoryDescription.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  categoryDescription,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppStyles.secondaryTextColor,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 
