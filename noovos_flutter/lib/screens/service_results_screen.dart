@@ -6,10 +6,9 @@ Users can view service details and select a service to book
 
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
-import '../api/search_business_api.dart';
-import '../api/search_category_service_api.dart';
+import '../api/search_service_api.dart';
 import '../helpers/image_helper.dart';
-import '../config/app_config.dart';
+
 
 class ServiceResultsScreen extends StatefulWidget {
   // Search parameters - either searchTerm or category should be provided
@@ -48,10 +47,10 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Determine if we're in search mode or category mode
     _isSearchMode = widget.searchTerm != null;
-    
+
     // Load services
     _loadServices();
   }
@@ -64,99 +63,30 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
     });
 
     try {
-      if (_isSearchMode) {
-        // Search mode - use search_business API
-        await _loadSearchResults();
-      } else if (widget.category != null) {
-        // Category mode - use search_category_service API
-        await _loadCategoryServices();
-      } else {
-        // Neither search term nor category provided
-        setState(() {
-          _errorMessage = 'No search criteria provided';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      // Handle error
-      setState(() {
-        _errorMessage = 'An error occurred: $e';
-        _services = [];
-        _isLoading = false;
-      });
-    }
-  }
+      // Determine which parameters to use based on what was provided
+      final String? searchTerm = widget.searchTerm;
+      final String? location = widget.location;
+      final int? categoryId = widget.category != null ? widget.category!['id'] : null;
 
-  // Load search results using search_business API
-  Future<void> _loadSearchResults() async {
-    try {
-      // Call the API to search for businesses
-      final result = await SearchBusinessApi.searchBusiness(widget.searchTerm!);
+      // Call the unified search_service API
+      final result = await SearchServiceApi.searchServices(
+        searchTerm: searchTerm,
+        location: location,
+        categoryId: categoryId,
+        page: 1,
+        limit: 20,
+      );
 
       // Check if the request was successful
       if (result['success']) {
         final data = result['data'];
-        
+
         setState(() {
-          // Check if there are results
-          if (data['return_code'] == 'SUCCESS') {
-            // Normalize the data to match our service card format
-            _services = data['results'].map((result) {
-              return {
-                'service_id': result['service_id'],
-                'service_name': result['service_name'],
-                'business_name': result['business_name'],
-                'service_description': result['service_description'],
-                'service_image': result['service_image'],
-                'business_profile': result['business_profile'],
-                'price': result['cost'], // Map cost to price
-                'city': result['city'],
-                'postcode': result['postcode'],
-                // Duration might not be available in search results
-                'duration': null,
-              };
-            }).toList();
-          } else {
-            // No results found
-            _services = [];
+          // Store category data if we're in category mode
+          if (widget.category != null) {
+            _categoryData = widget.category;
           }
-          _isLoading = false;
-        });
-      } else {
-        // Handle error
-        setState(() {
-          _errorMessage = result['message'];
-          _services = [];
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      // Handle error
-      setState(() {
-        _errorMessage = 'An error occurred: $e';
-        _services = [];
-        _isLoading = false;
-      });
-    }
-  }
 
-  // Load category services using search_category_service API
-  Future<void> _loadCategoryServices() async {
-    try {
-      // Get category ID
-      final categoryId = widget.category!['id'];
-      
-      // Call the API to get services for this category
-      final result = await SearchCategoryServiceApi.getServicesByCategory(categoryId);
-
-      // Check if the request was successful
-      if (result['success']) {
-        final data = result['data'];
-        
-        setState(() {
-          // Store the category data
-          _categoryData = data['category'];
-          
           // Check if there are services
           if (data['return_code'] == 'SUCCESS') {
             _services = data['services'];
@@ -184,6 +114,8 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
     }
   }
 
+
+
   // Build a service card
   Widget _buildServiceCard(Map<String, dynamic> service) {
     // Extract service data
@@ -198,7 +130,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
 
     // Format price as currency
     final formattedPrice = '£${price.toStringAsFixed(2)}';
-    
+
     // Format duration if available
     final String? formattedDuration = duration != null ? '$duration mins' : null;
 
@@ -249,7 +181,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                       ),
                     ),
             ),
-            
+
             // Service details
             Padding(
               padding: const EdgeInsets.all(16),
@@ -266,7 +198,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  
+
                   // Service name
                   Text(
                     serviceName,
@@ -276,7 +208,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  
+
                   // Service description
                   if (serviceDescription.isNotEmpty) ...[
                     Text(
@@ -290,7 +222,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  
+
                   // Price, duration and location
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -314,7 +246,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                           ),
                         ],
                       ),
-                      
+
                       // Duration (if available)
                       if (formattedDuration != null)
                         Row(
@@ -334,7 +266,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                             ),
                           ],
                         ),
-                      
+
                       // Location
                       if (city.isNotEmpty || postcode.isNotEmpty)
                         Row(
@@ -381,7 +313,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
             'Results for "${widget.searchTerm}"',
             style: AppStyles.headingStyle,
           ),
-          
+
           // Location if provided
           if (widget.location != null && widget.location!.isNotEmpty) ...[
             const SizedBox(height: 4),
@@ -410,7 +342,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
       final categoryName = _categoryData!['name'] ?? 'Unknown Category';
       final categoryDescription = _categoryData!['description'];
       final categoryIconUrl = _categoryData!['icon_url'];
-      
+
       return Row(
         children: [
           // Category icon
@@ -438,7 +370,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                 ),
               ),
             ),
-          
+
           // Category info
           Expanded(
             child: Column(
@@ -470,12 +402,12 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
   @override
   Widget build(BuildContext context) {
     // Determine the app bar title
-    final String appBarTitle = _isSearchMode 
-        ? 'Search Results' 
-        : widget.category != null 
+    final String appBarTitle = _isSearchMode
+        ? 'Search Results'
+        : widget.category != null
             ? widget.category!['name'] ?? 'Category Services'
             : 'Service Results';
-            
+
     return Scaffold(
       appBar: AppBar(
         title: Text(appBarTitle),
@@ -528,7 +460,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                       // Header (search term or category)
                       _buildHeader(),
                       const SizedBox(height: 24),
-                      
+
                       // Services count
                       Text(
                         _services.isEmpty
@@ -537,7 +469,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                         style: AppStyles.subheadingStyle,
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Services list
                       if (_services.isEmpty)
                         Center(

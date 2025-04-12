@@ -1,0 +1,152 @@
+Tech Stack
+- PostgreSQL
+- Flutter fron end
+- Express.js server
+- Will also be deploying to Next.js
+
+
+Instruction
+We will need to clean up the Server API and client API and logic. Please also note regarding the proposed solution is that we will also be developing for a Next.js client
+
+We need to allow users to search for a service from the main dashboard page.
+The page has a search text field, location text which could have City, Town or postcode
+A search button to make the search
+
+Below the search input field we have some category options (taken from the category table below)
+
+From a user perspectivewe wnat them to be able to search based on what they are looking for at the time and it could cover these scenarios
+1 - They know the exact salon name they are interested in. They would use teh search bar to find it
+2 - They are interested in a service and type the service in. This will retrieve all services that are found
+3 - They are interested in a service WITH a location. The logic shoudl only return services that are found in that location
+4 - They tap on a category card and enter a location.They see all the services for that category which also matches the location
+5 - I dont think we shoudl allow a tap on a category card without providing a location. Otehrwise too many services will appear which may be irrelevent
+
+The task I need help with, is how we will retrieve the correct data. Is it done in several parts, and if so, is it all done on the PostgreSQL server. Or do we retrieve soe data from the server and filter the rest at the client.
+The service table could have several thousand entries 
+
+
+Table: service
+"id"	"integer"	"NO"	
+"business_id"	"integer"	"NO"	
+"service_name"	"text"	"NO"	
+"description"	"text"	"YES"	
+"duration"	"integer"	"NO"	
+"price"	"numeric"	"NO"	
+"currency"	"character varying"	"YES"	3
+"active"	"boolean"	"NO"	
+"created_at"	"timestamp without time zone"	"NO"	
+"updated_at"	"timestamp without time zone"	"NO"	
+"service_image"	"text"	"YES"	
+"buffer_time"	"integer"	"YES"	
+"category_id"	"integer"	"YES"	
+
+Data: service
+10	10	"Deep Tissue Massage"	"Intensive muscle relief for chronic pain and tension."	90	85.00	"GBP"	true	"2024-02-15 11:20:00"	"2024-02-15 11:20:00"		0	4
+7	7	"Swedish Hair Massage"	"A full-body massage to relieve stress and tension."	90	75.00	"GBP"	true	"2024-02-15 11:05:00"	"2024-02-15 11:05:00"		0	4
+8	8	"Aromatherapy Session"	"Essential oils to enhance relaxation and well-being."	45	40.00	"GBP"	true	"2024-02-15 11:10:00"	"2024-02-15 11:10:00"	"salon_4.jpg"	0	13
+9	9	"Nail - Manicure & Pedicure"	"Complete nail care with polish and hydration."	75	55.00	"GBP"	true	"2024-02-15 11:15:00"	"2024-02-15 11:15:00"		0	2
+6	6	"Luxury Facial"	"A deep-cleansing and relaxing facial treatment."	60	50.00	"GBP"	true	"2024-02-15 11:00:00"	"2024-02-15 11:00:00"		0	7
+
+
+
+Table: category
+"id"	"integer"	"NO"	
+"name"	"character varying"	"NO"	100
+"description"	"text"	"YES"	
+"icon_url"	"text"	"YES"	
+
+Data: category
+4	"Massage"		
+5	"Barbering"		
+6	"Hair removal"		
+7	"Facials & skincare"		
+8	"Injectables & filters"		
+9	"Body"		
+10	"Tattoo & Piercing"		
+11	"Makeup"		
+12	"Medical & dental"		
+13	"Counselling & holistic"		
+14	"Fitness"		
+1	"Hair & Styling"		"hair_and_styling_icon.png"
+2	"Nails"		"nails.png"
+3	"Eyebrows & eyelashes"		"eyebrows_and_eyelashes.png"
+
+
+Table: business
+"id"	"integer"	"NO"	
+"appuser_id"	"integer"	"NO"	
+"name"	"text"	"NO"	
+"email"	"character varying"	"NO"	255
+"phone"	"text"	"YES"	
+"website"	"text"	"YES"	
+"address"	"text"	"YES"	
+"city"	"text"	"YES"	
+"postcode"	"text"	"YES"	
+"country"	"text"	"YES"	
+"description"	"text"	"YES"	
+"business_verified"	"boolean"	"NO"	
+"profile_picture"	"text"	"YES"	
+"created_at"	"timestamp without time zone"	"NO"	
+"updated_at"	"timestamp without time zone"	"NO"	
+
+
+
+Current DB Query - Need a new system and the below is for reference only but it is not enough to cover our requirements.
+WITH search_input AS (
+    SELECT trim('masage') AS search_term
+),
+insert_log AS (
+    INSERT INTO search_log (search_term)
+    SELECT search_term FROM search_input
+    RETURNING search_term
+),
+search_query AS (
+    SELECT plainto_tsquery('english', search_term) AS ts_query, search_term
+    FROM insert_log
+)
+SELECT 
+    service.id AS service_id,  
+    service.service_name::TEXT,  
+    business.name::TEXT AS business_name,  
+    service.description::TEXT AS service_description,  
+    service.service_image::TEXT AS service_image,  
+    business.profile_picture::TEXT AS business_profile,  
+    service.price::NUMERIC AS cost,  
+    business.city::TEXT,  
+    business.postcode::TEXT,  
+    ts_rank(
+        to_tsvector('english', service.service_name) || to_tsvector('english', service.description), 
+        sq.ts_query
+    ) AS rank_text,
+    GREATEST(
+        similarity(service.service_name, sq.search_term),   
+        similarity(service.description, sq.search_term)
+    ) AS rank_fuzzy,  
+    GREATEST(
+        word_similarity(service.service_name, sq.search_term), 
+        word_similarity(service.description, sq.search_term)
+    ) AS rank_word_similarity  
+FROM 
+    service
+JOIN 
+    business ON service.business_id = business.id
+CROSS JOIN
+    search_query sq
+WHERE 
+    GREATEST(
+        word_similarity(service.service_name, sq.search_term), 
+        word_similarity(service.description, sq.search_term)
+    ) > 0.20  
+    OR to_tsvector('english', service.service_name) @@ sq.ts_query
+    OR GREATEST(
+        similarity(service.service_name, sq.search_term),   
+        similarity(service.description, sq.search_term)
+    ) > 0.20
+ORDER BY 
+    rank_word_similarity DESC, 
+    rank_text DESC, 
+    rank_fuzzy DESC
+LIMIT 10;
+
+
+

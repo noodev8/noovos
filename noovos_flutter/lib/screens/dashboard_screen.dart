@@ -198,12 +198,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Navigate to service results screen with category
   void _navigateToCategoryServices(Map<String, dynamic> category) {
+    // Get the current search term and location if any
+    final searchTerm = _searchController.text.trim();
+    final location = _locationController.text.trim();
+
     // Navigate to service results screen with category
+    // If search term is provided, it will be used along with the category
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ServiceResultsScreen(
           category: category,
+          searchTerm: searchTerm.isNotEmpty ? searchTerm : null,
+          location: location.isNotEmpty ? location : null,
         ),
       ),
     );

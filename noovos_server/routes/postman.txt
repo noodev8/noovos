@@ -57,3 +57,37 @@ Content-Type: application/json
   "category_id": 1
 }
 ======================================
+
+== Search Service ==============================
+http://localhost:3000/search_service
+Headers:
+Content-Type: application/json
+
+{
+  "search_term": "massage",
+  "location": "manchester",
+  "category_id": 4,
+  "page": 1,
+  "limit": 20
+}
+======================================
+
+== Search Service (Location Only) ==============================
+http://localhost:3000/search_service
+Headers:
+Content-Type: application/json
+
+{
+  "location": "manchester"
+}
+======================================
+
+== Search Service (Category Only) ==============================
+http://localhost:3000/search_service
+Headers:
+Content-Type: application/json
+
+{
+  "category_id": 4
+}
+======================================
