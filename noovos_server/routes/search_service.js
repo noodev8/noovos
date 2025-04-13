@@ -61,15 +61,6 @@ router.post('/', async (req, res) => {
             limit = 20
         } = req.body;
 
-        // Log the request parameters for debugging
-        console.log('Search service request:', {
-            search_term: search_term || 'null',
-            location: location || 'null',
-            category_id: category_id || 'null',
-            page,
-            limit
-        });
-
         // Validate page and limit parameters
         if (page < 1 || limit < 1 || limit > 100) {
             return res.status(400).json({
@@ -216,9 +207,6 @@ router.post('/', async (req, res) => {
             limit
         ];
 
-        // Log the query and parameters for debugging
-        console.log('Query parameters:', queryParams);
-
         // Execute the query
         const result = await pool.query(searchQuery, queryParams);
 
@@ -256,13 +244,7 @@ router.post('/', async (req, res) => {
 
     } catch (error) {
         // Log the error for debugging
-        console.error("Search service error:", error);
-        console.error("Error details:", {
-            message: error.message,
-            stack: error.stack,
-            code: error.code,
-            detail: error.detail
-        });
+        console.error("Search service error:", error.message);
 
         // Return error response
         return res.status(500).json({

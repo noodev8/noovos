@@ -63,9 +63,6 @@ class SearchServiceApi {
       // Encode the request body
       final body = jsonEncode(requestBody);
 
-      // Log the request for debugging
-      print('Search service request: $requestBody');
-
       // Make the API call
       final response = await http.post(
         Uri.parse(_apiUrl),
