@@ -123,7 +123,11 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
     final businessName = service['business_name'] ?? 'Unknown Business';
     final serviceDescription = service['service_description'] ?? '';
     final serviceImage = service['service_image'];
-    final price = service['price'] ?? 0.0;
+    // Handle price/cost which might be a string or a number
+    var priceValue = service['cost'] ?? 0.0;
+    // Convert to double if it's a string
+    final double price = priceValue is String ? double.tryParse(priceValue) ?? 0.0 : priceValue.toDouble();
+
     final duration = service['duration']; // This might be null for search results
     final city = service['city'] ?? '';
     final postcode = service['postcode'] ?? '';

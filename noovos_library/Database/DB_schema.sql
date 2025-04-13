@@ -5,7 +5,7 @@
 -- Dumped from database version 11.18 (Debian 11.18-0+deb10u1)
 -- Dumped by pg_dump version 17.1
 
--- Started on 2025-04-12 00:08:06
+-- Started on 2025-04-13 10:27:34
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -38,7 +38,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 
 
 --
--- TOC entry 3226 (class 0 OID 0)
+-- TOC entry 3246 (class 0 OID 0)
 -- Dependencies: 3
 -- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: 
 --
@@ -55,7 +55,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 
 
 --
--- TOC entry 3227 (class 0 OID 0)
+-- TOC entry 3247 (class 0 OID 0)
 -- Dependencies: 2
 -- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: 
 --
@@ -131,7 +131,7 @@ CREATE SEQUENCE public.audit_log_id_seq
 ALTER SEQUENCE public.audit_log_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3228 (class 0 OID 0)
+-- TOC entry 3248 (class 0 OID 0)
 -- Dependencies: 216
 -- Name: audit_log_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -175,7 +175,7 @@ CREATE SEQUENCE public.available_slot_id_seq
 ALTER SEQUENCE public.available_slot_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3229 (class 0 OID 0)
+-- TOC entry 3249 (class 0 OID 0)
 -- Dependencies: 222
 -- Name: available_slot_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -217,7 +217,7 @@ CREATE SEQUENCE public.booking_id_seq
 ALTER SEQUENCE public.booking_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3230 (class 0 OID 0)
+-- TOC entry 3250 (class 0 OID 0)
 -- Dependencies: 224
 -- Name: booking_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -243,7 +243,6 @@ CREATE TABLE public.business (
     country text,
     description text,
     business_verified boolean DEFAULT false NOT NULL,
-    profile_picture text,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -268,7 +267,7 @@ CREATE SEQUENCE public.business_id_seq
 ALTER SEQUENCE public.business_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3231 (class 0 OID 0)
+-- TOC entry 3251 (class 0 OID 0)
 -- Dependencies: 200
 -- Name: business_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -308,7 +307,7 @@ CREATE SEQUENCE public.category_id_seq
 ALTER SEQUENCE public.category_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3232 (class 0 OID 0)
+-- TOC entry 3252 (class 0 OID 0)
 -- Dependencies: 228
 -- Name: category_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -350,12 +349,53 @@ CREATE SEQUENCE public.customer_notes_id_seq
 ALTER SEQUENCE public.customer_notes_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3233 (class 0 OID 0)
+-- TOC entry 3253 (class 0 OID 0)
 -- Dependencies: 208
 -- Name: customer_notes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
 
 ALTER SEQUENCE public.customer_notes_id_seq OWNED BY public.customer_notes.id;
+
+
+--
+-- TOC entry 231 (class 1259 OID 21894)
+-- Name: image; Type: TABLE; Schema: public; Owner: noovos_dev
+--
+
+CREATE TABLE public.image (
+    id integer NOT NULL,
+    business_id integer,
+    service_id integer,
+    image_name text NOT NULL,
+    "position" integer DEFAULT 1 NOT NULL
+);
+
+
+ALTER TABLE public.image OWNER TO noovos_dev;
+
+--
+-- TOC entry 230 (class 1259 OID 21892)
+-- Name: image_id_seq; Type: SEQUENCE; Schema: public; Owner: noovos_dev
+--
+
+CREATE SEQUENCE public.image_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.image_id_seq OWNER TO noovos_dev;
+
+--
+-- TOC entry 3254 (class 0 OID 0)
+-- Dependencies: 230
+-- Name: image_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
+--
+
+ALTER SEQUENCE public.image_id_seq OWNED BY public.image.id;
 
 
 --
@@ -392,7 +432,7 @@ CREATE SEQUENCE public.notifications_id_seq
 ALTER SEQUENCE public.notifications_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3234 (class 0 OID 0)
+-- TOC entry 3255 (class 0 OID 0)
 -- Dependencies: 212
 -- Name: notifications_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -438,7 +478,7 @@ CREATE SEQUENCE public.payment_id_seq
 ALTER SEQUENCE public.payment_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3235 (class 0 OID 0)
+-- TOC entry 3256 (class 0 OID 0)
 -- Dependencies: 204
 -- Name: payment_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -481,7 +521,7 @@ CREATE SEQUENCE public.reviews_id_seq
 ALTER SEQUENCE public.reviews_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3236 (class 0 OID 0)
+-- TOC entry 3257 (class 0 OID 0)
 -- Dependencies: 210
 -- Name: reviews_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -521,7 +561,7 @@ CREATE SEQUENCE public.search_logs_id_seq
 ALTER SEQUENCE public.search_logs_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3237 (class 0 OID 0)
+-- TOC entry 3258 (class 0 OID 0)
 -- Dependencies: 220
 -- Name: search_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -545,7 +585,6 @@ CREATE TABLE public.service (
     active boolean DEFAULT true NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    service_image text,
     buffer_time integer DEFAULT 0,
     category_id integer
 );
@@ -570,7 +609,7 @@ CREATE SEQUENCE public.service_id_seq
 ALTER SEQUENCE public.service_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3238 (class 0 OID 0)
+-- TOC entry 3259 (class 0 OID 0)
 -- Dependencies: 202
 -- Name: service_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -609,7 +648,7 @@ CREATE SEQUENCE public.service_staff_id_seq
 ALTER SEQUENCE public.service_staff_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3239 (class 0 OID 0)
+-- TOC entry 3260 (class 0 OID 0)
 -- Dependencies: 226
 -- Name: service_staff_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -652,7 +691,7 @@ CREATE SEQUENCE public.staff_id_seq
 ALTER SEQUENCE public.staff_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3240 (class 0 OID 0)
+-- TOC entry 3261 (class 0 OID 0)
 -- Dependencies: 206
 -- Name: staff_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -698,7 +737,7 @@ CREATE SEQUENCE public.subscription_id_seq
 ALTER SEQUENCE public.subscription_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3241 (class 0 OID 0)
+-- TOC entry 3262 (class 0 OID 0)
 -- Dependencies: 214
 -- Name: subscription_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -737,7 +776,7 @@ CREATE SEQUENCE public.synonyms_id_seq
 ALTER SEQUENCE public.synonyms_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3242 (class 0 OID 0)
+-- TOC entry 3263 (class 0 OID 0)
 -- Dependencies: 218
 -- Name: synonyms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -762,7 +801,7 @@ CREATE SEQUENCE public.users_id_seq
 ALTER SEQUENCE public.users_id_seq OWNER TO noovos_dev;
 
 --
--- TOC entry 3243 (class 0 OID 0)
+-- TOC entry 3264 (class 0 OID 0)
 -- Dependencies: 198
 -- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev
 --
@@ -771,7 +810,7 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.app_user.id;
 
 
 --
--- TOC entry 2962 (class 2604 OID 20075)
+-- TOC entry 2969 (class 2604 OID 20075)
 -- Name: app_user id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -779,7 +818,7 @@ ALTER TABLE ONLY public.app_user ALTER COLUMN id SET DEFAULT nextval('public.use
 
 
 --
--- TOC entry 2999 (class 2604 OID 20413)
+-- TOC entry 3006 (class 2604 OID 20413)
 -- Name: audit_log id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -787,7 +826,7 @@ ALTER TABLE ONLY public.audit_log ALTER COLUMN id SET DEFAULT nextval('public.au
 
 
 --
--- TOC entry 3004 (class 2604 OID 20732)
+-- TOC entry 3011 (class 2604 OID 20732)
 -- Name: available_slot id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -795,7 +834,7 @@ ALTER TABLE ONLY public.available_slot ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
--- TOC entry 3006 (class 2604 OID 20760)
+-- TOC entry 3013 (class 2604 OID 20760)
 -- Name: booking id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -803,7 +842,7 @@ ALTER TABLE ONLY public.booking ALTER COLUMN id SET DEFAULT nextval('public.book
 
 
 --
--- TOC entry 2967 (class 2604 OID 20189)
+-- TOC entry 2974 (class 2604 OID 20189)
 -- Name: business id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -811,7 +850,7 @@ ALTER TABLE ONLY public.business ALTER COLUMN id SET DEFAULT nextval('public.bus
 
 
 --
--- TOC entry 3011 (class 2604 OID 21877)
+-- TOC entry 3018 (class 2604 OID 21877)
 -- Name: category id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -819,7 +858,7 @@ ALTER TABLE ONLY public.category ALTER COLUMN id SET DEFAULT nextval('public.cat
 
 
 --
--- TOC entry 2987 (class 2604 OID 20327)
+-- TOC entry 2994 (class 2604 OID 20327)
 -- Name: customer_notes id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -827,7 +866,15 @@ ALTER TABLE ONLY public.customer_notes ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
--- TOC entry 2991 (class 2604 OID 20378)
+-- TOC entry 3019 (class 2604 OID 21897)
+-- Name: image id; Type: DEFAULT; Schema: public; Owner: noovos_dev
+--
+
+ALTER TABLE ONLY public.image ALTER COLUMN id SET DEFAULT nextval('public.image_id_seq'::regclass);
+
+
+--
+-- TOC entry 2998 (class 2604 OID 20378)
 -- Name: notifications id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -835,7 +882,7 @@ ALTER TABLE ONLY public.notifications ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
--- TOC entry 2977 (class 2604 OID 20259)
+-- TOC entry 2984 (class 2604 OID 20259)
 -- Name: payment id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -843,7 +890,7 @@ ALTER TABLE ONLY public.payment ALTER COLUMN id SET DEFAULT nextval('public.paym
 
 
 --
--- TOC entry 2989 (class 2604 OID 20354)
+-- TOC entry 2996 (class 2604 OID 20354)
 -- Name: reviews id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -851,7 +898,7 @@ ALTER TABLE ONLY public.reviews ALTER COLUMN id SET DEFAULT nextval('public.revi
 
 
 --
--- TOC entry 3002 (class 2604 OID 20618)
+-- TOC entry 3009 (class 2604 OID 20618)
 -- Name: search_log id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -859,7 +906,7 @@ ALTER TABLE ONLY public.search_log ALTER COLUMN id SET DEFAULT nextval('public.s
 
 
 --
--- TOC entry 2971 (class 2604 OID 20210)
+-- TOC entry 2978 (class 2604 OID 20210)
 -- Name: service id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -867,7 +914,7 @@ ALTER TABLE ONLY public.service ALTER COLUMN id SET DEFAULT nextval('public.serv
 
 
 --
--- TOC entry 3010 (class 2604 OID 20784)
+-- TOC entry 3017 (class 2604 OID 20784)
 -- Name: service_staff id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -875,7 +922,7 @@ ALTER TABLE ONLY public.service_staff ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
--- TOC entry 2982 (class 2604 OID 20305)
+-- TOC entry 2989 (class 2604 OID 20305)
 -- Name: staff id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -883,7 +930,7 @@ ALTER TABLE ONLY public.staff ALTER COLUMN id SET DEFAULT nextval('public.staff_
 
 
 --
--- TOC entry 2994 (class 2604 OID 20396)
+-- TOC entry 3001 (class 2604 OID 20396)
 -- Name: subscription id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -891,7 +938,7 @@ ALTER TABLE ONLY public.subscription ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
--- TOC entry 3001 (class 2604 OID 20604)
+-- TOC entry 3008 (class 2604 OID 20604)
 -- Name: synonyms id; Type: DEFAULT; Schema: public; Owner: noovos_dev
 --
 
@@ -899,7 +946,7 @@ ALTER TABLE ONLY public.synonyms ALTER COLUMN id SET DEFAULT nextval('public.syn
 
 
 --
--- TOC entry 3051 (class 2606 OID 20419)
+-- TOC entry 3067 (class 2606 OID 20419)
 -- Name: audit_log audit_log_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -908,7 +955,7 @@ ALTER TABLE ONLY public.audit_log
 
 
 --
--- TOC entry 3060 (class 2606 OID 20735)
+-- TOC entry 3076 (class 2606 OID 20735)
 -- Name: available_slot available_slot_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -917,7 +964,7 @@ ALTER TABLE ONLY public.available_slot
 
 
 --
--- TOC entry 3067 (class 2606 OID 20765)
+-- TOC entry 3083 (class 2606 OID 20765)
 -- Name: booking booking_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -926,7 +973,7 @@ ALTER TABLE ONLY public.booking
 
 
 --
--- TOC entry 3022 (class 2606 OID 20199)
+-- TOC entry 3031 (class 2606 OID 20199)
 -- Name: business business_email_key; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -935,7 +982,7 @@ ALTER TABLE ONLY public.business
 
 
 --
--- TOC entry 3024 (class 2606 OID 20197)
+-- TOC entry 3033 (class 2606 OID 20197)
 -- Name: business business_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -944,7 +991,7 @@ ALTER TABLE ONLY public.business
 
 
 --
--- TOC entry 3076 (class 2606 OID 21884)
+-- TOC entry 3092 (class 2606 OID 21884)
 -- Name: category category_name_key; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -953,7 +1000,7 @@ ALTER TABLE ONLY public.category
 
 
 --
--- TOC entry 3078 (class 2606 OID 21882)
+-- TOC entry 3094 (class 2606 OID 21882)
 -- Name: category category_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -962,7 +1009,7 @@ ALTER TABLE ONLY public.category
 
 
 --
--- TOC entry 3043 (class 2606 OID 20333)
+-- TOC entry 3059 (class 2606 OID 20333)
 -- Name: customer_notes customer_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -971,7 +1018,16 @@ ALTER TABLE ONLY public.customer_notes
 
 
 --
--- TOC entry 3047 (class 2606 OID 20385)
+-- TOC entry 3098 (class 2606 OID 21903)
+-- Name: image image_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
+--
+
+ALTER TABLE ONLY public.image
+    ADD CONSTRAINT image_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3063 (class 2606 OID 20385)
 -- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -980,7 +1036,7 @@ ALTER TABLE ONLY public.notifications
 
 
 --
--- TOC entry 3035 (class 2606 OID 20265)
+-- TOC entry 3051 (class 2606 OID 20265)
 -- Name: payment payment_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -989,7 +1045,7 @@ ALTER TABLE ONLY public.payment
 
 
 --
--- TOC entry 3037 (class 2606 OID 20267)
+-- TOC entry 3053 (class 2606 OID 20267)
 -- Name: payment payment_transaction_id_key; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -998,7 +1054,7 @@ ALTER TABLE ONLY public.payment
 
 
 --
--- TOC entry 3045 (class 2606 OID 20361)
+-- TOC entry 3061 (class 2606 OID 20361)
 -- Name: reviews reviews_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1007,7 +1063,7 @@ ALTER TABLE ONLY public.reviews
 
 
 --
--- TOC entry 3058 (class 2606 OID 20624)
+-- TOC entry 3074 (class 2606 OID 20624)
 -- Name: search_log search_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1016,7 +1072,7 @@ ALTER TABLE ONLY public.search_log
 
 
 --
--- TOC entry 3030 (class 2606 OID 20219)
+-- TOC entry 3046 (class 2606 OID 20219)
 -- Name: service service_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1025,7 +1081,7 @@ ALTER TABLE ONLY public.service
 
 
 --
--- TOC entry 3074 (class 2606 OID 20786)
+-- TOC entry 3090 (class 2606 OID 20786)
 -- Name: service_staff service_staff_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1034,7 +1090,7 @@ ALTER TABLE ONLY public.service_staff
 
 
 --
--- TOC entry 3041 (class 2606 OID 20311)
+-- TOC entry 3057 (class 2606 OID 20311)
 -- Name: staff staff_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1043,7 +1099,7 @@ ALTER TABLE ONLY public.staff
 
 
 --
--- TOC entry 3049 (class 2606 OID 20402)
+-- TOC entry 3065 (class 2606 OID 20402)
 -- Name: subscription subscription_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1052,7 +1108,7 @@ ALTER TABLE ONLY public.subscription
 
 
 --
--- TOC entry 3054 (class 2606 OID 20609)
+-- TOC entry 3070 (class 2606 OID 20609)
 -- Name: synonyms synonyms_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1061,7 +1117,7 @@ ALTER TABLE ONLY public.synonyms
 
 
 --
--- TOC entry 3056 (class 2606 OID 20611)
+-- TOC entry 3072 (class 2606 OID 20611)
 -- Name: synonyms synonyms_word_key; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1070,7 +1126,7 @@ ALTER TABLE ONLY public.synonyms
 
 
 --
--- TOC entry 3016 (class 2606 OID 20086)
+-- TOC entry 3025 (class 2606 OID 20086)
 -- Name: app_user users_email_key; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1079,7 +1135,7 @@ ALTER TABLE ONLY public.app_user
 
 
 --
--- TOC entry 3018 (class 2606 OID 20088)
+-- TOC entry 3027 (class 2606 OID 20088)
 -- Name: app_user users_phone_key; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1088,7 +1144,7 @@ ALTER TABLE ONLY public.app_user
 
 
 --
--- TOC entry 3020 (class 2606 OID 20084)
+-- TOC entry 3029 (class 2606 OID 20084)
 -- Name: app_user users_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1097,7 +1153,7 @@ ALTER TABLE ONLY public.app_user
 
 
 --
--- TOC entry 3013 (class 1259 OID 20425)
+-- TOC entry 3022 (class 1259 OID 20425)
 -- Name: idx_appuser_email; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1105,7 +1161,7 @@ CREATE INDEX idx_appuser_email ON public.app_user USING btree (email);
 
 
 --
--- TOC entry 3014 (class 1259 OID 20426)
+-- TOC entry 3023 (class 1259 OID 20426)
 -- Name: idx_appuser_mobile; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1113,7 +1169,7 @@ CREATE INDEX idx_appuser_mobile ON public.app_user USING btree (mobile);
 
 
 --
--- TOC entry 3061 (class 1259 OID 20753)
+-- TOC entry 3077 (class 1259 OID 20753)
 -- Name: idx_available_slot_date; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1121,7 +1177,7 @@ CREATE INDEX idx_available_slot_date ON public.available_slot USING btree (date)
 
 
 --
--- TOC entry 3062 (class 1259 OID 20754)
+-- TOC entry 3078 (class 1259 OID 20754)
 -- Name: idx_available_slot_is_booked; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1129,7 +1185,7 @@ CREATE INDEX idx_available_slot_is_booked ON public.available_slot USING btree (
 
 
 --
--- TOC entry 3063 (class 1259 OID 20751)
+-- TOC entry 3079 (class 1259 OID 20751)
 -- Name: idx_available_slot_service; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1137,7 +1193,7 @@ CREATE INDEX idx_available_slot_service ON public.available_slot USING btree (se
 
 
 --
--- TOC entry 3064 (class 1259 OID 20804)
+-- TOC entry 3080 (class 1259 OID 20804)
 -- Name: idx_available_slot_service_date; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1145,7 +1201,7 @@ CREATE INDEX idx_available_slot_service_date ON public.available_slot USING btre
 
 
 --
--- TOC entry 3065 (class 1259 OID 20752)
+-- TOC entry 3081 (class 1259 OID 20752)
 -- Name: idx_available_slot_staff; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1153,7 +1209,7 @@ CREATE INDEX idx_available_slot_staff ON public.available_slot USING btree (staf
 
 
 --
--- TOC entry 3068 (class 1259 OID 20777)
+-- TOC entry 3084 (class 1259 OID 20777)
 -- Name: idx_booking_customer; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1161,7 +1217,7 @@ CREATE INDEX idx_booking_customer ON public.booking USING btree (customer_id);
 
 
 --
--- TOC entry 3069 (class 1259 OID 20776)
+-- TOC entry 3085 (class 1259 OID 20776)
 -- Name: idx_booking_slot; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1169,7 +1225,7 @@ CREATE INDEX idx_booking_slot ON public.booking USING btree (slot_id);
 
 
 --
--- TOC entry 3070 (class 1259 OID 20778)
+-- TOC entry 3086 (class 1259 OID 20778)
 -- Name: idx_booking_status; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1177,7 +1233,7 @@ CREATE INDEX idx_booking_status ON public.booking USING btree (status);
 
 
 --
--- TOC entry 3025 (class 1259 OID 20645)
+-- TOC entry 3034 (class 1259 OID 20645)
 -- Name: idx_business_city; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1185,7 +1241,15 @@ CREATE INDEX idx_business_city ON public.business USING btree (city);
 
 
 --
--- TOC entry 3026 (class 1259 OID 20644)
+-- TOC entry 3035 (class 1259 OID 21889)
+-- Name: idx_business_city_trgm; Type: INDEX; Schema: public; Owner: noovos_dev
+--
+
+CREATE INDEX idx_business_city_trgm ON public.business USING gin (city public.gin_trgm_ops);
+
+
+--
+-- TOC entry 3036 (class 1259 OID 20644)
 -- Name: idx_business_name; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1193,7 +1257,39 @@ CREATE INDEX idx_business_name ON public.business USING btree (name);
 
 
 --
--- TOC entry 3031 (class 1259 OID 20434)
+-- TOC entry 3037 (class 1259 OID 21888)
+-- Name: idx_business_name_trgm; Type: INDEX; Schema: public; Owner: noovos_dev
+--
+
+CREATE INDEX idx_business_name_trgm ON public.business USING gin (name public.gin_trgm_ops);
+
+
+--
+-- TOC entry 3038 (class 1259 OID 21890)
+-- Name: idx_business_postcode_trgm; Type: INDEX; Schema: public; Owner: noovos_dev
+--
+
+CREATE INDEX idx_business_postcode_trgm ON public.business USING gin (postcode public.gin_trgm_ops);
+
+
+--
+-- TOC entry 3095 (class 1259 OID 21904)
+-- Name: idx_image_business; Type: INDEX; Schema: public; Owner: noovos_dev
+--
+
+CREATE INDEX idx_image_business ON public.image USING btree (business_id, "position");
+
+
+--
+-- TOC entry 3096 (class 1259 OID 21905)
+-- Name: idx_image_service; Type: INDEX; Schema: public; Owner: noovos_dev
+--
+
+CREATE INDEX idx_image_service ON public.image USING btree (service_id, "position");
+
+
+--
+-- TOC entry 3047 (class 1259 OID 20434)
 -- Name: idx_payment_appuser_id; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1201,7 +1297,7 @@ CREATE INDEX idx_payment_appuser_id ON public.payment USING btree (appuser_id);
 
 
 --
--- TOC entry 3032 (class 1259 OID 20435)
+-- TOC entry 3048 (class 1259 OID 20435)
 -- Name: idx_payment_status; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1209,7 +1305,7 @@ CREATE INDEX idx_payment_status ON public.payment USING btree (payment_status);
 
 
 --
--- TOC entry 3033 (class 1259 OID 20436)
+-- TOC entry 3049 (class 1259 OID 20436)
 -- Name: idx_payment_transaction_id; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1217,7 +1313,7 @@ CREATE INDEX idx_payment_transaction_id ON public.payment USING btree (transacti
 
 
 --
--- TOC entry 3027 (class 1259 OID 20429)
+-- TOC entry 3039 (class 1259 OID 20429)
 -- Name: idx_service_business_id; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1225,7 +1321,39 @@ CREATE INDEX idx_service_business_id ON public.service USING btree (business_id)
 
 
 --
--- TOC entry 3071 (class 1259 OID 20797)
+-- TOC entry 3040 (class 1259 OID 21891)
+-- Name: idx_service_category_id; Type: INDEX; Schema: public; Owner: noovos_dev
+--
+
+CREATE INDEX idx_service_category_id ON public.service USING btree (category_id);
+
+
+--
+-- TOC entry 3041 (class 1259 OID 21887)
+-- Name: idx_service_description_trgm; Type: INDEX; Schema: public; Owner: noovos_dev
+--
+
+CREATE INDEX idx_service_description_trgm ON public.service USING gin (description public.gin_trgm_ops);
+
+
+--
+-- TOC entry 3042 (class 1259 OID 21885)
+-- Name: idx_service_fulltext; Type: INDEX; Schema: public; Owner: noovos_dev
+--
+
+CREATE INDEX idx_service_fulltext ON public.service USING gin (to_tsvector('english'::regconfig, ((service_name || ' '::text) || description)));
+
+
+--
+-- TOC entry 3043 (class 1259 OID 21886)
+-- Name: idx_service_name_trgm; Type: INDEX; Schema: public; Owner: noovos_dev
+--
+
+CREATE INDEX idx_service_name_trgm ON public.service USING gin (service_name public.gin_trgm_ops);
+
+
+--
+-- TOC entry 3087 (class 1259 OID 20797)
 -- Name: idx_service_staff_service; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1233,7 +1361,7 @@ CREATE INDEX idx_service_staff_service ON public.service_staff USING btree (serv
 
 
 --
--- TOC entry 3072 (class 1259 OID 20798)
+-- TOC entry 3088 (class 1259 OID 20798)
 -- Name: idx_service_staff_staff; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1241,7 +1369,7 @@ CREATE INDEX idx_service_staff_staff ON public.service_staff USING btree (staff_
 
 
 --
--- TOC entry 3028 (class 1259 OID 20626)
+-- TOC entry 3044 (class 1259 OID 20626)
 -- Name: idx_service_trigram; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1249,7 +1377,7 @@ CREATE INDEX idx_service_trigram ON public.service USING gin (service_name publi
 
 
 --
--- TOC entry 3038 (class 1259 OID 20441)
+-- TOC entry 3054 (class 1259 OID 20441)
 -- Name: idx_staff_appuser_id; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1257,7 +1385,7 @@ CREATE INDEX idx_staff_appuser_id ON public.staff USING btree (appuser_id);
 
 
 --
--- TOC entry 3039 (class 1259 OID 20440)
+-- TOC entry 3055 (class 1259 OID 20440)
 -- Name: idx_staff_business_id; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1265,7 +1393,7 @@ CREATE INDEX idx_staff_business_id ON public.staff USING btree (business_id);
 
 
 --
--- TOC entry 3052 (class 1259 OID 20612)
+-- TOC entry 3068 (class 1259 OID 20612)
 -- Name: idx_synonyms_word; Type: INDEX; Schema: public; Owner: noovos_dev
 --
 
@@ -1273,7 +1401,7 @@ CREATE INDEX idx_synonyms_word ON public.synonyms USING btree (word);
 
 
 --
--- TOC entry 3092 (class 2606 OID 20420)
+-- TOC entry 3112 (class 2606 OID 20420)
 -- Name: audit_log audit_log_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1282,7 +1410,7 @@ ALTER TABLE ONLY public.audit_log
 
 
 --
--- TOC entry 3093 (class 2606 OID 20746)
+-- TOC entry 3113 (class 2606 OID 20746)
 -- Name: available_slot available_slot_customer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1291,7 +1419,7 @@ ALTER TABLE ONLY public.available_slot
 
 
 --
--- TOC entry 3094 (class 2606 OID 20736)
+-- TOC entry 3114 (class 2606 OID 20736)
 -- Name: available_slot available_slot_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1300,7 +1428,7 @@ ALTER TABLE ONLY public.available_slot
 
 
 --
--- TOC entry 3095 (class 2606 OID 20771)
+-- TOC entry 3115 (class 2606 OID 20771)
 -- Name: booking booking_customer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1309,7 +1437,7 @@ ALTER TABLE ONLY public.booking
 
 
 --
--- TOC entry 3096 (class 2606 OID 20766)
+-- TOC entry 3116 (class 2606 OID 20766)
 -- Name: booking booking_slot_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1318,7 +1446,7 @@ ALTER TABLE ONLY public.booking
 
 
 --
--- TOC entry 3079 (class 2606 OID 20200)
+-- TOC entry 3099 (class 2606 OID 20200)
 -- Name: business business_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1327,7 +1455,7 @@ ALTER TABLE ONLY public.business
 
 
 --
--- TOC entry 3085 (class 2606 OID 20339)
+-- TOC entry 3105 (class 2606 OID 20339)
 -- Name: customer_notes customer_notes_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1336,7 +1464,7 @@ ALTER TABLE ONLY public.customer_notes
 
 
 --
--- TOC entry 3086 (class 2606 OID 20334)
+-- TOC entry 3106 (class 2606 OID 20334)
 -- Name: customer_notes customer_notes_business_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1345,7 +1473,7 @@ ALTER TABLE ONLY public.customer_notes
 
 
 --
--- TOC entry 3087 (class 2606 OID 20344)
+-- TOC entry 3107 (class 2606 OID 20344)
 -- Name: customer_notes customer_notes_staff_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1354,7 +1482,7 @@ ALTER TABLE ONLY public.customer_notes
 
 
 --
--- TOC entry 3090 (class 2606 OID 20386)
+-- TOC entry 3110 (class 2606 OID 20386)
 -- Name: notifications notifications_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1363,7 +1491,7 @@ ALTER TABLE ONLY public.notifications
 
 
 --
--- TOC entry 3081 (class 2606 OID 20273)
+-- TOC entry 3101 (class 2606 OID 20273)
 -- Name: payment payment_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1372,7 +1500,7 @@ ALTER TABLE ONLY public.payment
 
 
 --
--- TOC entry 3082 (class 2606 OID 20799)
+-- TOC entry 3102 (class 2606 OID 20799)
 -- Name: payment payment_booking_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1381,7 +1509,7 @@ ALTER TABLE ONLY public.payment
 
 
 --
--- TOC entry 3088 (class 2606 OID 20367)
+-- TOC entry 3108 (class 2606 OID 20367)
 -- Name: reviews reviews_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1390,7 +1518,7 @@ ALTER TABLE ONLY public.reviews
 
 
 --
--- TOC entry 3089 (class 2606 OID 20362)
+-- TOC entry 3109 (class 2606 OID 20362)
 -- Name: reviews reviews_business_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1399,7 +1527,7 @@ ALTER TABLE ONLY public.reviews
 
 
 --
--- TOC entry 3080 (class 2606 OID 20220)
+-- TOC entry 3100 (class 2606 OID 20220)
 -- Name: service service_business_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1408,7 +1536,7 @@ ALTER TABLE ONLY public.service
 
 
 --
--- TOC entry 3097 (class 2606 OID 20787)
+-- TOC entry 3117 (class 2606 OID 20787)
 -- Name: service_staff service_staff_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1417,7 +1545,7 @@ ALTER TABLE ONLY public.service_staff
 
 
 --
--- TOC entry 3098 (class 2606 OID 20792)
+-- TOC entry 3118 (class 2606 OID 20792)
 -- Name: service_staff service_staff_staff_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1426,7 +1554,7 @@ ALTER TABLE ONLY public.service_staff
 
 
 --
--- TOC entry 3083 (class 2606 OID 20317)
+-- TOC entry 3103 (class 2606 OID 20317)
 -- Name: staff staff_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1435,7 +1563,7 @@ ALTER TABLE ONLY public.staff
 
 
 --
--- TOC entry 3084 (class 2606 OID 20312)
+-- TOC entry 3104 (class 2606 OID 20312)
 -- Name: staff staff_business_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1444,7 +1572,7 @@ ALTER TABLE ONLY public.staff
 
 
 --
--- TOC entry 3091 (class 2606 OID 20403)
+-- TOC entry 3111 (class 2606 OID 20403)
 -- Name: subscription subscription_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev
 --
 
@@ -1453,7 +1581,7 @@ ALTER TABLE ONLY public.subscription
 
 
 --
--- TOC entry 3225 (class 0 OID 0)
+-- TOC entry 3245 (class 0 OID 0)
 -- Dependencies: 9
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: postgres
 --
@@ -1462,7 +1590,7 @@ REVOKE USAGE ON SCHEMA public FROM PUBLIC;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
 
--- Completed on 2025-04-12 00:08:08
+-- Completed on 2025-04-13 10:27:37
 
 --
 -- PostgreSQL database dump complete
