@@ -27,7 +27,7 @@ Success Response:
       "service_name": "Deep Tissue Massage", // string - Name of the service
       "business_name": "Relaxation Spa",    // string - Name of the business
       "service_description": "A deep...",   // string - Description of the service
-      "service_image": "image_name.jpg",  // string - Image name from the image table (service image or business image)
+      "service_image": "image_name.jpg",  // string - Image name from the media table (service image or business image)
       "cost": 75.00,                        // number - Price of the service
       "city": "Manchester",                 // string - City of the business
       "postcode": "M1 1AA",                 // string - Postcode of the business
@@ -118,12 +118,12 @@ router.post('/', async (req, res) => {
                     s.description AS service_description,
                     -- Get service image if available, otherwise try business image
                     COALESCE(
-                        (SELECT i.image_name FROM public.image i
-                         WHERE i.service_id = s.id AND i.position = 1
-                         ORDER BY i.id LIMIT 1),
-                        (SELECT i.image_name FROM public.image i
-                         WHERE i.business_id = b.id AND i.position = 1
-                         ORDER BY i.id LIMIT 1)
+                        (SELECT m.image_name FROM public.media m
+                         WHERE m.service_id = s.id AND m.position = 1 AND m.is_active = TRUE
+                         ORDER BY m.id LIMIT 1),
+                        (SELECT m.image_name FROM public.media m
+                         WHERE m.business_id = b.id AND m.position = 1 AND m.is_active = TRUE
+                         ORDER BY m.id LIMIT 1)
                     ) AS service_image,
                     s.price AS cost,
                     b.city,

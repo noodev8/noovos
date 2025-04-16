@@ -21,11 +21,22 @@ WHERE table_schema = 'public'
 
 == TABLES ==
 app_user
-business
 search_log
 service
 category
-
+qualification
+business
+business_subcategory
+business_hours
+business_social_link
+business_employee
+business_employee_service
+business_insurance
+business_feature
+business_contact_preference
+business_language
+business_billing_address
+media
 
 
 -- Legacy (still exist)

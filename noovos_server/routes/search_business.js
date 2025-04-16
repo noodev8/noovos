@@ -77,7 +77,15 @@ router.post('/', async (req, res) => {
                 service.service_name::TEXT,
                 business.name::TEXT AS business_name,
                 service.description::TEXT AS service_description,
-                service.service_image::TEXT AS service_image,
+                -- Get service image if available, otherwise try business image
+                COALESCE(
+                    (SELECT m.image_name FROM public.media m
+                     WHERE m.service_id = service.id AND m.position = 1 AND m.is_active = TRUE
+                     ORDER BY m.id LIMIT 1),
+                    (SELECT m.image_name FROM public.media m
+                     WHERE m.business_id = business.id AND m.position = 1 AND m.is_active = TRUE
+                     ORDER BY m.id LIMIT 1)
+                ) AS service_image,
                 business.profile_picture::TEXT AS business_profile,
                 service.price::NUMERIC AS cost,
                 business.city::TEXT,
