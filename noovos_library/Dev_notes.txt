@@ -1,0 +1,3 @@
+== Putty Server ==
+pm2 restart noovos_dev
+

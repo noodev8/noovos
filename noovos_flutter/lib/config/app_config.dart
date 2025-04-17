@@ -17,7 +17,7 @@ class AppConfig {
   // Production server
   // static const String apiBaseUrl = 'https://api.noovos.com';
   // static const String apiBaseUrl = 'https://api.noovos.com';
-  static const String apiBaseUrl = 'http://77.68.13.150:3001';
+  static const String apiBaseUrl = 'http://77.68.13.150:3001'; // Server Test
 
 
   // Image Server URL
