@@ -186,3 +186,13 @@ Content-Type: application/json
   "service_id": 7
 }
 ======================================
+
+== Get Service Staff ==============================
+http://localhost:3000/get_service_staff
+Headers:
+Content-Type: application/json
+
+{
+  "service_id": 7
+}
+======================================
