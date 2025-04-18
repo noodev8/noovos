@@ -117,13 +117,46 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
     }
   }
 
+  // Helper method to add an item to cart directly
+  Future<void> _addToCartDirectly(CartItem cartItem, String serviceName) async {
+    final bool success = await CartHelper.addToCart(cartItem);
 
+    if (success && mounted) {
+      setState(() {});
+
+      // Show success snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$serviceName added to cart'),
+          duration: const Duration(seconds: 2),
+          action: SnackBarAction(
+            label: 'VIEW CART',
+            onPressed: () {
+              // Navigate to cart screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CartScreen(),
+                ),
+              ).then((_) {
+                // Refresh the UI when returning from cart screen
+                if (mounted) {
+                  setState(() {});
+                }
+              });
+            },
+          ),
+        ),
+      );
+    }
+  }
 
   // Build a service card
   Widget _buildServiceCard(Map<String, dynamic> service) {
     // Extract service data
     final serviceId = service['service_id'] ?? 0;
     final serviceName = service['service_name'] ?? 'Unknown Service';
+    final businessId = service['business_id'] ?? 0;
     final businessName = service['business_name'] ?? 'Unknown Business';
     final serviceDescription = service['service_description'] ?? '';
     final serviceImage = service['service_image'];
@@ -144,6 +177,9 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
 
     // Check if service is in cart
     final bool isInCart = CartHelper.isInCart(serviceId);
+
+    // Check if service can be added to cart
+    final bool canAddToCart = businessId > 0 ? CartHelper.canAddToCart(businessId) : true;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -384,11 +420,87 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                           child: const Text('Remove'),
                         )
                       : ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
+                            // Check if service can be added to cart
+                            if (!canAddToCart) {
+                              // Show warning dialog
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Cannot Add to Cart'),
+                                  content: Text(
+                                    'You already have services from ${CartHelper.getCurrentBusinessName() ?? 'another business'} in your cart. '
+                                    'You can only book services from one business at a time.\n\n'
+                                    'Would you like to clear your cart and add this service instead?'
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                      },
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        // Clear cart and add new item
+                                        CartHelper.clearCart();
+
+                                        // Create cart item
+                                        final cartItem = CartItem(
+                                          serviceId: serviceId,
+                                          serviceName: serviceName,
+                                          businessId: businessId,
+                                          businessName: businessName,
+                                          price: price,
+                                          serviceImage: serviceImage,
+                                          duration: duration ?? 0,
+                                        );
+
+                                        // Add to cart
+                                        CartHelper.addToCart(cartItem);
+                                        setState(() {});
+
+                                        Navigator.pop(context);
+
+                                        // Show snackbar
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('$serviceName added to cart'),
+                                            duration: const Duration(seconds: 2),
+                                            action: SnackBarAction(
+                                              label: 'VIEW CART',
+                                              onPressed: () {
+                                                // Navigate to cart screen
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => const CartScreen(),
+                                                  ),
+                                                ).then((_) {
+                                                  // Refresh the UI when returning from cart screen
+                                                  setState(() {});
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: AppStyles.primaryColor,
+                                      ),
+                                      child: const Text('Clear Cart & Add'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              return;
+                            }
+
                             // Create cart item
                             final cartItem = CartItem(
                               serviceId: serviceId,
                               serviceName: serviceName,
+                              businessId: businessId,
                               businessName: businessName,
                               price: price,
                               serviceImage: serviceImage,
@@ -396,31 +508,75 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                             );
 
                             // Add to cart
-                            CartHelper.addToCart(cartItem);
-                            setState(() {});
+                            final bool success = await CartHelper.addToCart(cartItem);
 
-                            // Show snackbar
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('$serviceName added to cart'),
-                                duration: const Duration(seconds: 2),
-                                action: SnackBarAction(
-                                  label: 'VIEW CART',
-                                  onPressed: () {
-                                    // Navigate to cart screen
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const CartScreen(),
+                            // If adding to cart failed due to business restrictions, show the dialog
+                            if (!success && mounted) {
+                              // Show warning dialog
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Cannot Add to Cart'),
+                                  content: Text(
+                                    'You already have services from ${CartHelper.getCurrentBusinessName() ?? 'another business'} in your cart. '
+                                    'You can only book services from one business at a time.\n\n'
+                                    'Would you like to clear your cart and add this service instead?'
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                      },
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        // Clear cart and close dialog
+                                        CartHelper.clearCart();
+                                        Navigator.pop(context);
+
+                                        // Add to cart again
+                                        _addToCartDirectly(cartItem, serviceName);
+                                      },
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: AppStyles.primaryColor,
                                       ),
-                                    ).then((_) {
-                                      // Refresh the UI when returning from cart screen
-                                      setState(() {});
-                                    });
-                                  },
+                                      child: const Text('Clear Cart & Add'),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            );
+                              );
+                              return;
+                            } else if (success && mounted) {
+                              setState(() {});
+                            }
+
+                            // Show snackbar if the operation was successful
+                            if (success && mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('$serviceName added to cart'),
+                                  duration: const Duration(seconds: 2),
+                                  action: SnackBarAction(
+                                    label: 'VIEW CART',
+                                    onPressed: () {
+                                      // Navigate to cart screen
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => const CartScreen(),
+                                        ),
+                                      ).then((_) {
+                                        // Refresh the UI when returning from cart screen
+                                        if (mounted) {
+                                          setState(() {});
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ),
+                              );
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppStyles.primaryColor,

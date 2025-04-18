@@ -41,6 +41,12 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   // Is service in cart
   bool _isInCart = false;
 
+  // Can add to cart (based on business restrictions)
+  bool _canAddToCart = true;
+
+  // Current business in cart (if any)
+  String? _currentBusinessInCart;
+
   @override
   void initState() {
     super.initState();
@@ -58,9 +64,21 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     }
   }
 
-  // Check if service is in cart
+  // Check if service is in cart and if it can be added
   void _checkIfInCart() {
+    if (_serviceDetails == null) return;
+
+    // Check if service is in cart
     _isInCart = CartHelper.isInCart(widget.serviceId);
+
+    // Get business ID from service details
+    final businessId = _serviceDetails!['business_id'] ?? 0;
+
+    // Check if service can be added to cart (based on business restrictions)
+    _canAddToCart = businessId > 0 ? CartHelper.canAddToCart(businessId) : true;
+
+    // Get current business in cart (if any)
+    _currentBusinessInCart = CartHelper.getCurrentBusinessName();
   }
 
   // Load service details from API
@@ -105,10 +123,19 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   void _addToCart() {
     if (_serviceDetails == null) return;
 
+    // If we can add to cart, proceed directly
+    _addServiceToCart();
+  }
+
+  // Helper method to add service to cart
+  Future<void> _addServiceToCart() async {
+    if (_serviceDetails == null) return;
+
     // Create cart item
     final cartItem = CartItem(
       serviceId: _serviceDetails!['service_id'],
       serviceName: _serviceDetails!['service_name'],
+      businessId: _serviceDetails!['business_id'] ?? 0,
       businessName: _serviceDetails!['business_name'],
       price: _serviceDetails!['price'] is String
           ? double.tryParse(_serviceDetails!['price']) ?? 0.0
@@ -118,25 +145,73 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
 
     // Add to cart
-    CartHelper.addToCart(cartItem);
+    final bool success = await CartHelper.addToCart(cartItem);
+
+    if (!success) {
+      // If adding to cart failed due to business restrictions, show the dialog
+      if (mounted) {
+        _showBusinessRestrictionDialog(cartItem.businessId);
+      }
+      return;
+    }
 
     // Update state
-    setState(() {
-      _isInCart = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isInCart = true;
+        _canAddToCart = true; // We just added it, so it's compatible
+      });
 
-    // Show snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${_serviceDetails!['service_name']} added to cart'),
-        duration: const Duration(seconds: 2),
-        action: SnackBarAction(
-          label: 'VIEW CART',
-          onPressed: () {
-            // Navigate to cart screen
-            Navigator.pushNamed(context, '/cart');
-          },
+      // Show snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${_serviceDetails!['service_name']} added to cart'),
+          duration: const Duration(seconds: 2),
+          action: SnackBarAction(
+            label: 'VIEW CART',
+            onPressed: () {
+              // Navigate to cart screen
+              Navigator.pushNamed(context, '/cart');
+            },
+          ),
         ),
+      );
+    }
+  }
+
+  // Show dialog for business restriction
+  void _showBusinessRestrictionDialog(int businessId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cannot Add to Cart'),
+        content: Text(
+          'You already have services from ${CartHelper.getCurrentBusinessName() ?? 'another business'} in your cart. '
+          'You can only book services from one business at a time.\n\n'
+          'Would you like to clear your cart and add this service instead?'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              // Clear cart and close dialog
+              CartHelper.clearCart();
+              Navigator.pop(context);
+
+              // Try adding again
+              _addServiceToCart();
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppStyles.primaryColor,
+            ),
+            child: const Text('Clear Cart & Add'),
+          ),
+        ],
       ),
     );
   }
@@ -241,7 +316,6 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     final city = _serviceDetails!['city'] ?? '';
     final postcode = _serviceDetails!['postcode'] ?? '';
     final address = _serviceDetails!['address'] ?? '';
-    final bufferTime = _serviceDetails!['buffer_time'] ?? 0;
 
     // Format price as currency
     final formattedPrice = currency == 'GBP' ? '£${price.toStringAsFixed(2)}' : '${price.toStringAsFixed(2)} $currency';
@@ -466,58 +540,106 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
   // Build bottom bar with action buttons
   Widget _buildBottomBar() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Back button
-          Expanded(
-            flex: 1,
-            child: OutlinedButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              style: AppStyles.secondaryButtonStyle,
-              child: const Text('Back'),
+    // Check if we need to show a business restriction warning
+    final bool showBusinessWarning = !_canAddToCart && !_isInCart;
+    final String? currentBusiness = _currentBusinessInCart;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Show warning if service is from a different business
+        if (showBusinessWarning && currentBusiness != null && currentBusiness.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.orange.shade100,
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'You already have services from $currentBusiness in your cart. '
+                    'You can only book services from one business at a time.',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 16),
 
-          // Add to cart or remove from cart button
-          Expanded(
-            flex: 2,
-            child: _isInCart
-                ? ElevatedButton(
-                    onPressed: _removeFromCart,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppStyles.errorColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text('Remove from Cart'),
-                  )
-                : ElevatedButton(
-                    onPressed: _addToCart,
-                    style: AppStyles.primaryButtonStyle,
-                    child: const Text('Add to Cart'),
-                  ),
+        // Action buttons
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.2),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: const Offset(0, -2),
+              ),
+            ],
           ),
-        ],
-      ),
+          child: Row(
+            children: [
+              // Back button
+              Expanded(
+                flex: 1,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  style: AppStyles.secondaryButtonStyle,
+                  child: const Text('Back'),
+                ),
+              ),
+              const SizedBox(width: 16),
+
+              // Add to cart or remove from cart button
+              Expanded(
+                flex: 2,
+                child: _isInCart
+                    ? ElevatedButton(
+                        onPressed: _removeFromCart,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppStyles.errorColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Remove from Cart'),
+                      )
+                    : ElevatedButton(
+                        onPressed: _addToCart,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _canAddToCart
+                              ? AppStyles.primaryColor
+                              : Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: _canAddToCart
+                            ? const Text('Add to Cart')
+                            : const Text('Replace Cart Items'),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

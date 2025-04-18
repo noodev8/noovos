@@ -9,6 +9,7 @@ import 'dart:convert';
 class CartItem {
   final int serviceId;
   final String serviceName;
+  final int businessId;       // Added business ID
   final String businessName;
   final double price;
   final String? serviceImage;
@@ -17,6 +18,7 @@ class CartItem {
   CartItem({
     required this.serviceId,
     required this.serviceName,
+    required this.businessId,  // Added business ID parameter
     required this.businessName,
     required this.price,
     this.serviceImage,
@@ -28,6 +30,7 @@ class CartItem {
     return {
       'serviceId': serviceId,
       'serviceName': serviceName,
+      'businessId': businessId,
       'businessName': businessName,
       'price': price,
       'serviceImage': serviceImage,
@@ -40,6 +43,7 @@ class CartItem {
     return CartItem(
       serviceId: json['serviceId'],
       serviceName: json['serviceName'],
+      businessId: json['businessId'],
       businessName: json['businessName'],
       price: json['price'],
       serviceImage: json['serviceImage'],
@@ -54,12 +58,52 @@ class CartHelper {
 
   // In-memory cart items
   static List<CartItem> _cartItems = [];
-  
+
+  // Get the current business ID in the cart (or null if cart is empty)
+  static int? getCurrentBusinessId() {
+    if (_cartItems.isEmpty) return null;
+    return _cartItems.first.businessId;
+  }
+
+  // Get the current business name in the cart (or null if cart is empty)
+  static String? getCurrentBusinessName() {
+    if (_cartItems.isEmpty) return null;
+    return _cartItems.first.businessName;
+  }
+
+  // Check if a service from a specific business can be added to the cart
+  static bool canAddToCart(int businessId) {
+    // If cart is empty, any business is allowed
+    if (_cartItems.isEmpty) {
+      print('Cart is empty, allowing business ID: $businessId');
+      return true; // Allow any business ID when cart is empty
+    }
+
+    // Get current business ID in cart
+    final currentBusinessId = getCurrentBusinessId();
+    print('Comparing business IDs: current=$currentBusinessId, new=$businessId');
+
+    // If either business ID is 0, require additional validation
+    if (businessId == 0 || currentBusinessId == 0) {
+      // If both are 0, allow it (same unknown business)
+      if (businessId == 0 && currentBusinessId == 0) {
+        // Compare business names to ensure they're the same
+        final String? currentBusinessName = _cartItems.isNotEmpty ? _cartItems.first.businessName : null;
+        return currentBusinessName == null || currentBusinessName.isEmpty;
+      }
+      // Otherwise, don't allow mixing business ID 0 with other business IDs
+      return false;
+    }
+
+    // Check if the business matches the current business in the cart
+    return businessId == currentBusinessId;
+  }
+
   // Initialize cart from SharedPreferences
   static Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     final cartJson = prefs.getString(_cartKey);
-    
+
     if (cartJson != null) {
       try {
         final List<dynamic> cartList = jsonDecode(cartJson);
@@ -70,7 +114,7 @@ class CartHelper {
       }
     }
   }
-  
+
   // Save cart to SharedPreferences
   static Future<void> _saveCart() async {
     try {
@@ -81,17 +125,28 @@ class CartHelper {
       // Handle error silently
     }
   }
-  
+
   // Get all cart items
   static List<CartItem> getCartItems() {
     return List.unmodifiable(_cartItems);
   }
-  
+
   // Add item to cart
-  static Future<void> addToCart(CartItem item) async {
+  static Future<bool> addToCart(CartItem item) async {
+    print('Adding item to cart: serviceId=${item.serviceId}, businessId=${item.businessId}');
+
+    // Check if the item can be added based on business restrictions
+    final canAdd = canAddToCart(item.businessId);
+    print('Can add to cart: $canAdd');
+
+    if (!canAdd) {
+      print('Cannot add item from a different business');
+      return false; // Cannot add item from a different business
+    }
+
     // Check if item already exists in cart
     final existingIndex = _cartItems.indexWhere((cartItem) => cartItem.serviceId == item.serviceId);
-    
+
     if (existingIndex >= 0) {
       // Item already exists, replace it
       _cartItems[existingIndex] = item;
@@ -99,33 +154,34 @@ class CartHelper {
       // Add new item
       _cartItems.add(item);
     }
-    
+
     // Save cart
     await _saveCart();
+    return true; // Successfully added
   }
-  
+
   // Remove item from cart
   static Future<void> removeFromCart(int serviceId) async {
     _cartItems.removeWhere((item) => item.serviceId == serviceId);
     await _saveCart();
   }
-  
+
   // Clear cart
   static Future<void> clearCart() async {
     _cartItems.clear();
     await _saveCart();
   }
-  
+
   // Get cart count
   static int getCartCount() {
     return _cartItems.length;
   }
-  
+
   // Get cart total
   static double getCartTotal() {
     return _cartItems.fold(0, (total, item) => total + item.price);
   }
-  
+
   // Check if item is in cart
   static bool isInCart(int serviceId) {
     return _cartItems.any((item) => item.serviceId == serviceId);

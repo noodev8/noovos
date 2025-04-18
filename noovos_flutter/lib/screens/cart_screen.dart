@@ -9,6 +9,7 @@ import '../styles/app_styles.dart';
 import '../helpers/cart_helper.dart';
 import '../helpers/image_helper.dart';
 import 'service_details_screen.dart';
+import 'availability_check_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({Key? key}) : super(key: key);
@@ -376,16 +377,19 @@ class _CartScreenState extends State<CartScreen> {
           Expanded(
             child: ElevatedButton(
               onPressed: () {
-                // TODO: Implement checkout
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Checkout functionality coming soon!'),
-                    duration: Duration(seconds: 2),
+                // Navigate to availability check screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AvailabilityCheckScreen(),
                   ),
-                );
+                ).then((_) {
+                  // Reload cart items when returning from availability check screen
+                  _loadCartItems();
+                });
               },
               style: AppStyles.primaryButtonStyle,
-              child: const Text('Checkout'),
+              child: const Text('Check Availability'),
             ),
           ),
         ],

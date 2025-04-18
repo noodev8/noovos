@@ -5,6 +5,7 @@ import 'screens/register_user_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/service_details_screen.dart';
 import 'screens/cart_screen.dart';
+import 'screens/availability_check_screen.dart';
 import 'styles/app_styles.dart';
 import 'helpers/cart_helper.dart';
 
@@ -103,6 +104,7 @@ class _MyAppState extends State<MyApp> {
         '/register': (context) => const RegisterUserScreen(),
         '/dashboard': (context) => const DashboardScreen(),
         '/cart': (context) => const CartScreen(),
+        '/availability': (context) => const AvailabilityCheckScreen(),
       },
     );
   }

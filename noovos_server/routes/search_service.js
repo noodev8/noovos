@@ -25,6 +25,7 @@ Success Response:
     {
       "service_id": 123,                    // integer - Unique service ID
       "service_name": "Deep Tissue Massage", // string - Name of the service
+      "business_id": 456,                    // integer - ID of the business
       "business_name": "Relaxation Spa",    // string - Name of the business
       "service_description": "A deep...",   // string - Description of the service
       "service_image": "image_name.jpg",  // string - Image name from the media table (service image or business image)
@@ -114,6 +115,7 @@ router.post('/', async (req, res) => {
                 SELECT
                     s.id AS service_id,
                     s.service_name,
+                    b.id AS business_id,
                     b.name AS business_name,
                     s.description AS service_description,
                     -- Get service image if available, otherwise try business image
