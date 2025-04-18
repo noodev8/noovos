@@ -7,7 +7,6 @@ before proceeding to checkout
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 import '../helpers/cart_helper.dart';
-import '../api/get_service_api.dart';
 import 'cart_screen.dart';
 
 class AvailabilityCheckScreen extends StatefulWidget {
@@ -21,14 +20,14 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
   // Loading state
   bool _isLoading = false;
   
-  // Selected date
-  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
+  // Selected from date
+  DateTime _fromDate = DateTime.now().add(const Duration(days: 1));
   
-  // Available time slots
-  List<TimeOfDay> _availableTimeSlots = [];
+  // Selected to date
+  DateTime _toDate = DateTime.now().add(const Duration(days: 7));
   
-  // Selected time slot
-  TimeOfDay? _selectedTimeSlot;
+  // Time preference
+  String _timePreference = 'Any'; // 'Morning', 'Afternoon', or 'Any'
   
   // Cart items
   List<CartItem> _cartItems = [];
@@ -39,9 +38,6 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
     
     // Load cart items
     _loadCartItems();
-    
-    // Generate dummy time slots for now
-    _generateDummyTimeSlots();
   }
   
   // Load cart items
@@ -51,41 +47,13 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
     });
   }
   
-  // Generate dummy time slots (this would be replaced with an API call)
-  void _generateDummyTimeSlots() {
-    // Generate time slots from 9 AM to 5 PM with 30-minute intervals
-    final List<TimeOfDay> slots = [];
-    
-    for (int hour = 9; hour < 17; hour++) {
-      slots.add(TimeOfDay(hour: hour, minute: 0));
-      slots.add(TimeOfDay(hour: hour, minute: 30));
-    }
-    
-    setState(() {
-      _availableTimeSlots = slots;
-    });
-  }
-  
-  // Format time of day
-  String _formatTimeOfDay(TimeOfDay timeOfDay) {
-    final hour = timeOfDay.hour.toString().padLeft(2, '0');
-    final minute = timeOfDay.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+  // Format date
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
   
   // Check availability (this would be replaced with an API call)
   Future<void> _checkAvailability() async {
-    if (_selectedTimeSlot == null) {
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a time slot'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-    
     setState(() {
       _isLoading = true;
     });
@@ -93,45 +61,17 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
     // Simulate API call
     await Future.delayed(const Duration(seconds: 2));
     
-    // For demo purposes, we'll just show a success message
+    // For demo purposes, we'll just show a message
     if (mounted) {
       setState(() {
         _isLoading = false;
       });
       
-      // Show success dialog
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Services Available!'),
-          content: Text(
-            'The selected services are available on ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} at ${_formatTimeOfDay(_selectedTimeSlot!)}.\n\n'
-            'Would you like to proceed to checkout?'
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // TODO: Navigate to checkout screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Checkout functionality coming soon!'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: AppStyles.primaryColor,
-              ),
-              child: const Text('Proceed to Checkout'),
-            ),
-          ],
+      // Show message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Feature not yet available'),
+          duration: Duration(seconds: 2),
         ),
       );
     }
@@ -276,7 +216,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
                         ),
                       ],
                     ),
-                  )).toList(),
+                  )),
                   
                   const Divider(),
                   
@@ -329,9 +269,9 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
             ),
           ),
           
-          // Date selection
+          // From Date selection
           const Text(
-            'Select Date',
+            'From Date',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -339,24 +279,28 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
           ),
           const SizedBox(height: 8),
           
-          // Date picker
+          // From Date picker
           Card(
-            margin: const EdgeInsets.only(bottom: 24),
+            margin: const EdgeInsets.only(bottom: 16),
             elevation: 2,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             child: InkWell(
               onTap: () async {
                 final DateTime? pickedDate = await showDatePicker(
                   context: context,
-                  initialDate: _selectedDate,
+                  initialDate: _fromDate,
                   firstDate: DateTime.now(),
                   lastDate: DateTime.now().add(const Duration(days: 90)),
                 );
                 
-                if (pickedDate != null && pickedDate != _selectedDate) {
+                if (pickedDate != null && pickedDate != _fromDate) {
                   setState(() {
-                    _selectedDate = pickedDate;
-                    _selectedTimeSlot = null; // Reset selected time slot
+                    _fromDate = pickedDate;
+                    
+                    // Ensure to date is not before from date
+                    if (_toDate.isBefore(_fromDate)) {
+                      _toDate = _fromDate.add(const Duration(days: 7));
+                    }
                   });
                 }
               },
@@ -371,7 +315,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
                     ),
                     const SizedBox(width: 16),
                     Text(
-                      '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                      _formatDate(_fromDate),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -388,9 +332,9 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
             ),
           ),
           
-          // Time slot selection
+          // To Date selection
           const Text(
-            'Select Time Slot',
+            'To Date',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -398,7 +342,65 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
           ),
           const SizedBox(height: 8),
           
-          // Time slots grid
+          // To Date picker
+          Card(
+            margin: const EdgeInsets.only(bottom: 24),
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            child: InkWell(
+              onTap: () async {
+                final DateTime? pickedDate = await showDatePicker(
+                  context: context,
+                  initialDate: _toDate,
+                  firstDate: _fromDate, // Can't pick a date before from date
+                  lastDate: DateTime.now().add(const Duration(days: 90)),
+                );
+                
+                if (pickedDate != null && pickedDate != _toDate) {
+                  setState(() {
+                    _toDate = pickedDate;
+                  });
+                }
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today,
+                      color: AppStyles.primaryColor,
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      _formatDate(_toDate),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    const Icon(
+                      Icons.arrow_drop_down,
+                      color: AppStyles.secondaryTextColor,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          // Time preference selection
+          const Text(
+            'Time Preference',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          
+          // Time preference options
           Card(
             margin: const EdgeInsets.only(bottom: 24),
             elevation: 2,
@@ -408,44 +410,15 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Morning slots
-                  const Text(
-                    'Morning',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppStyles.secondaryTextColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                  // Time preference options
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _availableTimeSlots
-                        .where((slot) => slot.hour < 12)
-                        .map((slot) => _buildTimeSlotChip(slot))
-                        .toList(),
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Afternoon slots
-                  const Text(
-                    'Afternoon',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppStyles.secondaryTextColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _availableTimeSlots
-                        .where((slot) => slot.hour >= 12)
-                        .map((slot) => _buildTimeSlotChip(slot))
-                        .toList(),
+                    children: [
+                      _buildTimePreferenceChip('Any'),
+                      _buildTimePreferenceChip('Morning'),
+                      _buildTimePreferenceChip('Afternoon'),
+                    ],
                   ),
                 ],
               ),
@@ -482,20 +455,22 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
     );
   }
   
-  // Build time slot chip
-  Widget _buildTimeSlotChip(TimeOfDay timeSlot) {
-    final bool isSelected = _selectedTimeSlot == timeSlot;
+  // Build time preference chip
+  Widget _buildTimePreferenceChip(String preference) {
+    final bool isSelected = _timePreference == preference;
     
     return ChoiceChip(
-      label: Text(_formatTimeOfDay(timeSlot)),
+      label: Text(preference),
       selected: isSelected,
       onSelected: (selected) {
         setState(() {
-          _selectedTimeSlot = selected ? timeSlot : null;
+          if (selected) {
+            _timePreference = preference;
+          }
         });
       },
       backgroundColor: Colors.grey[200],
-      selectedColor: AppStyles.primaryColor.withOpacity(0.2),
+      selectedColor: Colors.blue.shade100,
       labelStyle: TextStyle(
         color: isSelected ? AppStyles.primaryColor : Colors.black87,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
