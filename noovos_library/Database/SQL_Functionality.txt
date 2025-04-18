@@ -1,0 +1,78 @@
+-- Create a single slot
+
+INSERT INTO available_slot (service_id, appuser_id, slot_start, slot_end)
+VALUES (
+  7,                                         -- service_id
+  NULL,                                       -- appuser_id = unassigned
+  '2025-05-04 09:00:00+01'::timestamptz,       -- slot_start
+  '2025-05-04 09:45:00+01'::timestamptz        -- slot_end
+);
+
+
+-- Create multiple slots
+INSERT INTO available_slot (service_id, appuser_id, slot_start, slot_end)
+SELECT
+  :service_id,
+  :appuser_id,
+  gs                         AS slot_start,
+  gs + :slot_interval        AS slot_end
+FROM generate_series(
+       :window_start, 
+       :window_end - :slot_interval, 
+       :slot_interval
+     ) AS gs;
+
+
+
+-- List free slots for a day
+-- List free slots on 2025‑05‑04 for Service 10
+SELECT
+  a.id         AS slot_id,
+  a.appuser_id AS staff_id,
+  a.slot_start,
+  a.slot_end
+FROM available_slot AS a
+LEFT JOIN booking AS b
+  ON b.slot_id = a.id
+WHERE
+  a.service_id    = 10                    -- your service_id
+  AND b.slot_id  IS NULL                  -- only un‑booked slots
+  AND a.slot_start::date = '2025-05-04'   -- the calendar day
+  AND a.slot_start >= now()               -- only future slots
+ORDER BY a.slot_start;
+
+
+-- List free slots from 2025‑05‑04 through 2025‑05‑07 for Service 10
+SELECT
+  a.id         AS slot_id,
+  a.appuser_id AS staff_id,
+  a.slot_start,
+  a.slot_end
+FROM available_slot AS a
+LEFT JOIN booking AS b
+  ON b.slot_id = a.id
+WHERE
+  a.service_id    = 10                                         -- your service_id
+  AND b.slot_id  IS NULL                                       -- only un‑booked slots
+  AND a.slot_start >= '2025-05-04'::date                       -- inclusive start date
+  AND a.slot_start <  '2025-05-07'::date + INTERVAL '1 day'    -- exclusive end date
+ORDER BY a.slot_start;
+
+
+
+-- Book a slot
+-- Attempt to book slot #51 for customer #20 with status “confirmed”
+-- This will only insert if the slot isn’t already booked.
+INSERT INTO booking (slot_id, customer_id, status)
+SELECT
+  51,                -- ← slot_id you’re booking
+  20,                -- ← customer_id doing the booking
+  'confirmed'        -- ← or 'pending' if you prefer
+WHERE NOT EXISTS (
+  SELECT 1
+    FROM booking
+   WHERE slot_id = 51
+)
+RETURNING *;
+
+

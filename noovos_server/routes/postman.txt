@@ -91,3 +91,88 @@ Content-Type: application/json
   "category_id": 4
 }
 ======================================
+
+== Create Single Booking Slot (Unassigned - Default) ==============================
+http://localhost:3000/create_booking_slot
+Headers:
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN
+
+{
+  "service_id": 7,
+  "slot_start": "2025-05-04T09:00:00+01:00",
+  "slot_end": "2025-05-04T09:45:00+01:00"
+}
+======================================
+
+== Create Single Booking Slot (Specific User) ==============================
+http://localhost:3000/create_booking_slot
+Headers:
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN
+
+{
+  "service_id": 7,
+  "appuser_id": 10,
+  "slot_start": "2025-05-04T10:00:00+01:00",
+  "slot_end": "2025-05-04T10:45:00+01:00"
+}
+======================================
+
+== Create Single Booking Slot (Unassigned) ==============================
+http://localhost:3000/create_booking_slot
+Headers:
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN
+
+{
+  "service_id": 7,
+  "appuser_id": null,
+  "slot_start": "2025-05-04T11:00:00+01:00",
+  "slot_end": "2025-05-04T11:45:00+01:00"
+}
+======================================
+
+== Create Multiple Booking Slots (Unassigned - Default) ==============================
+http://localhost:3000/create_booking_slot
+Headers:
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN
+
+{
+  "service_id": 7,
+  "window_start": "2025-05-04T09:00:00+01:00",
+  "window_end": "2025-05-04T17:00:00+01:00",
+  "slot_interval": "45 minutes"
+}
+======================================
+
+== Create Multiple Booking Slots (Specific User) ==============================
+http://localhost:3000/create_booking_slot
+Headers:
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN
+
+{
+  "service_id": 7,
+  "appuser_id": 10,
+  "window_start": "2025-05-05T09:00:00+01:00",
+  "window_end": "2025-05-05T17:00:00+01:00",
+  "slot_interval": "45 minutes"
+}
+======================================
+
+== Create Multiple Booking Slots (Unassigned) ==============================
+http://localhost:3000/create_booking_slot
+Headers:
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN
+
+{
+  "service_id": 7,
+  "appuser_id": null,
+  "window_start": "2025-05-06T09:00:00+01:00",
+  "window_end": "2025-05-06T17:00:00+01:00",
+  "slot_interval": "45 minutes"
+}
+======================================

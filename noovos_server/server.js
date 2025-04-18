@@ -32,6 +32,7 @@ const search_business = require('./routes/search_business');
 const get_categories = require('./routes/get_categories');
 //const search_category_service = require('./routes/search_category_service');
 const search_service = require('./routes/search_service');
+const create_booking_slot = require('./routes/create_booking_slot');
 
 // Set up routes
 app.use('/login_user', login_user);
@@ -40,6 +41,7 @@ app.use('/search_business', search_business);
 app.use('/get_categories', get_categories);
 //app.use('/search_category_service', search_category_service);
 app.use('/search_service', search_service);
+app.use('/create_booking_slot', create_booking_slot);
 
 // Root route
 app.get('/', (req, res) => {

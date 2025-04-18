@@ -1,13 +1,6 @@
 test1@test.com
 123456
 
-DB Name: noovosdb
-IP: 77.68.13.150
-Port: 5432
-user: noovos_dev
-temp pw: strong_dev_password
-
-
 == Get Table Schema ==
 SELECT column_name, data_type, is_nullable, character_maximum_length
 FROM information_schema.columns
@@ -21,16 +14,19 @@ WHERE table_schema = 'public'
 
 == TABLES ==
 app_user
+appuser_business_role
 search_log
 service
 category
 qualification
 business
+staff
+service_staff
+available_slot
+booking
 business_subcategory
 business_hours
 business_social_link
-business_employee
-business_employee_service
 business_insurance
 business_feature
 business_contact_preference
@@ -40,8 +36,6 @@ media
 
 
 -- Legacy (still exist)
-service_staff
-staff
 payment
 customer_notes
 reviews
@@ -49,12 +43,12 @@ notifications
 subscription
 audit_log
 synonyms
-available_slot
-booking
 
 
-
-
+-- AppUser Business Context (appuser_business_role)
+customer
+staff
+business_owner
 
 
 
