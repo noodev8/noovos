@@ -176,3 +176,13 @@ Authorization: Bearer YOUR_JWT_TOKEN
   "slot_interval": "45 minutes"
 }
 ======================================
+
+== Get Service Details ==============================
+http://localhost:3000/get_service
+Headers:
+Content-Type: application/json
+
+{
+  "service_id": 7
+}
+======================================

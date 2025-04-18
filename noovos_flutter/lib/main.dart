@@ -3,14 +3,21 @@ import 'package:flutter/services.dart';
 import 'screens/login_user_screen.dart';
 import 'screens/register_user_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/service_details_screen.dart';
+import 'screens/cart_screen.dart';
 import 'styles/app_styles.dart';
+import 'helpers/cart_helper.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Initialize cart helper
+  await CartHelper.initialize();
+
   runApp(const MyApp());
 }
 
@@ -95,6 +102,7 @@ class _MyAppState extends State<MyApp> {
         '/login': (context) => const LoginUserScreen(),
         '/register': (context) => const RegisterUserScreen(),
         '/dashboard': (context) => const DashboardScreen(),
+        '/cart': (context) => const CartScreen(),
       },
     );
   }

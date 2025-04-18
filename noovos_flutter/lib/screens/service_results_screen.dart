@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 import '../api/search_service_api.dart';
 import '../helpers/image_helper.dart';
+import '../helpers/cart_helper.dart';
+import 'service_details_screen.dart';
+import 'cart_screen.dart';
 
 
 class ServiceResultsScreen extends StatefulWidget {
@@ -119,6 +122,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
   // Build a service card
   Widget _buildServiceCard(Map<String, dynamic> service) {
     // Extract service data
+    final serviceId = service['service_id'] ?? 0;
     final serviceName = service['service_name'] ?? 'Unknown Service';
     final businessName = service['business_name'] ?? 'Unknown Business';
     final serviceDescription = service['service_description'] ?? '';
@@ -138,169 +142,301 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
     // Format duration if available
     final String? formattedDuration = duration != null ? '$duration mins' : null;
 
+    // Check if service is in cart
+    final bool isInCart = CartHelper.isInCart(serviceId);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: InkWell(
-        onTap: () {
-          // TODO: Navigate to service detail screen
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Service booking coming soon!'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Service image
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(10),
-                topRight: Radius.circular(10),
-              ),
-              child: serviceImage != null
-                  ? ImageHelper.getCachedNetworkImage(
-                      imageUrl: serviceImage,
-                      width: double.infinity,
-                      height: 150,
-                      fit: BoxFit.cover,
-                      errorWidget: const Icon(
-                        Icons.image_not_supported,
-                        size: 50,
-                        color: Colors.grey,
-                      ),
-                    )
-                  : Container(
-                      width: double.infinity,
-                      height: 150,
-                      color: Colors.grey[200],
-                      child: const Icon(
-                        Icons.spa,
-                        size: 50,
-                        color: Colors.grey,
-                      ),
-                    ),
-            ),
-
-            // Service details
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Business name
-                  Text(
-                    businessName,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppStyles.secondaryTextColor,
-                      fontWeight: FontWeight.w500,
-                    ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Make the card clickable
+          InkWell(
+            onTap: () {
+              // Navigate to service detail screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ServiceDetailsScreen(
+                    serviceId: serviceId,
+                    serviceData: service,
                   ),
-                  const SizedBox(height: 4),
-
-                  // Service name
-                  Text(
-                    serviceName,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+              ).then((_) {
+                // Refresh the UI when returning from details screen
+                setState(() {});
+              });
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Service image
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(10),
+                    topRight: Radius.circular(10),
                   ),
-                  const SizedBox(height: 8),
+                  child: serviceImage != null
+                      ? ImageHelper.getCachedNetworkImage(
+                          imageUrl: serviceImage,
+                          width: double.infinity,
+                          height: 150,
+                          fit: BoxFit.cover,
+                          errorWidget: const Icon(
+                            Icons.image_not_supported,
+                            size: 50,
+                            color: Colors.grey,
+                          ),
+                        )
+                      : Container(
+                          width: double.infinity,
+                          height: 150,
+                          color: Colors.grey[200],
+                          child: const Icon(
+                            Icons.spa,
+                            size: 50,
+                            color: Colors.grey,
+                          ),
+                        ),
+                ),
 
-                  // Service description
-                  if (serviceDescription.isNotEmpty) ...[
-                    Text(
-                      serviceDescription,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppStyles.textColor,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // Price, duration and location
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // Service details
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Price
+                      // Business name
+                      Text(
+                        businessName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppStyles.secondaryTextColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Service name
+                      Text(
+                        serviceName,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Service description
+                      if (serviceDescription.isNotEmpty) ...[
+                        Text(
+                          serviceDescription,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppStyles.textColor,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Price, duration and location
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Icon(
-                            Icons.attach_money,
-                            size: 16,
-                            color: AppStyles.secondaryTextColor,
+                          // Price
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.attach_money,
+                                size: 16,
+                                color: AppStyles.secondaryTextColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                formattedPrice,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppStyles.primaryColor,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            formattedPrice,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppStyles.primaryColor,
+
+                          // Duration (if available)
+                          if (formattedDuration != null)
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.access_time,
+                                  size: 16,
+                                  color: AppStyles.secondaryTextColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  formattedDuration,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppStyles.secondaryTextColor,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
+
+                          // Location
+                          if (city.isNotEmpty || postcode.isNotEmpty)
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.location_on,
+                                  size: 16,
+                                  color: AppStyles.secondaryTextColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  city.isNotEmpty && postcode.isNotEmpty
+                                      ? '$city, $postcode'
+                                      : city.isNotEmpty
+                                          ? city
+                                          : postcode,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppStyles.secondaryTextColor,
+                                  ),
+                                ),
+                              ],
+                            ),
                         ],
                       ),
-
-                      // Duration (if available)
-                      if (formattedDuration != null)
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.access_time,
-                              size: 16,
-                              color: AppStyles.secondaryTextColor,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              formattedDuration,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: AppStyles.secondaryTextColor,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                      // Location
-                      if (city.isNotEmpty || postcode.isNotEmpty)
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.location_on,
-                              size: 16,
-                              color: AppStyles.secondaryTextColor,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              city.isNotEmpty && postcode.isNotEmpty
-                                  ? '$city, $postcode'
-                                  : city.isNotEmpty
-                                      ? city
-                                      : postcode,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: AppStyles.secondaryTextColor,
-                              ),
-                            ),
-                          ],
-                        ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+
+          // Action buttons
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                // See more button
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      // Navigate to service detail screen
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ServiceDetailsScreen(
+                            serviceId: serviceId,
+                            serviceData: service,
+                          ),
+                        ),
+                      ).then((_) {
+                        // Refresh the UI when returning from details screen
+                        setState(() {});
+                      });
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppStyles.primaryColor,
+                      side: const BorderSide(color: AppStyles.primaryColor),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('See More'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Add to cart button
+                Expanded(
+                  child: isInCart
+                      ? OutlinedButton(
+                          onPressed: () {
+                            // Remove from cart
+                            CartHelper.removeFromCart(serviceId);
+                            setState(() {});
+
+                            // Show snackbar
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Service removed from cart'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppStyles.errorColor,
+                            side: const BorderSide(color: AppStyles.errorColor),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text('Remove'),
+                        )
+                      : ElevatedButton(
+                          onPressed: () {
+                            // Create cart item
+                            final cartItem = CartItem(
+                              serviceId: serviceId,
+                              serviceName: serviceName,
+                              businessName: businessName,
+                              price: price,
+                              serviceImage: serviceImage,
+                              duration: duration ?? 0,
+                            );
+
+                            // Add to cart
+                            CartHelper.addToCart(cartItem);
+                            setState(() {});
+
+                            // Show snackbar
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('$serviceName added to cart'),
+                                duration: const Duration(seconds: 2),
+                                action: SnackBarAction(
+                                  label: 'VIEW CART',
+                                  onPressed: () {
+                                    // Navigate to cart screen
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const CartScreen(),
+                                      ),
+                                    ).then((_) {
+                                      // Refresh the UI when returning from cart screen
+                                      setState(() {});
+                                    });
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppStyles.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text('Add to Cart'),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -417,6 +553,57 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
         title: Text(appBarTitle),
         backgroundColor: AppStyles.primaryColor,
         foregroundColor: Colors.white,
+        actions: [
+          // Cart icon
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart),
+                onPressed: () {
+                  // Navigate to cart screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CartScreen(),
+                    ),
+                  ).then((_) {
+                    // Refresh the UI when returning from cart screen
+                    setState(() {});
+                  });
+                },
+                tooltip: 'View Cart',
+              ),
+
+              // Cart badge
+              if (CartHelper.getCartCount() > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '${CartHelper.getCartCount()}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(
