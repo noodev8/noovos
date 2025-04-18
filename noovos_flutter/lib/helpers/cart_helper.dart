@@ -75,13 +75,11 @@ class CartHelper {
   static bool canAddToCart(int businessId) {
     // If cart is empty, any business is allowed
     if (_cartItems.isEmpty) {
-      print('Cart is empty, allowing business ID: $businessId');
       return true; // Allow any business ID when cart is empty
     }
 
     // Get current business ID in cart
     final currentBusinessId = getCurrentBusinessId();
-    print('Comparing business IDs: current=$currentBusinessId, new=$businessId');
 
     // If either business ID is 0, require additional validation
     if (businessId == 0 || currentBusinessId == 0) {
@@ -133,14 +131,10 @@ class CartHelper {
 
   // Add item to cart
   static Future<bool> addToCart(CartItem item) async {
-    print('Adding item to cart: serviceId=${item.serviceId}, businessId=${item.businessId}');
-
     // Check if the item can be added based on business restrictions
     final canAdd = canAddToCart(item.businessId);
-    print('Can add to cart: $canAdd');
 
     if (!canAdd) {
-      print('Cannot add item from a different business');
       return false; // Cannot add item from a different business
     }
 

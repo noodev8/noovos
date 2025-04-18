@@ -402,7 +402,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppStyles.primaryColor.withOpacity(0.1),
+                      color: Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -423,7 +423,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
+                        color: Colors.green.shade50,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -441,7 +441,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
+                        color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Row(
@@ -581,7 +581,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.2),
+                color: Colors.grey.shade200,
                 spreadRadius: 1,
                 blurRadius: 5,
                 offset: const Offset(0, -2),

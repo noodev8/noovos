@@ -648,7 +648,8 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
               height: 60,
               margin: const EdgeInsets.only(right: 16),
               decoration: BoxDecoration(
-                color: AppStyles.primaryColor.withAlpha(25),
+                // Light version of primary color
+                color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(30),
               ),
               child: ClipRRect(
