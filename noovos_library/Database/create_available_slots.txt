@@ -1,26 +1,30 @@
 -- Create a single slot
-
-INSERT INTO available_slot (service_id, appuser_id, slot_start, slot_end)
-VALUES (
-  7,                                         -- service_id
-  NULL,                                       -- appuser_id = unassigned
-  '2025-05-04 09:00:00+01'::timestamptz,       -- slot_start
-  '2025-05-04 09:45:00+01'::timestamptz        -- slot_end
-);
-
-
--- Create multiple slots
+-- Create a slot for a service, using duration + buffer_time
 INSERT INTO available_slot (service_id, appuser_id, slot_start, slot_end)
 SELECT
-  :service_id,
+  s.id,
+  NULL,  -- or staff ID
+  '2025-05-04 09:00:00+01'::timestamptz,
+  '2025-05-04 09:00:00+01'::timestamptz + (s.duration + COALESCE(s.buffer_time, 0)) * INTERVAL '1 minute'
+FROM service s
+WHERE s.id = 7;
+
+
+
+-- Creates multiple slots using duration + buffer_time from the service table
+INSERT INTO available_slot (service_id, appuser_id, slot_start, slot_end)
+SELECT
+  s.id,
   :appuser_id,
-  gs                         AS slot_start,
-  gs + :slot_interval        AS slot_end
-FROM generate_series(
-       :window_start, 
-       :window_end - :slot_interval, 
-       :slot_interval
-     ) AS gs;
+  gs AS slot_start,
+  gs + (s.duration + COALESCE(s.buffer_time, 0)) * INTERVAL '1 minute' AS slot_end
+FROM service s,
+     generate_series(
+       :window_start,
+       :window_end - (s.duration + COALESCE(s.buffer_time, 0)) * INTERVAL '1 minute',
+       (s.duration + COALESCE(s.buffer_time, 0)) * INTERVAL '1 minute'
+     ) AS gs
+WHERE s.id = :service_id;
 
 
 
