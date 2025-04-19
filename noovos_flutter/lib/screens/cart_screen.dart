@@ -180,6 +180,7 @@ class _CartScreenState extends State<CartScreen> {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
+                // Go back to the previous screen (search results or service details)
                 Navigator.pop(context);
               },
               style: AppStyles.primaryButtonStyle,
@@ -301,6 +302,48 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                     ],
                   ),
+
+                  // Staff information
+                  if (item.staffName != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.person,
+                          size: 14,
+                          color: AppStyles.secondaryTextColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Staff: ${item.staffName}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppStyles.secondaryTextColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 8),
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.people,
+                          size: 14,
+                          color: AppStyles.secondaryTextColor,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Staff: Any available',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppStyles.secondaryTextColor,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -9,20 +9,24 @@ import 'dart:convert';
 class CartItem {
   final int serviceId;
   final String serviceName;
-  final int businessId;       // Added business ID
+  final int businessId;       // Business ID
   final String businessName;
   final double price;
   final String? serviceImage;
   final int duration;
+  final int? staffId;         // Optional staff ID (null means any staff)
+  final String? staffName;    // Optional staff name
 
   CartItem({
     required this.serviceId,
     required this.serviceName,
-    required this.businessId,  // Added business ID parameter
+    required this.businessId,
     required this.businessName,
     required this.price,
     this.serviceImage,
     required this.duration,
+    this.staffId,             // Optional staff ID
+    this.staffName,           // Optional staff name
   });
 
   // Convert to JSON
@@ -35,6 +39,8 @@ class CartItem {
       'price': price,
       'serviceImage': serviceImage,
       'duration': duration,
+      'staffId': staffId,
+      'staffName': staffName,
     };
   }
 
@@ -48,6 +54,8 @@ class CartItem {
       price: json['price'],
       serviceImage: json['serviceImage'],
       duration: json['duration'],
+      staffId: json['staffId'],
+      staffName: json['staffName'],
     );
   }
 }

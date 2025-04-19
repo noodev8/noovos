@@ -19,54 +19,54 @@ class AvailabilityCheckScreen extends StatefulWidget {
 class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
   // Loading state
   bool _isLoading = false;
-  
+
   // Selected from date
   DateTime _fromDate = DateTime.now().add(const Duration(days: 1));
-  
+
   // Selected to date
   DateTime _toDate = DateTime.now().add(const Duration(days: 7));
-  
+
   // Time preference
   String _timePreference = 'Any'; // 'Morning', 'Afternoon', or 'Any'
-  
+
   // Cart items
   List<CartItem> _cartItems = [];
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Load cart items
     _loadCartItems();
   }
-  
+
   // Load cart items
   void _loadCartItems() {
     setState(() {
       _cartItems = CartHelper.getCartItems();
     });
   }
-  
+
   // Format date
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
   }
-  
+
   // Check availability (this would be replaced with an API call)
   Future<void> _checkAvailability() async {
     setState(() {
       _isLoading = true;
     });
-    
+
     // Simulate API call
     await Future.delayed(const Duration(seconds: 2));
-    
+
     // For demo purposes, we'll just show a message
     if (mounted) {
       setState(() {
         _isLoading = false;
       });
-      
+
       // Show message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -76,7 +76,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
       );
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,7 +90,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
           : _buildAvailabilityCheck(),
     );
   }
-  
+
   // Build empty cart view
   Widget _buildEmptyCart() {
     return Center(
@@ -129,7 +129,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
       ),
     );
   }
-  
+
   // Build availability check view
   Widget _buildAvailabilityCheck() {
     return SingleChildScrollView(
@@ -156,7 +156,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Cart items
                   ..._cartItems.map((item) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -181,10 +181,21 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
                                   color: AppStyles.secondaryTextColor,
                                 ),
                               ),
+                              // Staff information
+                              Text(
+                                item.staffName != null
+                                    ? 'Staff: ${item.staffName}'
+                                    : 'Staff: Any available',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppStyles.secondaryTextColor,
+                                  fontStyle: item.staffName != null ? FontStyle.normal : FontStyle.italic,
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                        
+
                         // Duration
                         Row(
                           children: [
@@ -203,7 +214,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
                             ),
                           ],
                         ),
-                        
+
                         // Price
                         const SizedBox(width: 16),
                         Text(
@@ -217,9 +228,9 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
                       ],
                     ),
                   )),
-                  
+
                   const Divider(),
-                  
+
                   // Total
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -241,7 +252,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
                       ),
                     ],
                   ),
-                  
+
                   // Edit cart button
                   const SizedBox(height: 16),
                   Center(
@@ -268,7 +279,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
               ),
             ),
           ),
-          
+
           // From Date selection
           const Text(
             'From Date',
@@ -278,7 +289,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          
+
           // From Date picker
           Card(
             margin: const EdgeInsets.only(bottom: 16),
@@ -292,11 +303,11 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
                   firstDate: DateTime.now(),
                   lastDate: DateTime.now().add(const Duration(days: 90)),
                 );
-                
+
                 if (pickedDate != null && pickedDate != _fromDate) {
                   setState(() {
                     _fromDate = pickedDate;
-                    
+
                     // Ensure to date is not before from date
                     if (_toDate.isBefore(_fromDate)) {
                       _toDate = _fromDate.add(const Duration(days: 7));
@@ -331,7 +342,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
               ),
             ),
           ),
-          
+
           // To Date selection
           const Text(
             'To Date',
@@ -341,7 +352,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          
+
           // To Date picker
           Card(
             margin: const EdgeInsets.only(bottom: 24),
@@ -355,7 +366,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
                   firstDate: _fromDate, // Can't pick a date before from date
                   lastDate: DateTime.now().add(const Duration(days: 90)),
                 );
-                
+
                 if (pickedDate != null && pickedDate != _toDate) {
                   setState(() {
                     _toDate = pickedDate;
@@ -389,7 +400,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
               ),
             ),
           ),
-          
+
           // Time preference selection
           const Text(
             'Time Preference',
@@ -399,7 +410,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          
+
           // Time preference options
           Card(
             margin: const EdgeInsets.only(bottom: 24),
@@ -424,7 +435,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
               ),
             ),
           ),
-          
+
           // Check availability button
           SizedBox(
             width: double.infinity,
@@ -454,11 +465,11 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
       ),
     );
   }
-  
+
   // Build time preference chip
   Widget _buildTimePreferenceChip(String preference) {
     final bool isSelected = _timePreference == preference;
-    
+
     return ChoiceChip(
       label: Text(preference),
       selected: isSelected,

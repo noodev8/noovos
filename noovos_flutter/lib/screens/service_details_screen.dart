@@ -7,8 +7,11 @@ Users can view service information and add the service to their cart
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 import '../api/get_service_api.dart';
+import '../api/get_service_staff_api.dart';
 import '../helpers/image_helper.dart';
 import '../helpers/cart_helper.dart';
+
+import 'staff_selection_screen.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   // Service ID to display
@@ -123,64 +126,133 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   void _addToCart() {
     if (_serviceDetails == null) return;
 
-    // If we can add to cart, proceed directly
-    _addServiceToCart();
+    // Check if we can add to cart
+    if (_canAddToCart) {
+      // If we can add to cart, proceed directly
+      // First check if the service has staff members
+      _checkServiceStaff();
+    } else {
+      // If we can't add to cart, show the business restriction dialog
+      _showBusinessRestrictionDialog();
+    }
   }
 
-  // Helper method to add service to cart
-  Future<void> _addServiceToCart() async {
-    if (_serviceDetails == null) return;
+  // Check if the service has staff members
+  void _checkServiceStaff() async {
+    // Show loading indicator
+    setState(() {
+      _isLoading = true;
+    });
 
-    // Create cart item
+    try {
+      // Get service ID
+      final int serviceId = _serviceDetails!['service_id'];
+
+      // Call the API to get staff list
+      final result = await GetServiceStaffApi.getServiceStaff(serviceId);
+
+      // Hide loading indicator
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Check if the request was successful
+      if (result['success']) {
+        final data = result['data'];
+        final staffList = data['staff'] as List<dynamic>;
+
+        if (staffList.isEmpty) {
+          // If there are no staff members, add to cart directly with 'Any Staff'
+          _addToCartWithAnyStaff();
+        } else {
+          // If there are staff members, navigate to staff selection screen
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => StaffSelectionScreen(
+                  serviceDetails: _serviceDetails!,
+                ),
+              ),
+            ).then((_) {
+              // Check if the service is in the cart after returning from the staff selection screen
+              if (mounted) {
+                setState(() {
+                  _isInCart = CartHelper.isInCart(widget.serviceId);
+                  _canAddToCart = true; // We just added it, so it's compatible
+                });
+              }
+            });
+          }
+        }
+      } else {
+        // If the request failed, add to cart directly with 'Any Staff'
+        _addToCartWithAnyStaff();
+      }
+    } catch (e) {
+      // If there was an error, add to cart directly with 'Any Staff'
+      setState(() {
+        _isLoading = false;
+      });
+      _addToCartWithAnyStaff();
+    }
+  }
+
+  // Add service to cart with 'Any Staff'
+  void _addToCartWithAnyStaff() {
+    // Create cart item with 'Any Staff'
     final cartItem = CartItem(
       serviceId: _serviceDetails!['service_id'],
       serviceName: _serviceDetails!['service_name'],
       businessId: _serviceDetails!['business_id'] ?? 0,
       businessName: _serviceDetails!['business_name'],
-      price: _serviceDetails!['price'] is String
-          ? double.tryParse(_serviceDetails!['price']) ?? 0.0
-          : _serviceDetails!['price'].toDouble(),
+      price: _serviceDetails!['price'] != null
+          ? (_serviceDetails!['price'] is String
+              ? double.tryParse(_serviceDetails!['price']) ?? 0.0
+              : _serviceDetails!['price'] is num
+                  ? _serviceDetails!['price'].toDouble()
+                  : 0.0)
+          : 0.0,
       serviceImage: _serviceDetails!['service_image'],
       duration: _serviceDetails!['duration'],
+      staffId: null, // Any staff
+      staffName: null, // Any staff
     );
 
     // Add to cart
-    final bool success = await CartHelper.addToCart(cartItem);
+    CartHelper.addToCart(cartItem).then((success) {
+      if (success && mounted) {
+        // Update state
+        setState(() {
+          _isInCart = true;
+          _canAddToCart = true; // We just added it, so it's compatible
+        });
 
-    if (!success) {
-      // If adding to cart failed due to business restrictions, show the dialog
-      if (mounted) {
-        _showBusinessRestrictionDialog(cartItem.businessId);
-      }
-      return;
-    }
-
-    // Update state
-    if (mounted) {
-      setState(() {
-        _isInCart = true;
-        _canAddToCart = true; // We just added it, so it's compatible
-      });
-
-      // Show snackbar
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${_serviceDetails!['service_name']} added to cart'),
-          duration: const Duration(seconds: 2),
-          action: SnackBarAction(
-            label: 'VIEW CART',
-            onPressed: () {
-              // Navigate to cart screen
-              Navigator.pushNamed(context, '/cart');
-            },
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${_serviceDetails!['service_name']} added to cart'),
+            duration: const Duration(seconds: 2),
           ),
-        ),
-      );
-    }
+        );
+
+        // Navigate to cart screen
+        Navigator.pushNamed(context, '/cart');
+      } else if (mounted) {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to add service to cart'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
   }
 
   // Show dialog for business restriction
-  void _showBusinessRestrictionDialog(int businessId) {
+  void _showBusinessRestrictionDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -203,8 +275,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               CartHelper.clearCart();
               Navigator.pop(context);
 
-              // Try adding again
-              _addServiceToCart();
+              // Check if the service has staff members
+              _checkServiceStaff();
             },
             style: TextButton.styleFrom(
               foregroundColor: AppStyles.primaryColor,
