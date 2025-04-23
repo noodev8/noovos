@@ -107,7 +107,6 @@ router.post('/', async (req, res) => {
         // If staff_id is provided, add it to the filter
         const queryParams = [service_id, businessId];
         if (staff_id) {
-            console.log('Filtering by staff_id:', staff_id);
             staffQuery += `
                 AND ss.appuser_id = $3
             `;
@@ -157,3 +156,4 @@ router.post('/', async (req, res) => {
 });
 
 module.exports = router;
+

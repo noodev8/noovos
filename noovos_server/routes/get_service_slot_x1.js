@@ -139,7 +139,6 @@ router.post('/', async (req, res) => {
 
         // If staff_id is provided, add it to the filter
         if (staff_id) {
-            console.log('Staff ID provided:', staff_id);
             staffQuery += ` AND ss.appuser_id = $2`;
             queryParams.push(staff_id);
         }
@@ -172,19 +171,13 @@ router.post('/', async (req, res) => {
                 AND sr.rota_date = $2
         `;
 
-        // Log the staff IDs for debugging
-        console.log('Checking staff rota for staff IDs:', staffIds);
-
         // Execute the rota query
         const rotaResult = await pool.query(rotaQuery, [staffIds, date]);
 
         // If no staff members are working on the requested date, return error
         if (rotaResult.rows.length === 0) {
-            console.log('No staff members found in staff_rota for date:', date);
-            console.log('Staff IDs checked:', staffIds);
-
             // For testing purposes, let's create a dummy slot instead of returning an error
-            // This will help us test the frontend without having staff_rota entries
+            // This will help us test the frontend without staff_rota entries
             const dummySlots = [];
 
             // Create a dummy slot for each staff member
@@ -500,3 +493,4 @@ function isValidDate(dateStr) {
 }
 
 module.exports = router;
+

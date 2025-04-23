@@ -292,20 +292,23 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   // Remove service from cart
   void _removeFromCart() {
     // Remove from cart
-    CartHelper.removeFromCart(widget.serviceId);
+    CartHelper.removeFromCart(widget.serviceId).then((_) {
+      // Update state
+      if (mounted) {
+        setState(() {
+          _isInCart = false;
+          _canAddToCart = true; // Reset can add to cart flag
+        });
 
-    // Update state
-    setState(() {
-      _isInCart = false;
+        // Show snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Service removed from cart'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     });
-
-    // Show snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Service removed from cart'),
-        duration: Duration(seconds: 2),
-      ),
-    );
   }
 
   @override
@@ -716,3 +719,4 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
   }
 }
+

@@ -260,10 +260,10 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
     final String? formattedDuration = duration != null ? '$duration mins' : null;
 
     // Check if service is in cart
-    final bool isInCart = CartHelper.isInCart(serviceId);
+    bool isInCart = CartHelper.isInCart(serviceId);
 
     // Check if service can be added to cart
-    final bool canAddToCart = businessId > 0 ? CartHelper.canAddToCart(businessId) : true;
+    bool canAddToCart = businessId > 0 ? CartHelper.canAddToCart(businessId) : true;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -470,18 +470,25 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                 Expanded(
                   child: isInCart
                       ? OutlinedButton(
-                          onPressed: () {
+                          onPressed: () async {
                             // Remove from cart
-                            CartHelper.removeFromCart(serviceId);
-                            setState(() {});
+                            await CartHelper.removeFromCart(serviceId);
+                            
+                            if (mounted) {
+                              setState(() {
+                                // Force refresh of cart status
+                                isInCart = CartHelper.isInCart(serviceId);
+                                canAddToCart = businessId > 0 ? CartHelper.canAddToCart(businessId) : true;
+                              });
 
-                            // Show snackbar
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Service removed from cart'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
+                              // Show snackbar
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Service removed from cart'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            }
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppStyles.errorColor,
