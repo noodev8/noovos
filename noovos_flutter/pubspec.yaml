@@ -47,6 +47,9 @@ dependencies:
   # Cached network image for efficient image loading
   cached_network_image: ^3.3.1
 
+  # Internationalization and localization
+  intl: ^0.19.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

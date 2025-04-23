@@ -5,8 +5,10 @@ before proceeding to checkout
 */
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../styles/app_styles.dart';
 import '../helpers/cart_helper.dart';
+import '../api/get_service_slot_x1_api.dart';
 import 'cart_screen.dart';
 
 class AvailabilityCheckScreen extends StatefulWidget {
@@ -20,17 +22,23 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
   // Loading state
   bool _isLoading = false;
 
-  // Selected from date
-  DateTime _fromDate = DateTime.now().add(const Duration(days: 1));
-
-  // Selected to date
-  DateTime _toDate = DateTime.now().add(const Duration(days: 7));
+  // Selected date
+  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
 
   // Time preference
   String _timePreference = 'Any'; // 'Morning', 'Afternoon', or 'Any'
 
   // Cart items
   List<CartItem> _cartItems = [];
+
+  // Available slots
+  List<Map<String, dynamic>> _availableSlots = [];
+
+  // Service details
+  Map<String, dynamic>? _serviceDetails;
+
+  // Error message
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -49,31 +57,82 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
 
   // Format date
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    final DateFormat formatter = DateFormat('dd/MM/yyyy');
+    return formatter.format(date);
   }
 
-  // Check availability (this would be replaced with an API call)
+  // Format date for API (YYYY-MM-DD)
+  String _formatDateForApi(DateTime date) {
+    final DateFormat formatter = DateFormat('yyyy-MM-dd');
+    return formatter.format(date);
+  }
+
+  // Check availability using the API
   Future<void> _checkAvailability() async {
+    // Reset previous results
     setState(() {
       _isLoading = true;
+      _availableSlots = [];
+      _serviceDetails = null;
+      _errorMessage = null;
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
-
-    // For demo purposes, we'll just show a message
-    if (mounted) {
+    // Check if there are multiple services in the cart
+    if (_cartItems.length > 1) {
       setState(() {
         _isLoading = false;
+        _errorMessage = 'Multiple service availability check is not yet available. Please keep only one service in your cart.';
       });
+      return;
+    }
 
-      // Show message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Feature not yet available'),
-          duration: Duration(seconds: 2),
-        ),
+    // Check if cart is empty
+    if (_cartItems.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Your cart is empty. Please add a service to check availability.';
+      });
+      return;
+    }
+
+    try {
+      // Get the first (and only) service from the cart
+      final CartItem service = _cartItems.first;
+
+      // Call the API to get available slots
+      final result = await GetServiceSlotX1Api.getServiceSlots(
+        serviceId: service.serviceId,
+        date: _formatDateForApi(_selectedDate),
+        staffId: service.staffId,
+        timePreference: _timePreference.toLowerCase(),
       );
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (result['success']) {
+          // Extract data from the response
+          final data = result['data'];
+          setState(() {
+            _serviceDetails = data['service'];
+            _availableSlots = List<Map<String, dynamic>>.from(data['slots']);
+          });
+        } else {
+          // Handle error
+          setState(() {
+            _errorMessage = result['message'];
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'An error occurred: $e';
+        });
+      }
     }
   }
 
@@ -280,9 +339,9 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
             ),
           ),
 
-          // From Date selection
+          // Date selection
           const Text(
-            'From Date',
+            'Select Date',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -290,70 +349,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
           ),
           const SizedBox(height: 8),
 
-          // From Date picker
-          Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            child: InkWell(
-              onTap: () async {
-                final DateTime? pickedDate = await showDatePicker(
-                  context: context,
-                  initialDate: _fromDate,
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 90)),
-                );
-
-                if (pickedDate != null && pickedDate != _fromDate) {
-                  setState(() {
-                    _fromDate = pickedDate;
-
-                    // Ensure to date is not before from date
-                    if (_toDate.isBefore(_fromDate)) {
-                      _toDate = _fromDate.add(const Duration(days: 7));
-                    }
-                  });
-                }
-              },
-              borderRadius: BorderRadius.circular(10),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.calendar_today,
-                      color: AppStyles.primaryColor,
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      _formatDate(_fromDate),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    const Icon(
-                      Icons.arrow_drop_down,
-                      color: AppStyles.secondaryTextColor,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // To Date selection
-          const Text(
-            'To Date',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // To Date picker
+          // Date picker
           Card(
             margin: const EdgeInsets.only(bottom: 24),
             elevation: 2,
@@ -362,14 +358,18 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
               onTap: () async {
                 final DateTime? pickedDate = await showDatePicker(
                   context: context,
-                  initialDate: _toDate,
-                  firstDate: _fromDate, // Can't pick a date before from date
+                  initialDate: _selectedDate,
+                  firstDate: DateTime.now(),
                   lastDate: DateTime.now().add(const Duration(days: 90)),
                 );
 
-                if (pickedDate != null && pickedDate != _toDate) {
+                if (pickedDate != null && pickedDate != _selectedDate) {
                   setState(() {
-                    _toDate = pickedDate;
+                    _selectedDate = pickedDate;
+                    // Reset results when date changes
+                    _availableSlots = [];
+                    _serviceDetails = null;
+                    _errorMessage = null;
                   });
                 }
               },
@@ -384,7 +384,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
                     ),
                     const SizedBox(width: 16),
                     Text(
-                      _formatDate(_toDate),
+                      _formatDate(_selectedDate),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -436,6 +436,69 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
             ),
           ),
 
+          // Error message (if any)
+          if (_errorMessage != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(color: Colors.red.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Available slots (if any)
+          if (_availableSlots.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Available Slots',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ..._availableSlots.map((slot) => _buildSlotCard(slot)),
+            const SizedBox(height: 16),
+          ],
+
+          // No slots message (if checked but none found)
+          if (_availableSlots.isEmpty && _serviceDetails != null && _errorMessage == null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'No available slots found for the selected date and time preference. Please try a different date or time preference.',
+                      style: TextStyle(color: Colors.orange.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Check availability button
           SizedBox(
             width: double.infinity,
@@ -477,6 +540,10 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
         setState(() {
           if (selected) {
             _timePreference = preference;
+            // Reset results when time preference changes
+            _availableSlots = [];
+            _serviceDetails = null;
+            _errorMessage = null;
           }
         });
       },
@@ -485,6 +552,93 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
       labelStyle: TextStyle(
         color: isSelected ? AppStyles.primaryColor : Colors.black87,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+  }
+
+  // Build slot card
+  Widget _buildSlotCard(Map<String, dynamic> slot) {
+    // Extract slot data
+    final String startTime = slot['start_time'] ?? '';
+    final String endTime = slot['end_time'] ?? '';
+    final int staffId = slot['staff_id'] ?? 0;
+    final String staffName = slot['staff_name'] ?? 'Unknown';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Time slot
+            Row(
+              children: [
+                const Icon(
+                  Icons.access_time,
+                  color: AppStyles.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$startTime - $endTime',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Staff info
+            Row(
+              children: [
+                const Icon(
+                  Icons.person,
+                  color: AppStyles.secondaryTextColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Staff: $staffName',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppStyles.secondaryTextColor,
+                  ),
+                ),
+              ],
+            ),
+
+            // Book button
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  // TODO: Implement booking functionality
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Booking functionality coming soon!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppStyles.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Book This Slot'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
