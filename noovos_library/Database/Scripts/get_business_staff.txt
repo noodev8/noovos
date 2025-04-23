@@ -1,0 +1,28 @@
+-- Get business staff
+WITH vars AS (
+  SELECT
+    NULL::text AS p_email,               -- set to email filter or NULL
+    'the zen den'::text AS p_biz_name    -- business name filter
+)
+
+SELECT
+  u.id            AS user_id,
+  u.first_name,
+  u.last_name,
+  u.email,
+  ubr.role        AS user_role_on_business,
+  b.id            AS business_id,
+  b.name          AS business_name
+FROM public.app_user u
+JOIN public.appuser_business_role ubr
+  ON u.id = ubr.appuser_id
+JOIN public.business b
+  ON ubr.business_id = b.id
+JOIN vars v ON true
+WHERE
+  ubr.role IS NOT NULL
+  AND (v.p_email IS NULL OR u.email ILIKE v.p_email)
+  AND (v.p_biz_name IS NULL OR b.name ILIKE v.p_biz_name)
+ORDER BY
+  u.last_name,
+  u.first_name;

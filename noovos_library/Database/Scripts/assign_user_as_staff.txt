@@ -1,0 +1,19 @@
+-- assign user as staff
+WITH vars AS (
+  SELECT
+    'jane@example.com'::text AS p_staff_email,
+    10::integer              AS p_business_id,  -- Replace with actual business ID
+    'Staff'::text            AS p_role
+)
+
+INSERT INTO public.appuser_business_role (
+  appuser_id,
+  business_id,
+  role
+)
+SELECT
+  u.id,
+  v.p_business_id,
+  v.p_role
+FROM vars v
+JOIN public.app_user u ON u.email ILIKE v.p_staff_email;

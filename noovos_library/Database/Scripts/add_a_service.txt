@@ -1,0 +1,20 @@
+SELECT * FROM category;
+
+INSERT INTO public.service (
+  business_id,
+  service_name,
+  description,
+  duration,
+  price,
+  buffer_time,
+  category_id
+)
+VALUES (
+  (SELECT id FROM public.business WHERE name ILIKE 'the zen den' LIMIT 1),
+  'Nails with varnish', -- Service Name
+  'Our nails service is one of the best in the industry', -- Service Description
+  30, -- Duration
+  40.00, -- Price
+  10, -- Buffer Time
+  11  -- Category ID
+);

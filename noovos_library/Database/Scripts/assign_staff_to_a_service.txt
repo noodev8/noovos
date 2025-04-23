@@ -1,0 +1,16 @@
+-- Assign staff to a service
+WITH vars AS (
+  SELECT
+    16::integer AS p_service_id,  -- e.g. Haircut
+    'emma.williams@example.com'::text AS p_staff_email
+)
+
+INSERT INTO public.service_staff (
+  service_id,
+  appuser_id
+)
+SELECT
+  v.p_service_id,
+  u.id
+FROM vars v
+JOIN public.app_user u ON u.email ILIKE v.p_staff_email;

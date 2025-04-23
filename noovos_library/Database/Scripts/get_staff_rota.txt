@@ -1,0 +1,31 @@
+-- Get staff rota
+WITH vars AS (
+  SELECT
+    '%Zen%'::text               AS p_business_name,  -- Optional: filter by business
+    'emma.williams@example.com'::text AS p_staff_email,   -- Optional: filter by staff
+    '2025-04-23'::date          AS p_rota_date       -- Optional: filter by date
+)
+
+SELECT
+  sr.id             AS rota_id,
+  u.first_name || ' ' || u.last_name AS staff_name,
+  u.email           AS staff_email,
+  TO_CHAR(sr.rota_date, 'YYYY-MM-DD') AS rota_date,
+  TO_CHAR(sr.start_time, 'HH12:MI AM') AS start_time,
+  TO_CHAR(sr.end_time, 'HH12:MI AM')   AS end_time,
+  s.id AS Staff_id,
+   b.name            AS business_name
+FROM public.staff_rota sr
+JOIN public.app_user s ON sr.staff_id = s.id
+JOIN public.app_user u ON u.id = s.id
+JOIN public.appuser_business_role ubr ON u.id = ubr.appuser_id
+JOIN public.business b ON ubr.business_id = b.id
+JOIN vars v ON true
+WHERE
+  (v.p_business_name IS NULL OR b.name ILIKE v.p_business_name)
+  AND (v.p_staff_email IS NULL OR u.email ILIKE v.p_staff_email)
+  AND (v.p_rota_date IS NULL OR sr.rota_date = v.p_rota_date)
+ORDER BY
+  sr.rota_date,
+  sr.start_time,
+  u.last_name;

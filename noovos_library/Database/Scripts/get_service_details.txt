@@ -1,0 +1,29 @@
+-- Check service details
+WITH vars AS (
+  SELECT
+    '%Zen%'::text AS p_biz_name
+)
+
+SELECT
+  s.id           AS service_id,
+  s.service_name,
+  s.duration,
+  s.price,
+  b.id           AS business_id,
+  b.name         AS business_name,
+  CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM public.service_staff ss
+      WHERE ss.service_id = s.id
+    ) THEN true
+    ELSE false
+  END AS is_assigned
+FROM public.service s
+JOIN public.business b ON s.business_id = b.id
+JOIN vars v ON true
+WHERE
+  v.p_biz_name IS NULL OR b.name ILIKE v.p_biz_name
+ORDER BY
+  b.name,
+  s.service_name;

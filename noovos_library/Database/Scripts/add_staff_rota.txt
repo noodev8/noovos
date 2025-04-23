@@ -1,0 +1,22 @@
+-- add staff to rota
+WITH vars AS (
+  SELECT
+    'emma.williams@example.com'::text AS p_staff_email,
+    '2025-04-23'::date                AS p_rota_date,
+    '09:00'::time                     AS p_start_time,
+    '17:00'::time                     AS p_end_time
+)
+
+INSERT INTO public.staff_rota (
+  staff_id,
+  rota_date,
+  start_time,
+  end_time
+)
+SELECT
+  s.id,
+  v.p_rota_date,
+  v.p_start_time,
+  v.p_end_time
+FROM vars v
+JOIN public.app_user s ON s.email ILIKE v.p_staff_email;

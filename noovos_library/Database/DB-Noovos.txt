@@ -5,7 +5,7 @@ test1@test.com
 == Get Table Schema ==
 SELECT column_name, data_type, is_nullable, character_maximum_length
 FROM information_schema.columns
-WHERE table_name = 'available_slot';
+WHERE table_name = 'staff_rota';
 
 == get Table Names ==
 SELECT table_name
@@ -14,16 +14,18 @@ WHERE table_schema = 'public'
   AND table_type = 'BASE TABLE';
 
 == TABLES ==
+-- Booking
 app_user
+service_staff
+staff_rota
+booking
+
 appuser_business_role
 search_log
 service
 category
 qualification
 business
-service_staff
-available_slot
-booking
 business_subcategory
 business_hours
 business_social_link
@@ -50,100 +52,12 @@ staff
 business_owner
 
 
+---------------------------------------------------------------------------
+-- Get App Users 
+---------------------------------------------------------------------------
+select * from app_user
 
-====================================================================================================================
-== Search Query
-====================================================================================================================
--- Test Parameters (change these as needed)
-WITH params AS (
-    SELECT 
-        'massage'::TEXT AS search_term,      -- User search term (can be NULL)
-        'London'::TEXT AS location_input,    -- User location (can be NULL)
-        4::INT AS category_input,            -- Category ID (can be NULL)
-        1::INT AS page_input                 -- Page number (1-based)
-),
-search_query AS (
-    SELECT 
-        plainto_tsquery('english', p.search_term) AS ts_query,
-        p.search_term,
-        p.location_input,
-        p.category_input,
-        ((p.page_input - 1) * 20) AS offset_calc
-    FROM params p
-)
-SELECT 
-    s.id AS service_id,
-    s.service_name,
-    b.name AS business_name,
-    s.description AS service_description,
-    s.service_image,
-    b.profile_picture AS business_profile,
-    s.price AS cost,
-    b.city,
-    b.postcode,
-    c.name AS category_name,
 
-    -- Rankings
-    ts_rank(
-        to_tsvector('english', s.service_name) || to_tsvector('english', s.description), 
-        sq.ts_query
-    ) AS rank_text,
-    
-    GREATEST(
-        similarity(s.service_name, sq.search_term),
-        similarity(s.description, sq.search_term),
-        similarity(b.name, sq.search_term)
-    ) AS rank_fuzzy,
-
-    GREATEST(
-        word_similarity(s.service_name, sq.search_term),
-        word_similarity(s.description, sq.search_term),
-        word_similarity(b.name, sq.search_term)
-    ) AS rank_word_similarity
-
-FROM service s
-JOIN business b ON s.business_id = b.id
-LEFT JOIN category c ON s.category_id = c.id
-CROSS JOIN search_query sq
-
-WHERE s.active = TRUE
-
-  -- Search term matching
-  AND (
-      sq.search_term IS NULL 
-      OR GREATEST(
-          word_similarity(s.service_name, sq.search_term),
-          word_similarity(s.description, sq.search_term),
-          word_similarity(b.name, sq.search_term)
-      ) > 0.10
-      OR to_tsvector('english', s.service_name) @@ sq.ts_query
-      OR to_tsvector('english', s.description) @@ sq.ts_query
-      OR to_tsvector('english', b.name) @@ sq.ts_query
-  )
-
-  -- Location matching
-  AND (
-      sq.location_input IS NULL 
-      OR b.city ILIKE '%' || sq.location_input || '%'
-      OR b.postcode ILIKE '%' || sq.location_input || '%'
-  )
-
-  -- Category matching
-  AND (
-      sq.category_input IS NULL 
-      OR s.category_id = sq.category_input
-  )
-
-ORDER BY
-    -- 📍 Location boost
-    (CASE WHEN b.city ILIKE '%' || sq.location_input || '%' THEN 1 ELSE 0 END) DESC,
-    (CASE WHEN b.postcode ILIKE '%' || sq.location_input || '%' THEN 1 ELSE 0 END) DESC,
-    rank_word_similarity DESC,
-    rank_text DESC,
-    rank_fuzzy DESC
-
-LIMIT 20
-OFFSET sq.offset_calc;
 
 
 
@@ -217,5 +131,7 @@ WHERE
     SELECT 1 FROM service_staff
     WHERE appuser_id = au.id AND service_id = s.id
 );
+
+
 
 

@@ -1,0 +1,27 @@
+-- Get service staff
+WITH vars AS (
+  SELECT
+    '%Zen%'::text AS p_biz_name
+)
+
+SELECT
+  s.id             AS service_id,
+  s.service_name,
+  s.duration,
+  s.price,
+  COALESCE(u.first_name || ' ' || u.last_name, '<Unallocated>') AS staff_name,
+  COALESCE(u.email, '<Unallocated>')                            AS staff_email,
+  u.id AS staff_id,
+  b.id             AS business_id,
+  b.name           AS business_name
+FROM public.service s
+JOIN public.business b ON s.business_id = b.id
+LEFT JOIN public.service_staff ss ON s.id = ss.service_id
+LEFT JOIN public.app_user u ON ss.appuser_id = u.id
+JOIN vars v ON true
+WHERE
+  v.p_biz_name IS NULL OR b.name ILIKE v.p_biz_name
+ORDER BY
+  b.name,
+  s.service_name,
+  staff_name;

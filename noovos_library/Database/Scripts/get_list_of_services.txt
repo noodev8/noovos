@@ -1,0 +1,24 @@
+-- List of services
+WITH vars AS (
+  SELECT
+    '%Zen%'::text AS p_biz_name  -- Change to NULL or '' to show all businesses
+)
+
+SELECT
+  s.id            AS service_id,
+  s.service_name,
+  s.description,
+  s.duration AS duration,
+  s.price AS price,
+  s.active AS is_active,
+  c.name          AS category_name,
+  b.name          AS business_name
+FROM public.service s
+JOIN public.business b ON s.business_id = b.id
+LEFT JOIN public.category c ON s.category_id = c.id
+JOIN vars v ON true
+WHERE
+  v.p_biz_name IS NULL OR v.p_biz_name = '' OR b.name ILIKE v.p_biz_name
+ORDER BY
+  b.name,
+  s.service_name;
