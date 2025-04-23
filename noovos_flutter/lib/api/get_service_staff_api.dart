@@ -19,12 +19,17 @@ class GetServiceStaffApi {
   static final String _apiUrl = _baseUrl + _endpoint;
 
   // Get staff for a service
-  static Future<Map<String, dynamic>> getServiceStaff(int serviceId) async {
+  static Future<Map<String, dynamic>> getServiceStaff(int serviceId, {int? staffId}) async {
     try {
       // Create request body
       final Map<String, dynamic> requestBody = {
         'service_id': serviceId,
       };
+
+      // Add staff_id if provided
+      if (staffId != null) {
+        requestBody['staff_id'] = staffId;
+      }
 
       // Make API call
       final response = await http.post(

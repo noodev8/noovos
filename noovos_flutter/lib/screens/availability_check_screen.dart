@@ -67,6 +67,31 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
     return formatter.format(date);
   }
 
+  // Format time (HH:MM:SS to HH:MM AM/PM)
+  String _formatTime(String timeString) {
+    try {
+      // Parse the time string (HH:MM:SS)
+      final parts = timeString.split(':');
+      if (parts.length < 2) return timeString; // Return original if invalid
+
+      int hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+
+      // Determine AM/PM
+      final period = hour >= 12 ? 'PM' : 'AM';
+
+      // Convert to 12-hour format
+      hour = hour % 12;
+      if (hour == 0) hour = 12; // 0 should be displayed as 12 in 12-hour format
+
+      // Format the time
+      return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $period';
+    } catch (e) {
+      // Return original string if parsing fails
+      return timeString;
+    }
+  }
+
   // Check availability using the API
   Future<void> _checkAvailability() async {
     // Reset previous results
@@ -559,9 +584,9 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
   // Build slot card
   Widget _buildSlotCard(Map<String, dynamic> slot) {
     // Extract slot data
-    final String startTime = slot['start_time'] ?? '';
-    final String endTime = slot['end_time'] ?? '';
-    final int staffId = slot['staff_id'] ?? 0;
+    final String startTime = _formatTime(slot['start_time'] ?? '');
+    final String endTime = _formatTime(slot['end_time'] ?? '');
+    //final int staffId = slot['staff_id'] ?? 0;
     final String staffName = slot['staff_name'] ?? 'Unknown';
 
     return Card(
@@ -573,7 +598,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Time slot
+            // Time slot with updated styling
             Row(
               children: [
                 const Icon(
@@ -581,12 +606,14 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
                   color: AppStyles.primaryColor,
                   size: 20,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Text(
                   '$startTime - $endTime',
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                    color: AppStyles.primaryColor,
                   ),
                 ),
               ],
@@ -643,3 +670,4 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
     );
   }
 }
+

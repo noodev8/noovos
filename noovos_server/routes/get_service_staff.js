@@ -8,7 +8,8 @@ Authentication: Not required - This endpoint is publicly accessible
 =======================================================================================================================================
 Request Payload:
 {
-  "service_id": 7                     // integer, required - ID of the service to retrieve staff for
+  "service_id": 7,                    // integer, required - ID of the service to retrieve staff for
+  "staff_id": 10                     // integer, optional - ID of a specific staff member to filter by
 }
 
 Success Response:
@@ -46,8 +47,8 @@ const pool = require('../db');
 // POST /get_service_staff
 router.post('/', async (req, res) => {
     try {
-        // Extract service_id from request body
-        const { service_id } = req.body;
+        // Extract parameters from request body
+        const { service_id, staff_id } = req.body;
 
         // Validate service_id
         if (!service_id || isNaN(parseInt(service_id))) {
@@ -79,7 +80,7 @@ router.post('/', async (req, res) => {
         const businessId = serviceResult.rows[0].business_id;
 
         // Define the SQL query to get staff members for the service
-        const staffQuery = `
+        let staffQuery = `
             SELECT
                 ss.appuser_id AS staff_id,
                 ss.appuser_id,
@@ -101,12 +102,26 @@ router.post('/', async (req, res) => {
                 ss.service_id = $1
                 AND abr.business_id = $2
                 AND (abr.role = 'Staff' OR abr.role = 'business_owner') -- Include both staff and business owners
+        `;
+
+        // If staff_id is provided, add it to the filter
+        const queryParams = [service_id, businessId];
+        if (staff_id) {
+            console.log('Filtering by staff_id:', staff_id);
+            staffQuery += `
+                AND ss.appuser_id = $3
+            `;
+            queryParams.push(staff_id);
+        }
+
+        // Add ordering
+        staffQuery += `
             ORDER BY
                 u.first_name, u.last_name;
         `;
 
         // Execute the staff query
-        const staffResult = await pool.query(staffQuery, [service_id, businessId]);
+        const staffResult = await pool.query(staffQuery, queryParams);
 
         // Check if any staff members were found
         if (staffResult.rows.length === 0) {

@@ -130,6 +130,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
       final int serviceId = service['service_id'];
 
       // Call the API to get staff list
+      // We don't filter by staff ID here because we want to show all staff members
       final result = await GetServiceStaffApi.getServiceStaff(serviceId);
 
       // Hide loading indicator
