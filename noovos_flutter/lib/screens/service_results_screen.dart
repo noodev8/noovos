@@ -406,11 +406,11 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                               showDialog(
                                 context: context,
                                 builder: (context) => AlertDialog(
-                                  title: const Text('Cannot Add to Cart'),
+                                  title: const Text('Cannot Continue'),
                                   content: Text(
                                     'You already have services from ${CartHelper.getCurrentBusinessName() ?? 'another business'} in your cart. '
                                     'You can only book services from one business at a time.\n\n'
-                                    'Would you like to clear your cart and add this service instead?'
+                                    'Would you like to clear your cart and continue with this service instead?'
                                   ),
                                   actions: [
                                     TextButton(
@@ -431,7 +431,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                                       style: TextButton.styleFrom(
                                         foregroundColor: AppStyles.primaryColor,
                                       ),
-                                      child: const Text('Clear Cart & Add'),
+                                      child: const Text('Clear Cart & Continue'),
                                     ),
                                   ],
                                 ),
@@ -451,7 +451,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: const Text('Add to Cart'),
+                          child: const Text('Continue'),
                         ),
                 ),
               ],
