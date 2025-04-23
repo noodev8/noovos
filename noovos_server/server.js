@@ -35,7 +35,8 @@ const search_service = require('./routes/search_service');
 const create_booking_slot = require('./routes/create_booking_slot');
 const get_service = require('./routes/get_service');
 const get_service_staff = require('./routes/get_service_staff');
-const get_service_slot = require('./routes/get_service_slot');
+const get_service_slot_x1 = require('./routes/get_service_slot_x1');
+const get_service_slot_x2 = require('./routes/get_service_slot_x2');
 
 // Set up routes
 app.use('/login_user', login_user);
@@ -47,7 +48,8 @@ app.use('/search_service', search_service);
 app.use('/create_booking_slot', create_booking_slot);
 app.use('/get_service', get_service);
 app.use('/get_service_staff', get_service_staff);
-app.use('/get_service_slot', get_service_slot);
+app.use('/get_service_slot_x1', get_service_slot_x1);
+app.use('/get_service_slot_x2', get_service_slot_x2);
 
 // Root route
 app.get('/', (req, res) => {
