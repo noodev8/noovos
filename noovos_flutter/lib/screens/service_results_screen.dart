@@ -368,23 +368,13 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           // Price
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.attach_money,
-                                size: 16,
-                                color: AppStyles.secondaryTextColor,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                formattedPrice,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppStyles.primaryColor,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            formattedPrice,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppStyles.primaryColor,
+                            ),
                           ),
 
                           // Duration (if available)

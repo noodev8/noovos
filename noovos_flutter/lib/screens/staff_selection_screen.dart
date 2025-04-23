@@ -259,7 +259,6 @@ class _StaffSelectionScreenState extends State<StaffSelectionScreen> {
                 final String firstName = staff['first_name'] ?? '';
                 final String lastName = staff['last_name'] ?? '';
                 final String fullName = '$firstName $lastName'.trim();
-                final String role = staff['role'] ?? '';
                 final String? imageName = staff['image_name'];
                 final String? bio = staff['bio'];
 
@@ -268,7 +267,7 @@ class _StaffSelectionScreenState extends State<StaffSelectionScreen> {
                   child: _buildStaffOption(
                     staffId,
                     fullName,
-                    bio ?? role,
+                    bio ?? '',  // Changed from bio ?? role to just bio ?? ''
                     imageName,
                   ),
                 );
@@ -452,3 +451,4 @@ class _StaffSelectionScreenState extends State<StaffSelectionScreen> {
     );
   }
 }
+
