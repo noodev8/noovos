@@ -16,24 +16,25 @@ Success Response:
   "return_code": "SUCCESS",
   "staff": [
     {
-      "staff_id": 1,                  // integer - Unique staff ID
+      "staff_id": 10,                 // integer - ID of the app user who is a staff member
       "appuser_id": 10,               // integer - ID of the app user associated with this staff
       "first_name": "John",           // string - First name of the staff member
       "last_name": "Smith",           // string - Last name of the staff member
-      "role": "therapist",            // string - Role in the business
-      "image_name": "john.jpg",       // string - Image name of the staff member
-      "bio": "Experienced therapist...", // string - Biography of the staff member
+      "role": "Staff",                // string - Role in the business (Staff or business_owner)
+      "image_name": "john.jpg",       // string - Image name of the staff member (from media table)
+      "bio": null,                    // string or null - Biography of the staff member (if available)
       "is_active": true               // boolean - Whether the staff member is active
     },
     ...
   ]
 }
+
+Note: If no staff members are found for the service, an empty staff array is returned with SUCCESS return code.
 =======================================================================================================================================
 Return Codes:
 "SUCCESS"
 "MISSING_FIELDS"
 "SERVICE_NOT_FOUND"
-"NO_STAFF_FOUND"
 "SERVER_ERROR"
 =======================================================================================================================================
 */
@@ -80,24 +81,26 @@ router.post('/', async (req, res) => {
         // Define the SQL query to get staff members for the service
         const staffQuery = `
             SELECT
-                s.id AS staff_id,
-                s.appuser_id,
+                ss.appuser_id AS staff_id,
+                ss.appuser_id,
                 u.first_name,
                 u.last_name,
-                s.role,
-                s.image_name,
-                s.bio,
-                s.is_active
+                abr.role,
+                m.image_name,
+                NULL AS bio,
+                TRUE AS is_active
             FROM
-                staff s
+                service_staff ss
             JOIN
-                service_staff ss ON s.appuser_id = ss.appuser_id
+                app_user u ON ss.appuser_id = u.id
             JOIN
-                app_user u ON s.appuser_id = u.id
+                appuser_business_role abr ON ss.appuser_id = abr.appuser_id
+            LEFT JOIN
+                media m ON m.business_employee_id = ss.appuser_id AND m.position = 1
             WHERE
                 ss.service_id = $1
-                AND s.business_id = $2
-                AND s.is_active = true
+                AND abr.business_id = $2
+                AND (abr.role = 'Staff' OR abr.role = 'business_owner') -- Include both staff and business owners
             ORDER BY
                 u.first_name, u.last_name;
         `;
@@ -107,9 +110,10 @@ router.post('/', async (req, res) => {
 
         // Check if any staff members were found
         if (staffResult.rows.length === 0) {
-            return res.status(404).json({
-                return_code: "NO_STAFF_FOUND",
-                message: "No staff members found for this service"
+            // Return an empty array instead of an error
+            return res.status(200).json({
+                return_code: "SUCCESS",
+                staff: []
             });
         }
 
@@ -132,7 +136,7 @@ router.post('/', async (req, res) => {
         // Return error response
         return res.status(500).json({
             return_code: "SERVER_ERROR",
-            message: "An error occurred while retrieving staff details: " + error.message
+            message: "An error occurred while retrieving staff details. This may be due to recent database schema changes. Error: " + error.message
         });
     }
 });
