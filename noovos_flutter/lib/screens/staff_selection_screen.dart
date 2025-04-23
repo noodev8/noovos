@@ -117,11 +117,13 @@ class _StaffSelectionScreenState extends State<StaffSelectionScreen> {
             SnackBar(
               content: Text('${widget.serviceDetails['service_name']} added to cart'),
               duration: const Duration(seconds: 2),
-              // No action needed since we're already navigating to the cart
             ),
           );
 
-          // Navigate to cart screen while preserving the search results page in the stack
+          // Pop only the staff selection screen
+          Navigator.of(context).pop(); // Pop staff selection screen only
+          
+          // Navigate to cart screen while preserving the service results in stack
           Navigator.pushNamed(context, '/cart');
         }
       } else {
@@ -452,4 +454,6 @@ class _StaffSelectionScreenState extends State<StaffSelectionScreen> {
     );
   }
 }
+
+
 

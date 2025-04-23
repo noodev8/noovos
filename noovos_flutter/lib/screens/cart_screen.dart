@@ -60,7 +60,9 @@ class _CartScreenState extends State<CartScreen> {
               // Reload cart items
               if (mounted) {
                 Navigator.pop(context);
-                _loadCartItems();
+                setState(() {
+                  _cartItems = CartHelper.getCartItems();
+                });
               }
             },
             style: TextButton.styleFrom(
@@ -440,3 +442,4 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 }
+

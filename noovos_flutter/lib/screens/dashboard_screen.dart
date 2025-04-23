@@ -15,7 +15,9 @@ import '../helpers/image_helper.dart';
 import '../screens/service_results_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({
+    super.key,
+  });
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();

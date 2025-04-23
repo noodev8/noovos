@@ -189,3 +189,4 @@ class CartHelper {
     return _cartItems.any((item) => item.serviceId == serviceId);
   }
 }
+
