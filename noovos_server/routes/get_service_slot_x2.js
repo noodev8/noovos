@@ -3,7 +3,7 @@
 API Route: get_service_slot_x2
 =======================================================================================================================================
 Method: POST
-Purpose: Retrieves available back-to-back time slots for two different services.
+Purpose: Retrieves available back-to-back time slots for two different services in any order.
 Authentication: Not required - This endpoint is publicly accessible
 =======================================================================================================================================
 Request Payload:
@@ -43,22 +43,30 @@ Success Response:
       "currency": "GBP"
     }
   ],
+  "flexible_order": true,
   "combined_slots": [
     {
+      "order": "1-2",                     // string - Indicates service order: "1-2" (service 1 then 2) or "2-1" (service 2 then 1)
       "service_1": {
         "start_time": "09:00:00",
         "end_time": "10:00:00",
         "staff_id": 10,
-        "staff_name": "John Smith"
+        "staff_name": "John Smith",
+        "service_id": 7,
+        "service_name": "Deep Tissue Massage"
       },
       "service_2": {
         "start_time": "10:00:00",
         "end_time": "10:40:00",
         "staff_id": 15,
-        "staff_name": "Jane Doe"
+        "staff_name": "Jane Doe",
+        "service_id": 12,
+        "service_name": "Facial Treatment"
       },
       "total_duration": 100,
-      "handover_gap": 0
+      "handover_gap": 0,
+      "start_time": "09:00:00",         // string - Overall start time of the combined booking
+      "end_time": "10:40:00"            // string - Overall end time of the combined booking
     },
     ...
   ]
@@ -82,12 +90,12 @@ const pool = require('../db');
 router.post('/', async (req, res) => {
     try {
         // Extract parameters from request body
-        const { 
-            service_id_1, 
-            service_id_2, 
-            date, 
-            staff_id_1, 
-            staff_id_2, 
+        const {
+            service_id_1,
+            service_id_2,
+            date,
+            staff_id_1,
+            staff_id_2,
             time_preference,
             max_gap_minutes
         } = req.body;
@@ -129,20 +137,20 @@ router.post('/', async (req, res) => {
 
         // Check if services exist and get their details
         const servicesQuery = `
-            SELECT 
-                s.id, 
-                s.business_id, 
+            SELECT
+                s.id,
+                s.business_id,
                 s.service_name,
-                s.duration, 
+                s.duration,
                 s.buffer_time,
                 s.price,
                 s.currency,
                 b.name AS business_name
-            FROM 
+            FROM
                 service s
             JOIN
                 business b ON s.business_id = b.id
-            WHERE 
+            WHERE
                 s.id IN ($1, $2) AND s.active = true;
         `;
 
@@ -176,14 +184,14 @@ router.post('/', async (req, res) => {
         // Find staff members who can perform each service
         // For service 1
         let staffQuery1 = `
-            SELECT 
+            SELECT
                 ss.appuser_id AS staff_id,
                 CONCAT(au.first_name, ' ', au.last_name) AS staff_name
-            FROM 
+            FROM
                 service_staff ss
-            JOIN 
+            JOIN
                 app_user au ON ss.appuser_id = au.id
-            WHERE 
+            WHERE
                 ss.service_id = $1
         `;
 
@@ -197,14 +205,14 @@ router.post('/', async (req, res) => {
 
         // For service 2
         let staffQuery2 = `
-            SELECT 
+            SELECT
                 ss.appuser_id AS staff_id,
                 CONCAT(au.first_name, ' ', au.last_name) AS staff_name
-            FROM 
+            FROM
                 service_staff ss
-            JOIN 
+            JOIN
                 app_user au ON ss.appuser_id = au.id
-            WHERE 
+            WHERE
                 ss.service_id = $1
         `;
 
@@ -246,13 +254,13 @@ router.post('/', async (req, res) => {
 
         // Check which staff members are working on the requested date
         const rotaQuery = `
-            SELECT 
+            SELECT
                 sr.staff_id,
                 sr.start_time,
                 sr.end_time
-            FROM 
+            FROM
                 staff_rota sr
-            WHERE 
+            WHERE
                 sr.staff_id = ANY($1)
                 AND sr.rota_date = $2
         `;
@@ -273,13 +281,13 @@ router.post('/', async (req, res) => {
 
         // Check existing bookings for these staff members on the requested date
         const bookingsQuery = `
-            SELECT 
+            SELECT
                 b.staff_id,
                 b.start_time,
                 b.end_time
-            FROM 
+            FROM
                 booking b
-            WHERE 
+            WHERE
                 b.staff_id = ANY($1)
                 AND b.booking_date = $2
                 AND b.status != 'cancelled'
@@ -298,23 +306,23 @@ router.post('/', async (req, res) => {
         for (const staffId of staffIds1) {
             const staffWorkingHoursForStaff = staffWorkingHours.filter(wh => wh.staff_id === staffId);
             const staffName = staffMembers1.find(s => s.staff_id === staffId).staff_name;
-            
+
             for (const workingHour of staffWorkingHoursForStaff) {
                 // Get the start and end times of the working hours
                 const startTime = workingHour.start_time;
                 const endTime = workingHour.end_time;
-                
+
                 // Get the bookings for this staff member
                 const staffBookings = existingBookings.filter(b => b.staff_id === staffId);
-                
+
                 // Calculate available time slots
                 const slots = calculateAvailableSlots(
-                    startTime, 
-                    endTime, 
-                    staffBookings, 
+                    startTime,
+                    endTime,
+                    staffBookings,
                     totalDuration1
                 );
-                
+
                 // Add staff information to each slot
                 slots.forEach(slot => {
                     availableSlots1.push({
@@ -329,7 +337,7 @@ router.post('/', async (req, res) => {
 
         // Filter slots for service 1 based on time preference
         let filteredSlots1 = availableSlots1;
-        
+
         if (timeOfDay === "morning") {
             // Morning: slots starting before 12:00
             filteredSlots1 = availableSlots1.filter(slot => {
@@ -343,7 +351,7 @@ router.post('/', async (req, res) => {
                 return hour >= 12;
             });
         }
-        
+
         // Sort slots for service 1 by start time
         filteredSlots1.sort((a, b) => {
             return a.start_time.localeCompare(b.start_time);
@@ -352,13 +360,13 @@ router.post('/', async (req, res) => {
         // If no slots are available for service 1, return error
         if (filteredSlots1.length === 0) {
             let message = "No available slots found for the first service on the requested date";
-            
+
             if (timeOfDay === "morning") {
                 message = "No morning slots available for the first service on the requested date";
             } else if (timeOfDay === "afternoon") {
                 message = "No afternoon slots available for the first service on the requested date";
             }
-            
+
             return res.status(404).json({
                 return_code: "NO_SLOTS_AVAILABLE",
                 message: message
@@ -372,23 +380,23 @@ router.post('/', async (req, res) => {
         for (const staffId of staffIds2) {
             const staffWorkingHoursForStaff = staffWorkingHours.filter(wh => wh.staff_id === staffId);
             const staffName = staffMembers2.find(s => s.staff_id === staffId).staff_name;
-            
+
             for (const workingHour of staffWorkingHoursForStaff) {
                 // Get the start and end times of the working hours
                 const startTime = workingHour.start_time;
                 const endTime = workingHour.end_time;
-                
+
                 // Get the bookings for this staff member
                 const staffBookings = existingBookings.filter(b => b.staff_id === staffId);
-                
+
                 // Calculate available time slots
                 const slots = calculateAvailableSlots(
-                    startTime, 
-                    endTime, 
-                    staffBookings, 
+                    startTime,
+                    endTime,
+                    staffBookings,
                     totalDuration2
                 );
-                
+
                 // Add staff information to each slot
                 slots.forEach(slot => {
                     availableSlots2.push({
@@ -417,46 +425,117 @@ router.post('/', async (req, res) => {
         // Find combinations of slots that can be booked back-to-back
         const combinedSlots = [];
 
+        // OPTION 1: Service 1 followed by Service 2 (original order)
         // Check each slot for service 1
         for (const slot1 of filteredSlots1) {
             const slot1EndMinutes = timeToMinutes(slot1.end_time);
-            
+
             // Check each slot for service 2
             for (const slot2 of availableSlots2) {
                 const slot2StartMinutes = timeToMinutes(slot2.start_time);
-                
+
                 // Calculate the gap between the end of service 1 and start of service 2
                 const gapMinutes = slot2StartMinutes - slot1EndMinutes;
-                
+
                 // Check if the gap is within the allowed range (0 to maxGapMinutes)
                 if (gapMinutes >= 0 && gapMinutes <= maxGapMinutes) {
                     // Calculate total duration including both services and the gap
                     const totalDuration = totalDuration1 + totalDuration2 + gapMinutes;
-                    
+
                     // Add to combined slots
                     combinedSlots.push({
+                        order: "1-2",  // Indicates service 1 followed by service 2
                         service_1: {
                             start_time: slot1.start_time,
                             end_time: slot1.end_time,
                             staff_id: slot1.staff_id,
-                            staff_name: slot1.staff_name
+                            staff_name: slot1.staff_name,
+                            service_id: service1.id,
+                            service_name: service1.service_name
                         },
                         service_2: {
                             start_time: slot2.start_time,
                             end_time: slot2.end_time,
                             staff_id: slot2.staff_id,
-                            staff_name: slot2.staff_name
+                            staff_name: slot2.staff_name,
+                            service_id: service2.id,
+                            service_name: service2.service_name
                         },
                         total_duration: totalDuration,
-                        handover_gap: gapMinutes
+                        handover_gap: gapMinutes,
+                        start_time: slot1.start_time,  // For sorting purposes
+                        end_time: slot2.end_time       // For sorting purposes
                     });
                 }
             }
         }
 
-        // Sort combined slots by start time of service 1
+        // OPTION 2: Service 2 followed by Service 1 (reverse order)
+        // We need to get slots for service 2 that match the time preference
+        let filteredSlots2 = availableSlots2;
+
+        // Apply time preference to service 2 slots when checking reverse order
+        if (timeOfDay === "morning") {
+            // Morning: slots starting before 12:00
+            filteredSlots2 = availableSlots2.filter(slot => {
+                const hour = parseInt(slot.start_time.split(':')[0]);
+                return hour < 12;
+            });
+        } else if (timeOfDay === "afternoon") {
+            // Afternoon: slots starting at or after 12:00
+            filteredSlots2 = availableSlots2.filter(slot => {
+                const hour = parseInt(slot.start_time.split(':')[0]);
+                return hour >= 12;
+            });
+        }
+
+        // Check each slot for service 2 (now as the first service)
+        for (const slot2 of filteredSlots2) {
+            const slot2EndMinutes = timeToMinutes(slot2.end_time);
+
+            // Check each slot for service 1 (now as the second service)
+            for (const slot1 of availableSlots1) {
+                const slot1StartMinutes = timeToMinutes(slot1.start_time);
+
+                // Calculate the gap between the end of service 2 and start of service 1
+                const gapMinutes = slot1StartMinutes - slot2EndMinutes;
+
+                // Check if the gap is within the allowed range (0 to maxGapMinutes)
+                if (gapMinutes >= 0 && gapMinutes <= maxGapMinutes) {
+                    // Calculate total duration including both services and the gap
+                    const totalDuration = totalDuration1 + totalDuration2 + gapMinutes;
+
+                    // Add to combined slots
+                    combinedSlots.push({
+                        order: "2-1",  // Indicates service 2 followed by service 1
+                        service_1: {
+                            start_time: slot2.start_time,
+                            end_time: slot2.end_time,
+                            staff_id: slot2.staff_id,
+                            staff_name: slot2.staff_name,
+                            service_id: service2.id,
+                            service_name: service2.service_name
+                        },
+                        service_2: {
+                            start_time: slot1.start_time,
+                            end_time: slot1.end_time,
+                            staff_id: slot1.staff_id,
+                            staff_name: slot1.staff_name,
+                            service_id: service1.id,
+                            service_name: service1.service_name
+                        },
+                        total_duration: totalDuration,
+                        handover_gap: gapMinutes,
+                        start_time: slot2.start_time,  // For sorting purposes
+                        end_time: slot1.end_time       // For sorting purposes
+                    });
+                }
+            }
+        }
+
+        // Sort combined slots by start time (regardless of which service comes first)
         combinedSlots.sort((a, b) => {
-            return a.service_1.start_time.localeCompare(b.service_1.start_time);
+            return a.start_time.localeCompare(b.start_time);
         });
 
         // Return only the first 3 combined slots
@@ -496,7 +575,8 @@ router.post('/', async (req, res) => {
                     currency: service2.currency
                 }
             ],
-            combined_slots: limitedCombinedSlots
+            combined_slots: limitedCombinedSlots,
+            flexible_order: true  // Indicates that the API checked both service orders
         });
 
     } catch (error) {
@@ -519,7 +599,7 @@ router.post('/', async (req, res) => {
 
 /**
  * Calculate available time slots based on working hours and existing bookings
- * 
+ *
  * @param {string} startTime - Start time of working hours (HH:MM:SS)
  * @param {string} endTime - End time of working hours (HH:MM:SS)
  * @param {Array} bookings - Array of existing bookings with start_time and end_time
@@ -530,20 +610,20 @@ function calculateAvailableSlots(startTime, endTime, bookings, duration) {
     // Convert times to minutes for easier calculation
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
-    
+
     // Convert bookings to minutes
     const bookingRanges = bookings.map(booking => ({
         start: timeToMinutes(booking.start_time),
         end: timeToMinutes(booking.end_time)
     }));
-    
+
     // Sort bookings by start time
     bookingRanges.sort((a, b) => a.start - b.start);
-    
+
     // Find available time ranges
     const availableRanges = [];
     let currentStart = startMinutes;
-    
+
     // Process each booking to find gaps
     for (const booking of bookingRanges) {
         // If there's a gap before this booking, add it to available ranges
@@ -553,11 +633,11 @@ function calculateAvailableSlots(startTime, endTime, bookings, duration) {
                 end: booking.start
             });
         }
-        
+
         // Move current start to the end of this booking
         currentStart = booking.end;
     }
-    
+
     // Check if there's available time after the last booking
     if (endMinutes - currentStart >= duration) {
         availableRanges.push({
@@ -565,43 +645,43 @@ function calculateAvailableSlots(startTime, endTime, bookings, duration) {
             end: endMinutes
         });
     }
-    
+
     // Convert available ranges to slots based on service duration
     const slots = [];
-    
+
     // Use a standard interval for slot start times (e.g., every 15 or 30 minutes)
     // This makes the schedule more predictable and user-friendly
     const slotInterval = 15; // 15-minute intervals for slot start times
-    
+
     for (const range of availableRanges) {
         const rangeStart = range.start;
         const rangeEnd = range.end;
-        
+
         // Round the start time to the nearest slot interval
         // This ensures slots start at predictable times (e.g., 9:00, 9:15, 9:30)
         let slotStart = Math.ceil(rangeStart / slotInterval) * slotInterval;
-        
+
         // Create slots that fit within this range
         while (slotStart + duration <= rangeEnd) {
             // Calculate the exact end time based on the service duration
             const slotEnd = slotStart + duration;
-            
+
             slots.push({
                 start_time: minutesToTime(slotStart),
                 end_time: minutesToTime(slotEnd)
             });
-            
+
             // Move to the next potential slot start time
             slotStart += slotInterval;
         }
     }
-    
+
     return slots;
 }
 
 /**
  * Convert time string (HH:MM:SS) to minutes
- * 
+ *
  * @param {string} timeStr - Time string in HH:MM:SS format
  * @returns {number} - Time in minutes
  */
@@ -612,7 +692,7 @@ function timeToMinutes(timeStr) {
 
 /**
  * Convert minutes to time string (HH:MM:SS)
- * 
+ *
  * @param {number} minutes - Time in minutes
  * @returns {string} - Time string in HH:MM:SS format
  */
@@ -624,7 +704,7 @@ function minutesToTime(minutes) {
 
 /**
  * Validate date string format (YYYY-MM-DD)
- * 
+ *
  * @param {string} dateStr - Date string to validate
  * @returns {boolean} - True if valid, false otherwise
  */
@@ -632,12 +712,12 @@ function isValidDate(dateStr) {
     // Check if the string matches the YYYY-MM-DD format
     const regex = /^\d{4}-\d{2}-\d{2}$/;
     if (!regex.test(dateStr)) return false;
-    
+
     // Check if it's a valid date
     const date = new Date(dateStr);
     const timestamp = date.getTime();
     if (isNaN(timestamp)) return false;
-    
+
     // Check if the date parts match the input
     return date.toISOString().slice(0, 10) === dateStr;
 }
