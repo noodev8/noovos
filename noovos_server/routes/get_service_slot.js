@@ -10,7 +10,8 @@ Request Payload:
 {
   "service_id": 7,                     // integer, required - ID of the service to find slots for
   "date": "2025-05-04",                // string, required - Date to find slots for (YYYY-MM-DD format)
-  "staff_id": 10                       // integer, optional - ID of the specific staff member to check
+  "staff_id": 10,                      // integer, optional - ID of the specific staff member to check
+  "time_preference": "morning"         // string, optional - Preferred time of day: "morning", "afternoon", or "any" (default: "any")
 }
 
 Success Response:
@@ -26,6 +27,7 @@ Success Response:
     "price": 75.00,                   // decimal - Service price
     "currency": "GBP"                  // string - Currency code
   },
+  "time_preference": "morning",        // string - The time preference used for filtering ("morning", "afternoon", or "any")
   "slots": [
     {
       "start_time": "09:00:00",        // string - Start time of the slot (HH:MM:SS format)
@@ -40,6 +42,7 @@ Success Response:
 Return Codes:
 "SUCCESS"
 "MISSING_FIELDS"
+"INVALID_PARAMETERS"
 "SERVICE_NOT_FOUND"
 "NO_SLOTS_AVAILABLE"
 "SERVER_ERROR"
@@ -54,7 +57,18 @@ const pool = require('../db');
 router.post('/', async (req, res) => {
     try {
         // Extract parameters from request body
-        const { service_id, date, staff_id } = req.body;
+        const { service_id, date, staff_id, time_preference } = req.body;
+
+        // Set default time preference to "any" if not provided
+        const timeOfDay = time_preference ? time_preference.toLowerCase() : "any";
+
+        // Validate time preference if provided
+        if (timeOfDay !== "any" && timeOfDay !== "morning" && timeOfDay !== "afternoon") {
+            return res.status(400).json({
+                return_code: "INVALID_PARAMETERS",
+                message: "Time preference must be 'morning', 'afternoon', or 'any'"
+            });
+        }
 
         // Validate required parameters
         if (!service_id || isNaN(parseInt(service_id))) {
@@ -225,19 +239,45 @@ router.post('/', async (req, res) => {
             });
         }
 
+        // Filter slots based on time preference
+        let filteredSlots = availableSlots;
+
+        if (timeOfDay === "morning") {
+            // Morning: slots starting before 12:00
+            filteredSlots = availableSlots.filter(slot => {
+                const hour = parseInt(slot.start_time.split(':')[0]);
+                return hour < 12;
+            });
+        } else if (timeOfDay === "afternoon") {
+            // Afternoon: slots starting at or after 12:00
+            filteredSlots = availableSlots.filter(slot => {
+                const hour = parseInt(slot.start_time.split(':')[0]);
+                return hour >= 12;
+            });
+        }
+
         // Sort slots by start time
-        availableSlots.sort((a, b) => {
+        filteredSlots.sort((a, b) => {
             return a.start_time.localeCompare(b.start_time);
         });
 
         // Return only the first 3 available slots
-        const limitedSlots = availableSlots.slice(0, 3);
+        const limitedSlots = filteredSlots.slice(0, 3);
 
-        // If no slots are available, return error
+        // If no slots are available, return error with appropriate message
         if (limitedSlots.length === 0) {
+            let message = "No available slots found for the requested date";
+
+            // Add more specific message based on time preference
+            if (timeOfDay === "morning") {
+                message = "No morning slots available for the requested date";
+            } else if (timeOfDay === "afternoon") {
+                message = "No afternoon slots available for the requested date";
+            }
+
             return res.status(404).json({
                 return_code: "NO_SLOTS_AVAILABLE",
-                message: "No available slots found for the requested date"
+                message: message
             });
         }
 
@@ -254,6 +294,7 @@ router.post('/', async (req, res) => {
                 price: service.price,
                 currency: service.currency
             },
+            time_preference: timeOfDay,
             slots: limitedSlots
         });
 
