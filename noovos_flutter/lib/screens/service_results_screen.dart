@@ -7,7 +7,6 @@ Users can view service details and select a service to book
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 import '../api/search_service_api.dart';
-import '../api/get_service_staff_api.dart';
 import '../helpers/image_helper.dart';
 import '../helpers/cart_helper.dart';
 import 'service_details_screen.dart';
@@ -118,119 +117,18 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
     }
   }
 
-  // Check if the service has staff members
-  void _checkServiceStaff(Map<String, dynamic> service) async {
-    // Show loading indicator
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Get service ID
-      final int serviceId = service['service_id'];
-
-      // Call the API to get staff list
-      // We don't filter by staff ID here because we want to show all staff members
-      final result = await GetServiceStaffApi.getServiceStaff(serviceId);
-
-      // Hide loading indicator
-      setState(() {
-        _isLoading = false;
-      });
-
-      // Check if the request was successful
-      if (result['success']) {
-        final data = result['data'];
-        final staffList = data['staff'] as List<dynamic>;
-
-        if (staffList.isEmpty) {
-          // If there are no staff members, add to cart directly with 'Any Staff'
-          _addToCartWithAnyStaff(service);
-        } else {
-          // If there are staff members, navigate to staff selection screen
-          if (mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => StaffSelectionScreen(
-                  serviceDetails: service,
-                ),
-              ),
-            ).then((result) {
-              // Refresh the UI when returning from staff selection screen
-              if (mounted) {
-                setState(() {});
-              }
-            });
-          }
-        }
-      } else {
-        // If the request failed, add to cart directly with 'Any Staff'
-        _addToCartWithAnyStaff(service);
-      }
-    } catch (e) {
-      // If there was an error, add to cart directly with 'Any Staff'
-      setState(() {
-        _isLoading = false;
-      });
-      _addToCartWithAnyStaff(service);
-    }
-  }
-
-  // Add service to cart with 'Any Staff'
-  void _addToCartWithAnyStaff(Map<String, dynamic> service) {
-    // Extract service data
-    final serviceId = service['service_id'] ?? 0;
-    final serviceName = service['service_name'] ?? 'Unknown Service';
-    final businessId = service['business_id'] ?? 0;
-    final businessName = service['business_name'] ?? 'Unknown Business';
-    final serviceImage = service['service_image'];
-
-    // Handle price/cost which might be a string or a number
-    var priceValue = service['cost'] ?? 0.0;
-    // Convert to double if it's a string
-    final double price = priceValue is String ? double.tryParse(priceValue) ?? 0.0 : priceValue.toDouble();
-
-    final duration = service['duration'] ?? 0; // This might be null for search results
-
-    // Create cart item with 'Any Staff'
-    final cartItem = CartItem(
-      serviceId: serviceId,
-      serviceName: serviceName,
-      businessId: businessId,
-      businessName: businessName,
-      price: price,
-      serviceImage: serviceImage,
-      duration: duration,
-      staffId: null, // Any staff
-      staffName: null, // Any staff
-    );
-
-    // Add to cart
-    CartHelper.addToCart(cartItem).then((success) {
-      if (success && mounted) {
-        // Update state
+  // Navigate directly to staff selection screen
+  void _checkServiceStaff(Map<String, dynamic> service) {
+    // Navigate directly to staff selection screen with a material page route
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => StaffSelectionScreen(
+          serviceDetails: service,
+        ),
+      ),
+    ).then((_) {
+      if (mounted) {
         setState(() {});
-
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$serviceName added to cart'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-
-        // Navigate to cart screen while preserving the search results page in the stack
-        Navigator.pushNamed(context, '/cart');
-      } else if (mounted) {
-        // Show error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to add service to cart'),
-            duration: Duration(seconds: 2),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     });
   }
@@ -473,7 +371,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                           onPressed: () async {
                             // Remove from cart
                             await CartHelper.removeFromCart(serviceId);
-                            
+
                             if (mounted) {
                               setState(() {
                                 // Force refresh of cart status

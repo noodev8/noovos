@@ -5,9 +5,9 @@ This screen allows users to select a staff member for a service or choose "Any S
 
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
-import '../api/get_service_staff_api.dart';
 import '../helpers/image_helper.dart';
 import '../helpers/cart_helper.dart';
+import '../api/get_service_staff_api.dart';
 
 class StaffSelectionScreen extends StatefulWidget {
   // Service details to add to cart
@@ -59,8 +59,9 @@ class _StaffSelectionScreenState extends State<StaffSelectionScreen> {
       final int serviceId = widget.serviceDetails['service_id'] ?? 0;
 
       // Call the API to get staff list
-      // We don't filter by staff ID here because we want to show all staff members
       final result = await GetServiceStaffApi.getServiceStaff(serviceId);
+
+      if (!mounted) return;
 
       // Check if the request was successful
       if (result['success']) {
@@ -74,11 +75,13 @@ class _StaffSelectionScreenState extends State<StaffSelectionScreen> {
       } else {
         // Handle error
         setState(() {
-          _errorMessage = result['message'];
+          _errorMessage = result['message'] ?? 'Failed to load staff list';
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
+
       // Handle error
       setState(() {
         _errorMessage = 'An error occurred: $e';
@@ -120,11 +123,8 @@ class _StaffSelectionScreenState extends State<StaffSelectionScreen> {
             ),
           );
 
-          // Pop only the staff selection screen
-          Navigator.of(context).pop(); // Pop staff selection screen only
-          
-          // Navigate to cart screen while preserving the service results in stack
-          Navigator.pushNamed(context, '/cart');
+          // Navigate to cart screen and replace the current screen
+          Navigator.of(context).pushReplacementNamed('/cart');
         }
       } else {
         // Show error message
@@ -142,22 +142,35 @@ class _StaffSelectionScreenState extends State<StaffSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Staff'),
-        backgroundColor: AppStyles.primaryColor,
-        foregroundColor: Colors.white,
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Select Staff'),
+          backgroundColor: AppStyles.primaryColor,
+          foregroundColor: Colors.white,
+        ),
+        body: _errorMessage != null
+            ? _buildErrorView()
+            : Stack(
+                children: [
+                  // Always show the staff list UI (even when loading)
+                  _buildStaffList(),
+
+                  // Show loading overlay when loading
+                  if (_isLoading)
+                    Container(
+                      color: Colors.white.withAlpha(178), // 0.7 opacity = 178/255
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                ],
+              ),
+        bottomNavigationBar: _isLoading || _errorMessage != null
+            ? null
+            : _buildBottomBar(),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : _errorMessage != null
-              ? _buildErrorView()
-              : _buildStaffList(),
-      bottomNavigationBar: _isLoading || _errorMessage != null
-          ? null
-          : _buildBottomBar(),
     );
   }
 

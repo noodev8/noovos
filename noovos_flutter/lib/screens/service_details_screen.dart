@@ -145,14 +145,10 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     });
 
     try {
-      // Get service ID
-      final int serviceId = _serviceDetails!['service_id'];
+      final result = await GetServiceStaffApi.getServiceStaff(_serviceDetails!['service_id']);
 
-      // Call the API to get staff list
-      // We don't filter by staff ID here because we want to show all staff members
-      final result = await GetServiceStaffApi.getServiceStaff(serviceId);
+      if (!mounted) return;
 
-      // Hide loading indicator
       setState(() {
         _isLoading = false;
       });
@@ -176,22 +172,22 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                 ),
               ),
             ).then((_) {
-              // Check if the service is in the cart after returning from the staff selection screen
+              // Check if the service is in the cart after returning
               if (mounted) {
                 setState(() {
                   _isInCart = CartHelper.isInCart(widget.serviceId);
-                  _canAddToCart = true; // We just added it, so it's compatible
+                  _canAddToCart = true;
                 });
               }
             });
           }
         }
       } else {
-        // If the request failed, add to cart directly with 'Any Staff'
         _addToCartWithAnyStaff();
       }
     } catch (e) {
-      // If there was an error, add to cart directly with 'Any Staff'
+      if (!mounted) return;
+      
       setState(() {
         _isLoading = false;
       });
@@ -216,20 +212,18 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           : 0.0,
       serviceImage: _serviceDetails!['service_image'],
       duration: _serviceDetails!['duration'],
-      staffId: null, // Any staff
-      staffName: null, // Any staff
+      staffId: null,
+      staffName: null,
     );
 
     // Add to cart
     CartHelper.addToCart(cartItem).then((success) {
       if (success && mounted) {
-        // Update state
         setState(() {
           _isInCart = true;
-          _canAddToCart = true; // We just added it, so it's compatible
+          _canAddToCart = true;
         });
 
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${_serviceDetails!['service_name']} added to cart'),
@@ -237,10 +231,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           ),
         );
 
-        // Navigate to cart screen
-        Navigator.pushNamed(context, '/cart');
+        // Navigate directly to cart screen without animation
+        Navigator.pushReplacementNamed(context, '/cart');
       } else if (mounted) {
-        // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Failed to add service to cart'),
@@ -719,4 +712,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
   }
 }
+
+
+
+
 
