@@ -14,7 +14,6 @@ Request Payload:
   "staff_id_1": 10,                    // integer, optional - Preferred staff for first service
   "staff_id_2": 15,                    // integer, optional - Preferred staff for second service
   "time_preference": "morning",        // string, optional - Preferred time of day for first service: "morning", "afternoon", or "any" (default: "any")
-  "max_gap_minutes": 30                // integer, optional - Maximum gap between services in minutes (default: 30)
 }
 
 Success Response:
@@ -102,7 +101,7 @@ router.post('/', async (req, res) => {
 
         // Set default values
         const timeOfDay = time_preference ? time_preference.toLowerCase() : "any";
-        const maxGapMinutes = max_gap_minutes !== undefined ? max_gap_minutes : 30;
+        // Note: max_gap_minutes is now hardcoded to 30 minutes in the SQL query
 
         // Validate time preference if provided
         if (timeOfDay !== "any" && timeOfDay !== "morning" && timeOfDay !== "afternoon") {
@@ -127,13 +126,7 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Validate max_gap_minutes if provided
-        if (maxGapMinutes < 0 || maxGapMinutes > 120) {
-            return res.status(400).json({
-                return_code: "INVALID_PARAMETERS",
-                message: "max_gap_minutes must be between 0 and 120"
-            });
-        }
+        // Note: max_gap_minutes is now hardcoded to 30 minutes in the SQL query
 
         // Check if services exist and get their details
         const servicesQuery = `
@@ -243,311 +236,268 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Get the list of staff IDs for each service
+        // Get staff information for display
         const staffMembers1 = staffResult1.rows;
         const staffMembers2 = staffResult2.rows;
-        const staffIds1 = staffMembers1.map(staff => staff.staff_id);
-        const staffIds2 = staffMembers2.map(staff => staff.staff_id);
 
-        // Get all unique staff IDs
-        const allStaffIds = [...new Set([...staffIds1, ...staffIds2])];
+        // Use the optimized SQL query to find available slots for both services
+        const availableSlotsQuery = `
+        WITH
+          -- 1) Define your two services
+          service_input(ord, service_id, duration_min, staff_id_pref) AS (
+            VALUES
+              (1, $1::integer, $2::integer, $3::integer),
+              (2, $4::integer, $5::integer, $6::integer)
+          ),
 
-        // Check which staff members are working on the requested date
-        const rotaQuery = `
+          -- 2) Which staff can do each
+          service_opts1 AS (
+            SELECT ss.appuser_id AS s1_staff, si.duration_min AS duration1
+            FROM service_input si
+            JOIN service_staff ss ON ss.service_id = si.service_id
+            WHERE si.ord = 1
+              AND (si.staff_id_pref IS NULL OR ss.appuser_id = si.staff_id_pref)
+          ),
+          service_opts2 AS (
+            SELECT ss.appuser_id AS s2_staff, si.duration_min AS duration2
+            FROM service_input si
+            JOIN service_staff ss ON ss.service_id = si.service_id
+            WHERE si.ord = 2
+              AND (si.staff_id_pref IS NULL OR ss.appuser_id = si.staff_id_pref)
+          ),
+
+          -- 3) Build each staff member's free intervals once
+          staff_busyness AS (
             SELECT
-                sr.staff_id,
-                sr.start_time,
-                sr.end_time
-            FROM
-                staff_rota sr
+              staff_id,
+              (rota_date + start_time)::timestamp AS busy_start,
+              (rota_date + end_time)::timestamp AS busy_end
+            FROM staff_rota
+            WHERE rota_date = $7
+          ),
+          staff_bookings AS (
+            SELECT
+              staff_id,
+              (booking_date + start_time)::timestamp AS b_start,
+              (booking_date + end_time)::timestamp AS b_end
+            FROM booking
+            WHERE booking_date = $7
+              AND status != 'cancelled'
+          ),
+          staff_free AS (
+            SELECT
+              sb.staff_id,
+              slot.free_start,
+              slot.free_end
+            FROM staff_busyness sb
+            LEFT JOIN LATERAL (
+              SELECT
+                pts[idx]   AS free_start,
+                pts[idx+1] AS free_end
+              FROM (
+                SELECT array_agg(ts ORDER BY ts) AS pts
+                FROM (
+                  SELECT busy_start AS ts FROM staff_busyness   WHERE staff_id = sb.staff_id
+                  UNION ALL
+                  SELECT busy_end   AS ts FROM staff_busyness   WHERE staff_id = sb.staff_id
+                  UNION ALL
+                  SELECT b_start    AS ts FROM staff_bookings   WHERE staff_id = sb.staff_id
+                  UNION ALL
+                  SELECT b_end      AS ts FROM staff_bookings   WHERE staff_id = sb.staff_id
+                ) AS all_ts
+              ) AS arr,
+              generate_series(1, array_length(arr.pts,1)-1) AS idx
+            ) AS slot ON slot.free_start < slot.free_end
+          ),
+
+          -- 4) 15-minute grid slots for Service 1
+          service1_slots AS (
+            SELECT
+              o1.s1_staff,
+              gs AS s1_start,
+              o1.duration1
+            FROM service_opts1 o1
+            JOIN staff_free fs ON fs.staff_id = o1.s1_staff
+            CROSS JOIN LATERAL (
+              SELECT generate_series(
+                -- round UP to next quarter hour
+                date_trunc('hour', fs.free_start)
+                  + CEIL(date_part('minute', fs.free_start)::numeric/15)
+                    * INTERVAL '15 minute',
+                -- last viable start
+                (fs.free_end - (o1.duration1 * INTERVAL '1 minute')),
+                INTERVAL '15 minute'
+              ) AS gs
+            ) AS minutes
+          ),
+
+          -- 5) Apply time preference filter if specified
+          service1_pref AS (
+            SELECT * FROM service1_slots
             WHERE
-                sr.staff_id = ANY($1)
-                AND sr.rota_date = $2
+              CASE
+                WHEN $8 = 'morning' THEN s1_start::time < '12:00'
+                WHEN $8 = 'afternoon' THEN s1_start::time >= '12:00'
+                ELSE TRUE -- 'any' time preference
+              END
+          ),
+
+          -- 6) Chain to Service 2, never before s1_end
+          chain2 AS (
+            SELECT
+              s1.s1_staff,
+              s1.s1_start,
+              (s1.s1_start + (s1.duration1 * INTERVAL '1 minute')) AS s1_end,
+              o2.s2_staff,
+
+              COALESCE(
+                -- perfect back-to-back
+                (
+                  SELECT (s1.s1_start + (s1.duration1 * INTERVAL '1 minute'))
+                  FROM staff_free f2
+                  WHERE f2.staff_id = o2.s2_staff
+                    AND f2.free_start <= (s1.s1_start + (s1.duration1 * INTERVAL '1 minute'))
+                    AND f2.free_end >= (s1.s1_start + (s1.duration1 * INTERVAL '1 minute'))
+                                    + (o2.duration2 * INTERVAL '1 minute')
+                  LIMIT 1
+                ),
+                -- otherwise next block ≥ s1_end
+                (
+                  SELECT MIN(f2.free_start)
+                  FROM staff_free f2
+                  WHERE f2.staff_id = o2.s2_staff
+                    AND (f2.free_end - f2.free_start) >= (o2.duration2 * INTERVAL '1 minute')
+                    AND f2.free_start >= (s1.s1_start + (s1.duration1 * INTERVAL '1 minute'))
+                    -- Add max gap constraint (30 minutes)
+                    AND (f2.free_start - (s1.s1_start + (s1.duration1 * INTERVAL '1 minute'))) <= (INTERVAL '30 minutes')
+                )
+              ) AS s2_start,
+
+              o2.duration2
+            FROM service1_pref s1
+            CROSS JOIN service_opts2 o2
+          )
+
+        -- 7) Final: sort by earliest s1_start, then tightness
+        SELECT
+          ROW_NUMBER() OVER (ORDER BY s1_start, span_diff) AS rank,
+          s1_staff,
+          s1_start,
+          s1_end,
+          s2_staff,
+          s2_start,
+          (s2_start + (duration2 * INTERVAL '1 minute')) AS s2_end,
+          -- span in minutes
+          EXTRACT(
+            EPOCH FROM (
+              (s2_start + (duration2 * INTERVAL '1 minute'))
+              - s1_start
+            )
+          )/60 AS span_minutes
+        FROM (
+          SELECT *,
+            ((s2_start + (duration2 * INTERVAL '1 minute')) - s1_start)
+              AS span_diff
+          FROM chain2
+        ) AS t
+        ORDER BY s1_start, span_diff
+        LIMIT 3;
         `;
 
-        // Execute the rota query
-        const rotaResult = await pool.query(rotaQuery, [allStaffIds, date]);
+        // Set up query parameters
+        const queryParams = [
+            service_id_1,                  // $1: First service ID
+            totalDuration1,                // $2: First service duration (including buffer)
+            staff_id_1 || null,            // $3: Preferred staff for first service (or null)
+            service_id_2,                  // $4: Second service ID
+            totalDuration2,                // $5: Second service duration (including buffer)
+            staff_id_2 || null,            // $6: Preferred staff for second service (or null)
+            date,                          // $7: Date to find slots for
+            timeOfDay                      // $8: Time preference (morning, afternoon, any)
+        ];
 
-        // If no staff members are working on the requested date, return error
-        if (rotaResult.rows.length === 0) {
+        // Execute the query to get available slots
+        const availableSlotsResult = await pool.query(availableSlotsQuery, queryParams);
+
+        // If no slots are found, return appropriate message
+        if (availableSlotsResult.rows.length === 0) {
             return res.status(404).json({
                 return_code: "NO_SLOTS_AVAILABLE",
-                message: "No staff members are working on the requested date"
+                message: "No available slots found for the selected services, date, and time preference"
             });
         }
 
-        // Get the working hours for each staff member
-        const staffWorkingHours = rotaResult.rows;
-
-        // Check existing bookings for these staff members on the requested date
-        const bookingsQuery = `
+        // Get staff information for display
+        const staffInfoQuery = `
             SELECT
-                b.staff_id,
-                b.start_time,
-                b.end_time
+                au.id AS staff_id,
+                CONCAT(au.first_name, ' ', au.last_name) AS staff_name
             FROM
-                booking b
+                app_user au
             WHERE
-                b.staff_id = ANY($1)
-                AND b.booking_date = $2
-                AND b.status != 'cancelled'
+                au.id = ANY($1);
         `;
 
-        // Execute the bookings query
-        const bookingsResult = await pool.query(bookingsQuery, [allStaffIds, date]);
-
-        // Get the existing bookings
-        const existingBookings = bookingsResult.rows;
-
-        // Calculate available slots for each staff member for service 1
-        const availableSlots1 = [];
-
-        // Process each staff member's working hours for service 1
-        for (const staffId of staffIds1) {
-            const staffWorkingHoursForStaff = staffWorkingHours.filter(wh => wh.staff_id === staffId);
-            const staffName = staffMembers1.find(s => s.staff_id === staffId).staff_name;
-
-            for (const workingHour of staffWorkingHoursForStaff) {
-                // Get the start and end times of the working hours
-                const startTime = workingHour.start_time;
-                const endTime = workingHour.end_time;
-
-                // Get the bookings for this staff member
-                const staffBookings = existingBookings.filter(b => b.staff_id === staffId);
-
-                // Calculate available time slots
-                const slots = calculateAvailableSlots(
-                    startTime,
-                    endTime,
-                    staffBookings,
-                    totalDuration1
-                );
-
-                // Add staff information to each slot
-                slots.forEach(slot => {
-                    availableSlots1.push({
-                        start_time: slot.start_time,
-                        end_time: slot.end_time,
-                        staff_id: staffId,
-                        staff_name: staffName
-                    });
-                });
+        // Extract all staff IDs from the results
+        const staffIds = [];
+        availableSlotsResult.rows.forEach(row => {
+            if (row.s1_staff && !staffIds.includes(row.s1_staff)) {
+                staffIds.push(row.s1_staff);
             }
-        }
-
-        // Filter slots for service 1 based on time preference
-        let filteredSlots1 = availableSlots1;
-
-        if (timeOfDay === "morning") {
-            // Morning: slots starting before 12:00
-            filteredSlots1 = availableSlots1.filter(slot => {
-                const hour = parseInt(slot.start_time.split(':')[0]);
-                return hour < 12;
-            });
-        } else if (timeOfDay === "afternoon") {
-            // Afternoon: slots starting at or after 12:00
-            filteredSlots1 = availableSlots1.filter(slot => {
-                const hour = parseInt(slot.start_time.split(':')[0]);
-                return hour >= 12;
-            });
-        }
-
-        // Sort slots for service 1 by start time
-        filteredSlots1.sort((a, b) => {
-            return a.start_time.localeCompare(b.start_time);
+            if (row.s2_staff && !staffIds.includes(row.s2_staff)) {
+                staffIds.push(row.s2_staff);
+            }
         });
 
-        // If no slots are available for service 1, return error
-        if (filteredSlots1.length === 0) {
-            let message = "No available slots found for the first service on the requested date";
+        // Get staff names
+        const staffInfoResult = await pool.query(staffInfoQuery, [staffIds]);
 
-            if (timeOfDay === "morning") {
-                message = "No morning slots available for the first service on the requested date";
-            } else if (timeOfDay === "afternoon") {
-                message = "No afternoon slots available for the first service on the requested date";
-            }
-
-            return res.status(404).json({
-                return_code: "NO_SLOTS_AVAILABLE",
-                message: message
-            });
-        }
-
-        // Calculate available slots for each staff member for service 2
-        const availableSlots2 = [];
-
-        // Process each staff member's working hours for service 2
-        for (const staffId of staffIds2) {
-            const staffWorkingHoursForStaff = staffWorkingHours.filter(wh => wh.staff_id === staffId);
-            const staffName = staffMembers2.find(s => s.staff_id === staffId).staff_name;
-
-            for (const workingHour of staffWorkingHoursForStaff) {
-                // Get the start and end times of the working hours
-                const startTime = workingHour.start_time;
-                const endTime = workingHour.end_time;
-
-                // Get the bookings for this staff member
-                const staffBookings = existingBookings.filter(b => b.staff_id === staffId);
-
-                // Calculate available time slots
-                const slots = calculateAvailableSlots(
-                    startTime,
-                    endTime,
-                    staffBookings,
-                    totalDuration2
-                );
-
-                // Add staff information to each slot
-                slots.forEach(slot => {
-                    availableSlots2.push({
-                        start_time: slot.start_time,
-                        end_time: slot.end_time,
-                        staff_id: staffId,
-                        staff_name: staffName
-                    });
-                });
-            }
-        }
-
-        // Sort slots for service 2 by start time
-        availableSlots2.sort((a, b) => {
-            return a.start_time.localeCompare(b.start_time);
+        // Create a lookup map for staff names
+        const staffInfo = {};
+        staffInfoResult.rows.forEach(staff => {
+            staffInfo[staff.staff_id] = staff.staff_name;
         });
 
-        // If no slots are available for service 2, return error
-        if (availableSlots2.length === 0) {
-            return res.status(404).json({
-                return_code: "NO_SLOTS_AVAILABLE",
-                message: "No available slots found for the second service on the requested date"
-            });
-        }
+        // Format the results into the expected combined_slots format
+        const combinedSlots = availableSlotsResult.rows.map(row => {
+            // Calculate gap between services in minutes
+            const s1End = new Date(row.s1_end);
+            const s2Start = new Date(row.s2_start);
+            const gapMinutes = Math.round((s2Start - s1End) / (60 * 1000));
 
-        // Find combinations of slots that can be booked back-to-back
-        const combinedSlots = [];
+            // Format times to HH:MM:SS
+            const formatTime = (dateTime) => {
+                const date = new Date(dateTime);
+                return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:00`;
+            };
 
-        // OPTION 1: Service 1 followed by Service 2 (original order)
-        // Check each slot for service 1
-        for (const slot1 of filteredSlots1) {
-            const slot1EndMinutes = timeToMinutes(slot1.end_time);
-
-            // Check each slot for service 2
-            for (const slot2 of availableSlots2) {
-                const slot2StartMinutes = timeToMinutes(slot2.start_time);
-
-                // Calculate the gap between the end of service 1 and start of service 2
-                const gapMinutes = slot2StartMinutes - slot1EndMinutes;
-
-                // Check if the gap is within the allowed range (0 to maxGapMinutes)
-                if (gapMinutes >= 0 && gapMinutes <= maxGapMinutes) {
-                    // Calculate total duration including both services and the gap
-                    const totalDuration = totalDuration1 + totalDuration2 + gapMinutes;
-
-                    // Add to combined slots
-                    combinedSlots.push({
-                        order: "1-2",  // Indicates service 1 followed by service 2
-                        service_1: {
-                            start_time: slot1.start_time,
-                            end_time: slot1.end_time,
-                            staff_id: slot1.staff_id,
-                            staff_name: slot1.staff_name,
-                            service_id: service1.id,
-                            service_name: service1.service_name
-                        },
-                        service_2: {
-                            start_time: slot2.start_time,
-                            end_time: slot2.end_time,
-                            staff_id: slot2.staff_id,
-                            staff_name: slot2.staff_name,
-                            service_id: service2.id,
-                            service_name: service2.service_name
-                        },
-                        total_duration: totalDuration,
-                        handover_gap: gapMinutes,
-                        start_time: slot1.start_time,  // For sorting purposes
-                        end_time: slot2.end_time       // For sorting purposes
-                    });
-                }
-            }
-        }
-
-        // OPTION 2: Service 2 followed by Service 1 (reverse order)
-        // We need to get slots for service 2 that match the time preference
-        let filteredSlots2 = availableSlots2;
-
-        // Apply time preference to service 2 slots when checking reverse order
-        if (timeOfDay === "morning") {
-            // Morning: slots starting before 12:00
-            filteredSlots2 = availableSlots2.filter(slot => {
-                const hour = parseInt(slot.start_time.split(':')[0]);
-                return hour < 12;
-            });
-        } else if (timeOfDay === "afternoon") {
-            // Afternoon: slots starting at or after 12:00
-            filteredSlots2 = availableSlots2.filter(slot => {
-                const hour = parseInt(slot.start_time.split(':')[0]);
-                return hour >= 12;
-            });
-        }
-
-        // Check each slot for service 2 (now as the first service)
-        for (const slot2 of filteredSlots2) {
-            const slot2EndMinutes = timeToMinutes(slot2.end_time);
-
-            // Check each slot for service 1 (now as the second service)
-            for (const slot1 of availableSlots1) {
-                const slot1StartMinutes = timeToMinutes(slot1.start_time);
-
-                // Calculate the gap between the end of service 2 and start of service 1
-                const gapMinutes = slot1StartMinutes - slot2EndMinutes;
-
-                // Check if the gap is within the allowed range (0 to maxGapMinutes)
-                if (gapMinutes >= 0 && gapMinutes <= maxGapMinutes) {
-                    // Calculate total duration including both services and the gap
-                    const totalDuration = totalDuration1 + totalDuration2 + gapMinutes;
-
-                    // Add to combined slots
-                    combinedSlots.push({
-                        order: "2-1",  // Indicates service 2 followed by service 1
-                        service_1: {
-                            start_time: slot2.start_time,
-                            end_time: slot2.end_time,
-                            staff_id: slot2.staff_id,
-                            staff_name: slot2.staff_name,
-                            service_id: service2.id,
-                            service_name: service2.service_name
-                        },
-                        service_2: {
-                            start_time: slot1.start_time,
-                            end_time: slot1.end_time,
-                            staff_id: slot1.staff_id,
-                            staff_name: slot1.staff_name,
-                            service_id: service1.id,
-                            service_name: service1.service_name
-                        },
-                        total_duration: totalDuration,
-                        handover_gap: gapMinutes,
-                        start_time: slot2.start_time,  // For sorting purposes
-                        end_time: slot1.end_time       // For sorting purposes
-                    });
-                }
-            }
-        }
-
-        // Sort combined slots by start time (regardless of which service comes first)
-        combinedSlots.sort((a, b) => {
-            return a.start_time.localeCompare(b.start_time);
+            return {
+                order: "1-2",  // Always in original order with this query
+                service_1: {
+                    start_time: formatTime(row.s1_start),
+                    end_time: formatTime(row.s1_end),
+                    staff_id: row.s1_staff,
+                    staff_name: staffInfo[row.s1_staff] || "Unknown Staff",
+                    service_id: service1.id,
+                    service_name: service1.service_name
+                },
+                service_2: {
+                    start_time: formatTime(row.s2_start),
+                    end_time: formatTime(row.s2_end),
+                    staff_id: row.s2_staff,
+                    staff_name: staffInfo[row.s2_staff] || "Unknown Staff",
+                    service_id: service2.id,
+                    service_name: service2.service_name
+                },
+                total_duration: Math.round(row.span_minutes),
+                handover_gap: gapMinutes,
+                start_time: formatTime(row.s1_start),
+                end_time: formatTime(row.s2_end)
+            };
         });
 
-        // Return only the first 3 combined slots
+        // Limit to 3 slots (should already be limited by the SQL query)
         const limitedCombinedSlots = combinedSlots.slice(0, 3);
-
-        // If no combined slots are available, return error
-        if (limitedCombinedSlots.length === 0) {
-            return res.status(404).json({
-                return_code: "NO_SLOTS_AVAILABLE",
-                message: "No back-to-back slots available for the requested services"
-            });
-        }
 
         // Return success response with available slots and service details
         return res.status(200).json({
@@ -596,111 +546,6 @@ router.post('/', async (req, res) => {
         });
     }
 });
-
-/**
- * Calculate available time slots based on working hours and existing bookings
- *
- * @param {string} startTime - Start time of working hours (HH:MM:SS)
- * @param {string} endTime - End time of working hours (HH:MM:SS)
- * @param {Array} bookings - Array of existing bookings with start_time and end_time
- * @param {number} duration - Total duration of the service in minutes (including buffer time)
- * @returns {Array} - Array of available time slots with start_time and end_time
- */
-function calculateAvailableSlots(startTime, endTime, bookings, duration) {
-    // Convert times to minutes for easier calculation
-    const startMinutes = timeToMinutes(startTime);
-    const endMinutes = timeToMinutes(endTime);
-
-    // Convert bookings to minutes
-    const bookingRanges = bookings.map(booking => ({
-        start: timeToMinutes(booking.start_time),
-        end: timeToMinutes(booking.end_time)
-    }));
-
-    // Sort bookings by start time
-    bookingRanges.sort((a, b) => a.start - b.start);
-
-    // Find available time ranges
-    const availableRanges = [];
-    let currentStart = startMinutes;
-
-    // Process each booking to find gaps
-    for (const booking of bookingRanges) {
-        // If there's a gap before this booking, add it to available ranges
-        if (booking.start - currentStart >= duration) {
-            availableRanges.push({
-                start: currentStart,
-                end: booking.start
-            });
-        }
-
-        // Move current start to the end of this booking
-        currentStart = booking.end;
-    }
-
-    // Check if there's available time after the last booking
-    if (endMinutes - currentStart >= duration) {
-        availableRanges.push({
-            start: currentStart,
-            end: endMinutes
-        });
-    }
-
-    // Convert available ranges to slots based on service duration
-    const slots = [];
-
-    // Use a standard interval for slot start times (e.g., every 15 or 30 minutes)
-    // This makes the schedule more predictable and user-friendly
-    const slotInterval = 15; // 15-minute intervals for slot start times
-
-    for (const range of availableRanges) {
-        const rangeStart = range.start;
-        const rangeEnd = range.end;
-
-        // Round the start time to the nearest slot interval
-        // This ensures slots start at predictable times (e.g., 9:00, 9:15, 9:30)
-        let slotStart = Math.ceil(rangeStart / slotInterval) * slotInterval;
-
-        // Create slots that fit within this range
-        while (slotStart + duration <= rangeEnd) {
-            // Calculate the exact end time based on the service duration
-            const slotEnd = slotStart + duration;
-
-            slots.push({
-                start_time: minutesToTime(slotStart),
-                end_time: minutesToTime(slotEnd)
-            });
-
-            // Move to the next potential slot start time
-            slotStart += slotInterval;
-        }
-    }
-
-    return slots;
-}
-
-/**
- * Convert time string (HH:MM:SS) to minutes
- *
- * @param {string} timeStr - Time string in HH:MM:SS format
- * @returns {number} - Time in minutes
- */
-function timeToMinutes(timeStr) {
-    const [hours, minutes, seconds] = timeStr.split(':').map(Number);
-    return hours * 60 + minutes;
-}
-
-/**
- * Convert minutes to time string (HH:MM:SS)
- *
- * @param {number} minutes - Time in minutes
- * @returns {string} - Time string in HH:MM:SS format
- */
-function minutesToTime(minutes) {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
-}
 
 /**
  * Validate date string format (YYYY-MM-DD)

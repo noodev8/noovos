@@ -1,0 +1,193 @@
+WITH
+  -- 1) Define your three services
+  service_input(ord, service_id, duration_min, staff_id_pref) AS (
+    VALUES
+      (1, 16, 10, NULL::integer),
+      (2, 17, 15, 26),
+      (3, 16, 20, NULL::integer)
+  ),
+
+  -- 2) Which staff can do each of the three
+  service_opts1 AS (
+    SELECT ss.appuser_id AS s1_staff, si.duration_min AS duration1
+    FROM service_input si
+    JOIN service_staff ss ON ss.service_id = si.service_id
+    WHERE si.ord = 1
+      AND (si.staff_id_pref IS NULL OR ss.appuser_id = si.staff_id_pref)
+  ),
+  service_opts2 AS (
+    SELECT ss.appuser_id AS s2_staff, si.duration_min AS duration2
+    FROM service_input si
+    JOIN service_staff ss ON ss.service_id = si.service_id
+    WHERE si.ord = 2
+      AND (si.staff_id_pref IS NULL OR ss.appuser_id = si.staff_id_pref)
+  ),
+  service_opts3 AS (
+    SELECT ss.appuser_id AS s3_staff, si.duration_min AS duration3
+    FROM service_input si
+    JOIN service_staff ss ON ss.service_id = si.service_id
+    WHERE si.ord = 3
+      AND (si.staff_id_pref IS NULL OR ss.appuser_id = si.staff_id_pref)
+  ),
+
+  -- 3) Free‐intervals per staff (same as above)
+  staff_busyness AS (
+    SELECT
+      staff_id,
+      (rota_date + start_time)::timestamp AS busy_start,
+      (rota_date + end_time  )::timestamp AS busy_end
+    FROM staff_rota
+    WHERE rota_date = '2025-04-23'
+  ),
+  staff_bookings AS (
+    SELECT
+      staff_id,
+      (booking_date + start_time)::timestamp AS b_start,
+      (booking_date + end_time  )::timestamp AS b_end
+    FROM booking
+    WHERE booking_date = '2025-04-23'
+  ),
+  staff_free AS (
+    SELECT
+      sb.staff_id,
+      slot.free_start,
+      slot.free_end
+    FROM staff_busyness sb
+    LEFT JOIN LATERAL (
+      SELECT
+        pts[idx]   AS free_start,
+        pts[idx+1] AS free_end
+      FROM (
+        SELECT array_agg(ts ORDER BY ts) AS pts
+        FROM (
+          SELECT busy_start AS ts FROM staff_busyness WHERE staff_id = sb.staff_id
+          UNION ALL
+          SELECT busy_end   AS ts FROM staff_busyness WHERE staff_id = sb.staff_id
+          UNION ALL
+          SELECT b_start    AS ts FROM staff_bookings WHERE staff_id = sb.staff_id
+          UNION ALL
+          SELECT b_end      AS ts FROM staff_bookings WHERE staff_id = sb.staff_id
+        ) AS all_ts
+      ) AS arr,
+      generate_series(1, array_length(arr.pts,1)-1) AS idx
+    ) AS slot ON slot.free_start < slot.free_end
+  ),
+
+  -- 4) 15-minute grid slots for Service 1
+  service1_slots AS (
+    SELECT
+      o1.s1_staff,
+      gs                   AS s1_start,
+      o1.duration1
+    FROM service_opts1 o1
+    JOIN staff_free fs ON fs.staff_id = o1.s1_staff
+    CROSS JOIN LATERAL (
+      SELECT generate_series(
+        date_trunc('hour', fs.free_start)
+          + CEIL(date_part('minute', fs.free_start)::numeric/15)
+            * INTERVAL '15 minute',
+        fs.free_end - (o1.duration1 * INTERVAL '1 minute'),
+        INTERVAL '15 minute'
+      ) AS gs
+    ) AS minutes
+  ),
+  service1_pref AS (
+    SELECT * FROM service1_slots
+    WHERE TRUE  -- apply any/morning/afternoon filter here
+  ),
+
+  -- 5) Chain Service 2 onto Service 1
+  chain2 AS (
+    SELECT
+      s1.s1_staff,
+      s1.s1_start,
+      ( s1.s1_start + (s1.duration1 * INTERVAL '1 minute') ) AS s1_end,
+      o2.s2_staff,
+
+      COALESCE(
+        (
+          SELECT ( s1.s1_start + (s1.duration1 * INTERVAL '1 minute') )
+          FROM staff_free f2
+          WHERE f2.staff_id = o2.s2_staff
+            AND f2.free_start
+                  <= ( s1.s1_start + (s1.duration1 * INTERVAL '1 minute') )
+            AND f2.free_end >= ( s1.s1_start + (s1.duration1 * INTERVAL '1 minute') )
+                            + ( o2.duration2 * INTERVAL '1 minute' )
+          LIMIT 1
+        ),
+        (
+          SELECT MIN(f2.free_start)
+          FROM staff_free f2
+          WHERE f2.staff_id = o2.s2_staff
+            AND (f2.free_end - f2.free_start)
+                  >= ( o2.duration2 * INTERVAL '1 minute' )
+            AND f2.free_start
+                  >= ( s1.s1_start + (s1.duration1 * INTERVAL '1 minute') )
+        )
+      ) AS s2_start,
+
+      o2.duration2
+    FROM service1_pref s1
+    CROSS JOIN service_opts2 o2
+  ),
+
+  -- 6) Chain Service 3 onto that combo
+  chain3 AS (
+    SELECT
+      c2.s1_staff,
+      c2.s1_start,
+      c2.s1_end,
+      c2.s2_staff,
+      c2.s2_start,
+      ( c2.s2_start + (c2.duration2 * INTERVAL '1 minute') ) AS s2_end,
+      o3.s3_staff,
+
+      COALESCE(
+        (
+          SELECT ( c2.s2_start + (c2.duration2 * INTERVAL '1 minute') )
+          FROM staff_free f3
+          WHERE f3.staff_id = o3.s3_staff
+            AND f3.free_start
+                  <= ( c2.s2_start + (c2.duration2 * INTERVAL '1 minute') )
+            AND f3.free_end >= ( c2.s2_start + (c2.duration2 * INTERVAL '1 minute') )
+                           + ( o3.duration3 * INTERVAL '1 minute' )
+          LIMIT 1
+        ),
+        (
+          SELECT MIN(f3.free_start)
+          FROM staff_free f3
+          WHERE f3.staff_id = o3.s3_staff
+            AND ( f3.free_end - f3.free_start )
+                  >= ( o3.duration3 * INTERVAL '1 minute' )
+            AND f3.free_start
+                  >= ( c2.s2_start + (c2.duration2 * INTERVAL '1 minute') )
+        )
+      ) AS s3_start,
+
+      o3.duration3
+    FROM chain2 c2
+    CROSS JOIN service_opts3 o3
+  )
+
+-- 7) Final: sort by earliest s1_start, then tightness
+SELECT
+  ROW_NUMBER() OVER (ORDER BY s1_start, span_diff) AS rank,
+  s1_staff, s1_start, s1_end,
+  s2_staff, s2_start, s2_end,
+  s3_staff, s3_start,
+  ( s3_start + (duration3 * INTERVAL '1 minute') ) AS s3_end,
+  EXTRACT(
+    EPOCH FROM (
+      ( s3_start + (duration3 * INTERVAL '1 minute') )
+      - s1_start
+    )
+  )/60 AS span_minutes
+FROM (
+  SELECT *,
+    ( ( s3_start + (duration3 * INTERVAL '1 minute') )
+      - s1_start
+    ) AS span_diff
+  FROM chain3
+) AS t
+ORDER BY s1_start, span_diff
+LIMIT 3;

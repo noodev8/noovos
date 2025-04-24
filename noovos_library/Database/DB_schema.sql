@@ -5,7 +5,7 @@
 -- Dumped from database version 11.18 (Debian 11.18-0+deb10u1)
 -- Dumped by pg_dump version 17.4
 
--- Started on 2025-04-23 14:31:17
+-- Started on 2025-04-24 09:49:39
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -38,7 +38,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 
 
 --
--- TOC entry 3325 (class 0 OID 0)
+-- TOC entry 3330 (class 0 OID 0)
 -- Dependencies: 3
 -- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: 
 --
@@ -55,7 +55,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 
 
 --
--- TOC entry 3326 (class 0 OID 0)
+-- TOC entry 3331 (class 0 OID 0)
 -- Dependencies: 2
 -- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: 
 --
@@ -156,7 +156,7 @@ CREATE SEQUENCE public.audit_log_id_seq
 ALTER SEQUENCE public.audit_log_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3327 (class 0 OID 0)
+-- TOC entry 3332 (class 0 OID 0)
 -- Dependencies: 214
 -- Name: audit_log_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -165,30 +165,30 @@ ALTER SEQUENCE public.audit_log_id_seq OWNED BY public.audit_log.id;
 
 
 --
--- TOC entry 249 (class 1259 OID 22257)
--- Name: booking; Type: TABLE; Schema: public; Owner: main
+-- TOC entry 249 (class 1259 OID 22268)
+-- Name: booking; Type: TABLE; Schema: public; Owner: noovos_dev_user
 --
 
 CREATE TABLE public.booking (
     id integer NOT NULL,
-    booking_id integer NOT NULL,
-    customer_id integer NOT NULL,
-    booking_date date NOT NULL,
-    start_time time without time zone NOT NULL,
-    end_time time without time zone NOT NULL,
-    service_id integer NOT NULL,
+    booking_id integer,
+    customer_id integer,
+    booking_date date,
+    start_time time without time zone,
+    end_time time without time zone,
+    service_id integer,
     staff_id integer,
-    status character varying(50) DEFAULT 'pending'::character varying NOT NULL,
+    status character varying(50) DEFAULT 'pending'::character varying,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
 );
 
 
-ALTER TABLE public.booking OWNER TO main;
+ALTER TABLE public.booking OWNER TO noovos_dev_user;
 
 --
--- TOC entry 248 (class 1259 OID 22255)
--- Name: booking_id_seq; Type: SEQUENCE; Schema: public; Owner: main
+-- TOC entry 248 (class 1259 OID 22266)
+-- Name: booking_id_seq; Type: SEQUENCE; Schema: public; Owner: noovos_dev_user
 --
 
 CREATE SEQUENCE public.booking_id_seq
@@ -200,12 +200,12 @@ CREATE SEQUENCE public.booking_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.booking_id_seq OWNER TO main;
+ALTER SEQUENCE public.booking_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3329 (class 0 OID 0)
+-- TOC entry 3333 (class 0 OID 0)
 -- Dependencies: 248
--- Name: booking_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: main
+-- Name: booking_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
 
 ALTER SEQUENCE public.booking_id_seq OWNED BY public.booking.id;
@@ -274,7 +274,7 @@ CREATE SEQUENCE public.business_billing_address_id_seq
 ALTER SEQUENCE public.business_billing_address_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3330 (class 0 OID 0)
+-- TOC entry 3334 (class 0 OID 0)
 -- Dependencies: 240
 -- Name: business_billing_address_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -315,7 +315,7 @@ CREATE SEQUENCE public.business_contact_preference_id_seq
 ALTER SEQUENCE public.business_contact_preference_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3331 (class 0 OID 0)
+-- TOC entry 3335 (class 0 OID 0)
 -- Dependencies: 236
 -- Name: business_contact_preference_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -355,7 +355,7 @@ CREATE SEQUENCE public.business_feature_id_seq
 ALTER SEQUENCE public.business_feature_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3332 (class 0 OID 0)
+-- TOC entry 3336 (class 0 OID 0)
 -- Dependencies: 234
 -- Name: business_feature_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -397,7 +397,7 @@ CREATE SEQUENCE public.business_hours_id_seq
 ALTER SEQUENCE public.business_hours_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3333 (class 0 OID 0)
+-- TOC entry 3337 (class 0 OID 0)
 -- Dependencies: 228
 -- Name: business_hours_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -422,7 +422,7 @@ CREATE SEQUENCE public.business_id_seq
 ALTER SEQUENCE public.business_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3334 (class 0 OID 0)
+-- TOC entry 3338 (class 0 OID 0)
 -- Dependencies: 200
 -- Name: business_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -465,7 +465,7 @@ CREATE SEQUENCE public.business_insurance_id_seq
 ALTER SEQUENCE public.business_insurance_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3335 (class 0 OID 0)
+-- TOC entry 3339 (class 0 OID 0)
 -- Dependencies: 232
 -- Name: business_insurance_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -505,7 +505,7 @@ CREATE SEQUENCE public.business_language_id_seq
 ALTER SEQUENCE public.business_language_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3336 (class 0 OID 0)
+-- TOC entry 3340 (class 0 OID 0)
 -- Dependencies: 238
 -- Name: business_language_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -545,7 +545,7 @@ CREATE SEQUENCE public.business_social_link_id_seq
 ALTER SEQUENCE public.business_social_link_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3337 (class 0 OID 0)
+-- TOC entry 3341 (class 0 OID 0)
 -- Dependencies: 226
 -- Name: business_social_link_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -584,7 +584,7 @@ CREATE SEQUENCE public.business_subcategory_id_seq
 ALTER SEQUENCE public.business_subcategory_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3338 (class 0 OID 0)
+-- TOC entry 3342 (class 0 OID 0)
 -- Dependencies: 224
 -- Name: business_subcategory_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -624,7 +624,7 @@ CREATE SEQUENCE public.category_id_seq
 ALTER SEQUENCE public.category_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3339 (class 0 OID 0)
+-- TOC entry 3343 (class 0 OID 0)
 -- Dependencies: 220
 -- Name: category_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -666,7 +666,7 @@ CREATE SEQUENCE public.customer_notes_id_seq
 ALTER SEQUENCE public.customer_notes_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3340 (class 0 OID 0)
+-- TOC entry 3344 (class 0 OID 0)
 -- Dependencies: 206
 -- Name: customer_notes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -712,7 +712,7 @@ CREATE SEQUENCE public.image_id_seq
 ALTER SEQUENCE public.image_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3341 (class 0 OID 0)
+-- TOC entry 3345 (class 0 OID 0)
 -- Dependencies: 222
 -- Name: image_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -754,7 +754,7 @@ CREATE SEQUENCE public.notifications_id_seq
 ALTER SEQUENCE public.notifications_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3342 (class 0 OID 0)
+-- TOC entry 3346 (class 0 OID 0)
 -- Dependencies: 210
 -- Name: notifications_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -800,7 +800,7 @@ CREATE SEQUENCE public.payment_id_seq
 ALTER SEQUENCE public.payment_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3343 (class 0 OID 0)
+-- TOC entry 3347 (class 0 OID 0)
 -- Dependencies: 204
 -- Name: payment_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -844,7 +844,7 @@ CREATE SEQUENCE public.qualification_id_seq
 ALTER SEQUENCE public.qualification_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3344 (class 0 OID 0)
+-- TOC entry 3348 (class 0 OID 0)
 -- Dependencies: 230
 -- Name: qualification_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -887,7 +887,7 @@ CREATE SEQUENCE public.reviews_id_seq
 ALTER SEQUENCE public.reviews_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3345 (class 0 OID 0)
+-- TOC entry 3349 (class 0 OID 0)
 -- Dependencies: 208
 -- Name: reviews_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -927,7 +927,7 @@ CREATE SEQUENCE public.search_logs_id_seq
 ALTER SEQUENCE public.search_logs_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3346 (class 0 OID 0)
+-- TOC entry 3350 (class 0 OID 0)
 -- Dependencies: 218
 -- Name: search_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -975,7 +975,7 @@ CREATE SEQUENCE public.service_id_seq
 ALTER SEQUENCE public.service_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3347 (class 0 OID 0)
+-- TOC entry 3351 (class 0 OID 0)
 -- Dependencies: 202
 -- Name: service_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -1014,7 +1014,7 @@ ALTER TABLE public.service_staff ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTIT
 
 --
 -- TOC entry 247 (class 1259 OID 22243)
--- Name: staff_rota; Type: TABLE; Schema: public; Owner: main
+-- Name: staff_rota; Type: TABLE; Schema: public; Owner: noovos_dev_user
 --
 
 CREATE TABLE public.staff_rota (
@@ -1026,11 +1026,11 @@ CREATE TABLE public.staff_rota (
 );
 
 
-ALTER TABLE public.staff_rota OWNER TO main;
+ALTER TABLE public.staff_rota OWNER TO noovos_dev_user;
 
 --
 -- TOC entry 246 (class 1259 OID 22241)
--- Name: staff_rota_id_seq; Type: SEQUENCE; Schema: public; Owner: main
+-- Name: staff_rota_id_seq; Type: SEQUENCE; Schema: public; Owner: noovos_dev_user
 --
 
 CREATE SEQUENCE public.staff_rota_id_seq
@@ -1042,12 +1042,12 @@ CREATE SEQUENCE public.staff_rota_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.staff_rota_id_seq OWNER TO main;
+ALTER SEQUENCE public.staff_rota_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3349 (class 0 OID 0)
+-- TOC entry 3353 (class 0 OID 0)
 -- Dependencies: 246
--- Name: staff_rota_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: main
+-- Name: staff_rota_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
 
 ALTER SEQUENCE public.staff_rota_id_seq OWNED BY public.staff_rota.id;
@@ -1091,7 +1091,7 @@ CREATE SEQUENCE public.subscription_id_seq
 ALTER SEQUENCE public.subscription_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3350 (class 0 OID 0)
+-- TOC entry 3354 (class 0 OID 0)
 -- Dependencies: 212
 -- Name: subscription_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -1130,7 +1130,7 @@ CREATE SEQUENCE public.synonyms_id_seq
 ALTER SEQUENCE public.synonyms_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3351 (class 0 OID 0)
+-- TOC entry 3355 (class 0 OID 0)
 -- Dependencies: 216
 -- Name: synonyms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -1155,7 +1155,7 @@ CREATE SEQUENCE public.users_id_seq
 ALTER SEQUENCE public.users_id_seq OWNER TO noovos_dev_user;
 
 --
--- TOC entry 3352 (class 0 OID 0)
+-- TOC entry 3356 (class 0 OID 0)
 -- Dependencies: 198
 -- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
 --
@@ -1180,8 +1180,8 @@ ALTER TABLE ONLY public.audit_log ALTER COLUMN id SET DEFAULT nextval('public.au
 
 
 --
--- TOC entry 3087 (class 2604 OID 22260)
--- Name: booking id; Type: DEFAULT; Schema: public; Owner: main
+-- TOC entry 3087 (class 2604 OID 22271)
+-- Name: booking id; Type: DEFAULT; Schema: public; Owner: noovos_dev_user
 --
 
 ALTER TABLE ONLY public.booking ALTER COLUMN id SET DEFAULT nextval('public.booking_id_seq'::regclass);
@@ -1333,7 +1333,7 @@ ALTER TABLE ONLY public.service ALTER COLUMN id SET DEFAULT nextval('public.serv
 
 --
 -- TOC entry 3086 (class 2604 OID 22246)
--- Name: staff_rota id; Type: DEFAULT; Schema: public; Owner: main
+-- Name: staff_rota id; Type: DEFAULT; Schema: public; Owner: noovos_dev_user
 --
 
 ALTER TABLE ONLY public.staff_rota ALTER COLUMN id SET DEFAULT nextval('public.staff_rota_id_seq'::regclass);
@@ -1383,8 +1383,8 @@ ALTER TABLE ONLY public.audit_log
 
 
 --
--- TOC entry 3189 (class 2606 OID 22265)
--- Name: booking booking_pkey; Type: CONSTRAINT; Schema: public; Owner: main
+-- TOC entry 3189 (class 2606 OID 22276)
+-- Name: booking booking_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev_user
 --
 
 ALTER TABLE ONLY public.booking
@@ -1591,7 +1591,7 @@ ALTER TABLE ONLY public.service_staff
 
 --
 -- TOC entry 3187 (class 2606 OID 22248)
--- Name: staff_rota staff_rota_pkey; Type: CONSTRAINT; Schema: public; Owner: main
+-- Name: staff_rota staff_rota_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev_user
 --
 
 ALTER TABLE ONLY public.staff_rota
@@ -1681,6 +1681,46 @@ CREATE INDEX idx_appuser_mobile ON public.app_user USING btree (mobile);
 --
 
 CREATE INDEX idx_billing_address_business_id ON public.business_billing_address USING btree (business_id);
+
+
+--
+-- TOC entry 3190 (class 1259 OID 22277)
+-- Name: idx_booking_customer_id; Type: INDEX; Schema: public; Owner: noovos_dev_user
+--
+
+CREATE INDEX idx_booking_customer_id ON public.booking USING btree (customer_id);
+
+
+--
+-- TOC entry 3191 (class 1259 OID 22281)
+-- Name: idx_booking_date; Type: INDEX; Schema: public; Owner: noovos_dev_user
+--
+
+CREATE INDEX idx_booking_date ON public.booking USING btree (booking_date);
+
+
+--
+-- TOC entry 3192 (class 1259 OID 22279)
+-- Name: idx_booking_service_id; Type: INDEX; Schema: public; Owner: noovos_dev_user
+--
+
+CREATE INDEX idx_booking_service_id ON public.booking USING btree (service_id);
+
+
+--
+-- TOC entry 3193 (class 1259 OID 22280)
+-- Name: idx_booking_staff_id; Type: INDEX; Schema: public; Owner: noovos_dev_user
+--
+
+CREATE INDEX idx_booking_staff_id ON public.booking USING btree (staff_id);
+
+
+--
+-- TOC entry 3194 (class 1259 OID 22278)
+-- Name: idx_booking_status; Type: INDEX; Schema: public; Owner: noovos_dev_user
+--
+
+CREATE INDEX idx_booking_status ON public.booking USING btree (status);
 
 
 --
@@ -1916,7 +1956,7 @@ CREATE INDEX idx_synonyms_word ON public.synonyms USING btree (word);
 
 
 --
--- TOC entry 3197 (class 2606 OID 20420)
+-- TOC entry 3202 (class 2606 OID 20420)
 -- Name: audit_log audit_log_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev_user
 --
 
@@ -1925,7 +1965,7 @@ ALTER TABLE ONLY public.audit_log
 
 
 --
--- TOC entry 3191 (class 2606 OID 20339)
+-- TOC entry 3196 (class 2606 OID 20339)
 -- Name: customer_notes customer_notes_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev_user
 --
 
@@ -1934,7 +1974,7 @@ ALTER TABLE ONLY public.customer_notes
 
 
 --
--- TOC entry 3192 (class 2606 OID 20334)
+-- TOC entry 3197 (class 2606 OID 20334)
 -- Name: customer_notes customer_notes_business_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev_user
 --
 
@@ -1943,7 +1983,7 @@ ALTER TABLE ONLY public.customer_notes
 
 
 --
--- TOC entry 3195 (class 2606 OID 20386)
+-- TOC entry 3200 (class 2606 OID 20386)
 -- Name: notifications notifications_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev_user
 --
 
@@ -1952,7 +1992,7 @@ ALTER TABLE ONLY public.notifications
 
 
 --
--- TOC entry 3190 (class 2606 OID 20273)
+-- TOC entry 3195 (class 2606 OID 20273)
 -- Name: payment payment_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev_user
 --
 
@@ -1961,7 +2001,7 @@ ALTER TABLE ONLY public.payment
 
 
 --
--- TOC entry 3193 (class 2606 OID 20367)
+-- TOC entry 3198 (class 2606 OID 20367)
 -- Name: reviews reviews_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev_user
 --
 
@@ -1970,7 +2010,7 @@ ALTER TABLE ONLY public.reviews
 
 
 --
--- TOC entry 3194 (class 2606 OID 20362)
+-- TOC entry 3199 (class 2606 OID 20362)
 -- Name: reviews reviews_business_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev_user
 --
 
@@ -1979,7 +2019,7 @@ ALTER TABLE ONLY public.reviews
 
 
 --
--- TOC entry 3196 (class 2606 OID 20403)
+-- TOC entry 3201 (class 2606 OID 20403)
 -- Name: subscription subscription_appuser_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: noovos_dev_user
 --
 
@@ -1988,7 +2028,7 @@ ALTER TABLE ONLY public.subscription
 
 
 --
--- TOC entry 3324 (class 0 OID 0)
+-- TOC entry 3329 (class 0 OID 0)
 -- Dependencies: 9
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: postgres
 --
@@ -1998,24 +2038,15 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 
 
 --
--- TOC entry 3328 (class 0 OID 0)
--- Dependencies: 249
--- Name: TABLE booking; Type: ACL; Schema: public; Owner: main
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.booking TO PUBLIC;
-
-
---
--- TOC entry 3348 (class 0 OID 0)
+-- TOC entry 3352 (class 0 OID 0)
 -- Dependencies: 247
--- Name: TABLE staff_rota; Type: ACL; Schema: public; Owner: main
+-- Name: TABLE staff_rota; Type: ACL; Schema: public; Owner: noovos_dev_user
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.staff_rota TO PUBLIC;
 
 
--- Completed on 2025-04-23 14:31:19
+-- Completed on 2025-04-24 09:49:41
 
 --
 -- PostgreSQL database dump complete
