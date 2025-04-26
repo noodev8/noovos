@@ -4,49 +4,28 @@ Communicates with the get_app_version endpoint on the server
 */
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config/app_config.dart';
+import 'base_api_client.dart';
 
 class GetAppVersionApi {
-  // Base URL for the API - use the same direct approach as other working APIs
-  static final String _baseUrl = AppConfig.apiBaseUrl;
+  // Endpoint for get app version
+  static const String _endpoint = '/get_app_version';
 
   // Get minimum app version
   static Future<Map<String, dynamic>> getMinimumVersion(String platform) async {
     try {
-      // Construct the full URL - exactly like other working APIs
-      final url = Uri.parse('$_baseUrl/get_app_version');
-
-      // Create headers
-      final headers = {
-        'Content-Type': 'application/json',
+      // Create request body
+      final body = {
+        'platform': platform,
       };
 
-      // Create request body
-      final body = jsonEncode({
-        'platform': platform,
-      });
-
-      // Send POST request
-      final response = await http.post(
-        url,
-        headers: headers,
-        body: body,
-      );
-
-      // Check if the response is valid
-      if (response.statusCode != 200) {
-        return {
-          'success': false,
-          'message': 'Server returned status code ${response.statusCode}',
-        };
-      }
+      // Send POST request using the base client
+      final response = await BaseApiClient.post(_endpoint, body);
 
       // Parse response
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;
 
       // Check if request was successful
-      if (responseData['return_code'] == 'SUCCESS') {
+      if (response.statusCode == 200 && responseData['return_code'] == 'SUCCESS') {
         return {
           'success': true,
           'data': responseData,

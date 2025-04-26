@@ -4,18 +4,11 @@ Handles retrieving available time slots for a specific service on a given date
 */
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config/app_config.dart';
+import 'base_api_client.dart';
 
 class GetServiceSlotX1Api {
-  // Base URL for the API
-  static final String _baseUrl = AppConfig.apiBaseUrl;
-
   // Endpoint for get service slot x1
-  static final String _endpoint = '/get_service_slot_x1';
-
-  // Full URL for the API
-  static final String _apiUrl = _baseUrl + _endpoint;
+  static const String _endpoint = '/get_service_slot_x1';
 
   /*
   * Get available slots for a service on a specific date
@@ -33,11 +26,6 @@ class GetServiceSlotX1Api {
     String timePreference = 'any',
   }) async {
     try {
-      // Set up headers
-      final headers = {
-        'Content-Type': 'application/json',
-      };
-
       // Set up request body
       final Map<String, dynamic> requestBody = {
         'service_id': serviceId,
@@ -50,12 +38,8 @@ class GetServiceSlotX1Api {
         requestBody['staff_id'] = staffId;
       }
 
-      // Send POST request
-      final response = await http.post(
-        Uri.parse(_apiUrl),
-        headers: headers,
-        body: jsonEncode(requestBody),
-      );
+      // Send POST request using the base client
+      final response = await BaseApiClient.post(_endpoint, requestBody);
 
       // Parse response
       final Map<String, dynamic> responseData = jsonDecode(response.body);

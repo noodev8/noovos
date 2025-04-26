@@ -4,35 +4,24 @@ Communicates with the login_user endpoint on the server
 */
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../helpers/auth_helper.dart';
-import '../config/app_config.dart';
+import 'base_api_client.dart';
 
 class LoginUserApi {
-  // Base URL for the API
-  static final String _baseUrl = AppConfig.apiBaseUrl;
+  // Endpoint for login user
+  static const String _endpoint = '/login_user';
 
   // Login user
   static Future<Map<String, dynamic>> loginUser(String email, String password) async {
     try {
-
-      // Construct the full URL
-      final url = Uri.parse('$_baseUrl/login_user');
-
       // Create request body
-      final body = jsonEncode({
+      final requestBody = {
         'email': email,
         'password': password,
-      });
+      };
 
-      // Send POST request
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: body,
-      );
+      // Send POST request using the base client
+      final response = await BaseApiClient.post(_endpoint, requestBody);
 
       // Parse response
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;

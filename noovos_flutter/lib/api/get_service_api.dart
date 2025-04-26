@@ -4,18 +4,11 @@ Handles retrieving detailed information about a specific service by its ID
 */
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config/app_config.dart';
+import 'base_api_client.dart';
 
 class GetServiceApi {
-  // Base URL for the API
-  static final String _baseUrl = AppConfig.apiBaseUrl;
-
   // Endpoint for get service
-  static final String _endpoint = '/get_service';
-
-  // Full URL for the API
-  static final String _apiUrl = _baseUrl + _endpoint;
+  static const String _endpoint = '/get_service';
 
   /*
   * Get service details by ID
@@ -25,22 +18,13 @@ class GetServiceApi {
   */
   static Future<Map<String, dynamic>> getService(int serviceId) async {
     try {
-      // Set up headers
-      final headers = {
-        'Content-Type': 'application/json',
-      };
-
       // Set up request body
       final Map<String, dynamic> requestBody = {
         'service_id': serviceId,
       };
 
-      // Send POST request
-      final response = await http.post(
-        Uri.parse(_apiUrl),
-        headers: headers,
-        body: jsonEncode(requestBody),
-      );
+      // Send POST request using the base client
+      final response = await BaseApiClient.post(_endpoint, requestBody);
 
       // Parse response
       final Map<String, dynamic> responseData = jsonDecode(response.body);

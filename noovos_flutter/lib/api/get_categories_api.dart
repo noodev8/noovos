@@ -4,31 +4,17 @@ Communicates with the get_categories endpoint on the server
 */
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-
-import '../config/app_config.dart';
+import 'base_api_client.dart';
 
 class GetCategoriesApi {
-  // Base URL for the API
-  static final String _baseUrl = AppConfig.apiBaseUrl;
+  // Endpoint for get categories
+  static const String _endpoint = '/get_categories';
 
   // Get categories
   static Future<Map<String, dynamic>> getCategories() async {
     try {
-      // Construct the full URL
-      final url = Uri.parse('$_baseUrl/get_categories');
-
-      // Create headers
-      final headers = {
-        'Content-Type': 'application/json',
-      };
-
-      // Send POST request with empty body
-      final response = await http.post(
-        url,
-        headers: headers,
-        body: jsonEncode({}),
-      );
+      // Send POST request with empty body using the base client
+      final response = await BaseApiClient.post(_endpoint, {});
 
       // Parse response
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;

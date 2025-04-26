@@ -6,19 +6,11 @@ Note: This API does not require authentication
 */
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config/app_config.dart';
-
+import 'base_api_client.dart';
 
 class SearchBusinessApi {
-  // Base URL for the API
-  static final String _baseUrl = AppConfig.apiBaseUrl;
-
   // Endpoint for search business
-  static final String _endpoint = '/search_business';
-
-  // Full URL for the API
-  static final String _apiUrl = _baseUrl + _endpoint;
+  static const String _endpoint = '/search_business';
 
   /*
   * Search for businesses and services based on a search term
@@ -28,22 +20,13 @@ class SearchBusinessApi {
   */
   static Future<Map<String, dynamic>> searchBusiness(String searchTerm) async {
     try {
-      // Set up headers
-      final headers = {
-        'Content-Type': 'application/json',
+      // Set up request body
+      final body = {
+        'search_term': searchTerm,
       };
 
-      // Set up request body
-      final body = jsonEncode({
-        'search_term': searchTerm,
-      });
-
-      // Make the API call
-      final response = await http.post(
-        Uri.parse(_apiUrl),
-        headers: headers,
-        body: body,
-      );
+      // Make the API call using the base client
+      final response = await BaseApiClient.post(_endpoint, body);
 
       // Parse response
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;

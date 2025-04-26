@@ -5,18 +5,11 @@ Returns a list of staff members with their details
 */
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config/app_config.dart';
+import 'base_api_client.dart';
 
 class GetServiceStaffApi {
-  // Base URL for the API
-  static final String _baseUrl = AppConfig.apiBaseUrl;
-
   // Endpoint for get service staff
-  static final String _endpoint = '/get_service_staff';
-
-  // Full URL for the API
-  static final String _apiUrl = _baseUrl + _endpoint;
+  static const String _endpoint = '/get_service_staff';
 
   // Get staff for a service
   static Future<Map<String, dynamic>> getServiceStaff(int serviceId, {int? staffId}) async {
@@ -31,14 +24,8 @@ class GetServiceStaffApi {
         requestBody['staff_id'] = staffId;
       }
 
-      // Make API call
-      final response = await http.post(
-        Uri.parse(_apiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(requestBody),
-      );
+      // Make API call using the base client
+      final response = await BaseApiClient.post(_endpoint, requestBody);
 
       // Parse response
       final Map<String, dynamic> responseData = jsonDecode(response.body);
