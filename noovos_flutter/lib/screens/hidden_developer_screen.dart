@@ -10,6 +10,16 @@ import '../config/app_config.dart';
 import '../styles/app_styles.dart';
 import '../helpers/config_helper.dart';
 
+// Available base URLs for quick selection
+const Map<String, String> availableBaseUrls = {
+  'Home': 'http://192.168.1.88:3000',
+  'Chippy': 'http://192.168.1.174:3000',
+  'Cumberland': 'http://192.168.1.94:3000',
+  'Grays': 'http://10.249.1.230:43352',
+  'Test Server': 'https://api.noodev8.com',
+  'VPS': 'http://77.68.13.150:3003',
+};
+
 class HiddenDeveloperScreen extends StatefulWidget {
   const HiddenDeveloperScreen({super.key});
 
@@ -27,6 +37,9 @@ class _HiddenDeveloperScreenState extends State<HiddenDeveloperScreen> {
 
   // Success message
   String? _successMessage;
+
+  // Selected environment
+  String? _selectedEnvironment;
 
   @override
   void initState() {
@@ -53,6 +66,16 @@ class _HiddenDeveloperScreenState extends State<HiddenDeveloperScreen> {
       if (mounted) {
         setState(() {
           _apiUrlController.text = apiUrl;
+
+          // Check if the current URL matches any of the presets
+          _selectedEnvironment = null;
+          for (var entry in availableBaseUrls.entries) {
+            if (entry.value == apiUrl) {
+              _selectedEnvironment = entry.key;
+              break;
+            }
+          }
+
           _isLoading = false;
         });
       }
@@ -63,6 +86,16 @@ class _HiddenDeveloperScreenState extends State<HiddenDeveloperScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  // Handle environment selection
+  void _handleEnvironmentChange(String? environmentName) {
+    if (environmentName != null && availableBaseUrls.containsKey(environmentName)) {
+      setState(() {
+        _selectedEnvironment = environmentName;
+        _apiUrlController.text = availableBaseUrls[environmentName]!;
+      });
     }
   }
 
@@ -230,6 +263,46 @@ class _HiddenDeveloperScreenState extends State<HiddenDeveloperScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
+
+                  // Environment dropdown
+                  const Text(
+                    'Select Environment:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade400),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButton<String>(
+                      value: _selectedEnvironment,
+                      isExpanded: true,
+                      hint: const Text('Select an environment'),
+                      underline: const SizedBox(),
+                      onChanged: _handleEnvironmentChange,
+                      items: availableBaseUrls.keys.map((String environment) {
+                        return DropdownMenuItem<String>(
+                          value: environment,
+                          child: Text(environment),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+
+                  // Custom URL input
+                  const Text(
+                    'Or enter custom URL:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
                   TextField(
                     controller: _apiUrlController,
                     decoration: InputDecoration(

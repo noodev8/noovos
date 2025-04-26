@@ -8,6 +8,7 @@ import 'screens/cart_screen.dart';
 import 'screens/availability_check_screen.dart';
 import 'styles/app_styles.dart';
 import 'helpers/cart_helper.dart';
+import 'helpers/config_helper.dart';
 import 'api/get_app_version_api.dart';
 import 'widgets/version_mismatch_popup.dart';
 import 'config/app_config.dart';
@@ -19,6 +20,9 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Reset API URL to default from config file on startup
+  await ConfigHelper.resetApiBaseUrl();
 
   // Initialize cart helper
   await CartHelper.initialize();
