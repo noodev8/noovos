@@ -7,6 +7,7 @@ Once logged in, it goes straight to the dashboard
 import 'package:flutter/material.dart';
 import '../api/login_user_api.dart';
 import '../styles/app_styles.dart';
+import 'hidden_developer_screen.dart';
 
 class LoginUserScreen extends StatefulWidget {
   const LoginUserScreen({Key? key}) : super(key: key);
@@ -29,6 +30,11 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
   // Error message
   String? _errorMessage;
   String? _errorCode;
+
+  // Secret tap counter for developer screen
+  int _logoTapCount = 0;
+  final int _requiredTaps = 5;
+  DateTime? _lastTapTime;
 
   @override
   void dispose() {
@@ -114,6 +120,34 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
     Navigator.pushReplacementNamed(context, '/dashboard');
   }
 
+  // Handle secret logo tap for developer screen access
+  void _handleLogoTap() {
+    final now = DateTime.now();
+
+    // Reset counter if more than 2 seconds have passed since last tap
+    if (_lastTapTime != null &&
+        now.difference(_lastTapTime!).inSeconds > 2) {
+      _logoTapCount = 0;
+    }
+
+    // Update last tap time
+    _lastTapTime = now;
+
+    // Increment counter
+    _logoTapCount++;
+
+    // Check if we've reached the required number of taps
+    if (_logoTapCount >= _requiredTaps) {
+      _logoTapCount = 0; // Reset counter
+
+      // Navigate to developer screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const HiddenDeveloperScreen()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -144,15 +178,18 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo or app name
-                  const Text(
-                    'Noovos',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: AppStyles.primaryColor,
+                  // Logo or app name with secret tap detection
+                  GestureDetector(
+                    onTap: _handleLogoTap,
+                    child: const Text(
+                      'Noovos',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: AppStyles.primaryColor,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 10),
                   const Text(
