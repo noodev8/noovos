@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import '../styles/app_styles.dart';
 import '../api/get_business_staff_api.dart';
 import '../api/get_staff_rota_api.dart';
+import '../api/add_staff_rota_api.dart';
 
 class BusinessStaffRotaScreen extends StatefulWidget {
   // Business details
@@ -216,6 +217,122 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
       return DateFormat('EEEE, d MMMM yyyy').format(date);
     } catch (e) {
       return dateStr;
+    }
+  }
+
+  // Add a new rota entry
+  Future<void> _addRotaEntry() async {
+    // Check if a staff member is selected
+    if (_selectedStaff == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a staff member first'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate time inputs
+    final String startTime = _startTimeController.text;
+    final String endTime = _endTimeController.text;
+
+    // Simple validation - check if end time is after start time
+    final List<String> startParts = startTime.split(':');
+    final List<String> endParts = endTime.split(':');
+
+    if (startParts.length != 2 || endParts.length != 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid time format. Please use HH:MM format.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final int startHour = int.parse(startParts[0]);
+    final int startMinute = int.parse(startParts[1]);
+    final int endHour = int.parse(endParts[0]);
+    final int endMinute = int.parse(endParts[1]);
+
+    if (endHour < startHour || (endHour == startHour && endMinute <= startMinute)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('End time must be after start time'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Show loading indicator
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Get business ID and staff ID
+      final int businessId = widget.business['id'];
+      final int staffId = _selectedStaff!['id'];
+
+      // Format date for API
+      final String dateStr = _formatDate(_selectedDate);
+
+      // Create entry
+      final Map<String, dynamic> entry = {
+        'staff_id': staffId,
+        'rota_date': dateStr,
+        'start_time': startTime,
+        'end_time': endTime,
+      };
+
+      // Call API to add rota entry
+      final result = await AddStaffRotaApi.addStaffRota(
+        businessId: businessId,
+        entries: [entry],
+      );
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (result['success']) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Working hours added successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Reload rota entries
+          _loadRotaEntries();
+        } else {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Failed to add working hours'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An error occurred: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -482,14 +599,7 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  // This will be implemented later
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('This feature is coming soon!'),
-                    ),
-                  );
-                },
+                onPressed: _addRotaEntry,
                 icon: const Icon(Icons.add),
                 label: const Text('Add Working Hours'),
                 style: ElevatedButton.styleFrom(
