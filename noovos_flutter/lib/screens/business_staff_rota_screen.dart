@@ -76,6 +76,10 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      // Reset selected staff to avoid dropdown issues when refreshing
+      _selectedStaff = null;
+      // Clear rota entries when staff selection changes
+      _rotaEntries = [];
     });
 
     try {
