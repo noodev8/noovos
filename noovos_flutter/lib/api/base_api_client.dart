@@ -14,17 +14,17 @@ class BaseApiClient {
   static Future<String> getBaseUrl() async {
     return await ConfigHelper.getApiBaseUrl();
   }
-  
+
   // Create a full URL for an endpoint
   static Future<Uri> createUrl(String endpoint) async {
     final baseUrl = await getBaseUrl();
     return Uri.parse('$baseUrl$endpoint');
   }
-  
+
   // Send a POST request with JSON body
   static Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
     final url = await createUrl(endpoint);
-    
+
     return await http.post(
       url,
       headers: {
@@ -33,12 +33,26 @@ class BaseApiClient {
       body: jsonEncode(body),
     );
   }
-  
+
+  // Send a POST request with JSON body and authentication token
+  static Future<http.Response> postWithAuth(String endpoint, Map<String, dynamic> body, String token) async {
+    final url = await createUrl(endpoint);
+
+    return await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(body),
+    );
+  }
+
   // Parse response and handle common error cases
   static Map<String, dynamic> parseResponse(http.Response response) {
     try {
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;
-      
+
       if (response.statusCode == 200) {
         if (responseData['return_code'] == 'SUCCESS') {
           return {

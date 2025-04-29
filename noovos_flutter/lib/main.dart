@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'screens/login_user_screen.dart';
 import 'screens/register_user_screen.dart';
 import 'screens/dashboard_screen.dart';
-//import 'screens/service_details_screen.dart';
+import 'screens/business_owner_screen.dart';
 import 'screens/cart_screen.dart';
 import 'screens/availability_check_screen.dart';
 import 'styles/app_styles.dart';
@@ -111,6 +111,7 @@ class _MyAppState extends State<MyApp> {
         '/login': (context) => const LoginUserScreen(),
         '/register': (context) => const RegisterUserScreen(),
         '/dashboard': (context) => const DashboardScreen(),
+        '/business_owner': (context) => const BusinessOwnerScreen(),
         '/cart': (context) => const CartScreen(),
         '/availability': (context) => const AvailabilityCheckScreen(),
       },

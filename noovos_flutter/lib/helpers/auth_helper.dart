@@ -6,6 +6,7 @@ Provides methods for checking if user is logged in
 
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../api/get_user_businesses_api.dart';
 
 class AuthHelper {
   // Keys for SharedPreferences
@@ -76,6 +77,33 @@ class AuthHelper {
       await deleteUserData();
     } catch (e) {
       // Handle error silently
+    }
+  }
+
+  // Check if user is a business owner
+  static Future<bool> isBusinessOwner() async {
+    try {
+      // First check if user is logged in
+      final isLoggedIn = await AuthHelper.isLoggedIn();
+      if (!isLoggedIn) {
+        return false;
+      }
+
+      // Call the API to get user businesses
+      final result = await GetUserBusinessesApi.getUserBusinesses();
+
+      // If the API call was successful and returned businesses, the user is a business owner
+      if (result['success'] && result['businesses'] != null) {
+        final businesses = result['businesses'] as List;
+        // Check if any of the businesses have the user with a business_owner role
+        return businesses.any((business) =>
+          business['role'] == 'business_owner' || business['role'] == 'Business Owner');
+      }
+
+      return false;
+    } catch (e) {
+      // Handle error silently
+      return false;
     }
   }
 }

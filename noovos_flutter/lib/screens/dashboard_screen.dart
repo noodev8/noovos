@@ -43,6 +43,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Login state
   bool _isLoggedIn = false;
 
+  // Business owner state
+  bool _isBusinessOwner = false;
+
   // Categories state
   bool _isLoadingCategories = false;
   List<dynamic> _categories = [];
@@ -106,18 +109,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  // Check if user is logged in
+  // Check if user is logged in and if they are a business owner
   Future<void> _checkLoginStatus() async {
     try {
       final isLoggedIn = await AuthHelper.isLoggedIn();
+      bool isBusinessOwner = false;
+
+      // If logged in, check if user is a business owner
+      if (isLoggedIn) {
+        isBusinessOwner = await AuthHelper.isBusinessOwner();
+      }
 
       setState(() {
         _isLoggedIn = isLoggedIn;
+        _isBusinessOwner = isBusinessOwner;
       });
     } catch (e) {
       // Handle error silently
       setState(() {
         _isLoggedIn = false;
+        _isBusinessOwner = false;
       });
     }
   }
@@ -198,6 +209,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
+  // Switch to business owner mode
+  void _switchToBusinessOwnerMode() {
+    Navigator.pushReplacementNamed(context, '/business_owner');
+  }
+
   // Navigate to service results screen with category
   void _navigateToCategoryServices(Map<String, dynamic> category) {
     // Get the current search term and location if any
@@ -228,6 +244,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: AppStyles.primaryColor,
         foregroundColor: Colors.white,
         actions: [
+          // Show business owner button if user is a business owner
+          if (_isLoggedIn && _isBusinessOwner)
+            TextButton.icon(
+              icon: const Icon(Icons.business, color: Colors.white),
+              label: const Text('My Business', style: TextStyle(color: Colors.white)),
+              onPressed: _switchToBusinessOwnerMode,
+            ),
+
           // Show login or logout button based on login status
           _isLoggedIn
               ? IconButton(

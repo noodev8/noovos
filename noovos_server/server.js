@@ -39,6 +39,7 @@ const get_service_slot_x1 = require('./routes/get_service_slot_x1');
 const get_service_slot_x2 = require('./routes/get_service_slot_x2');
 const get_service_slot_x3 = require('./routes/get_service_slot_x3');
 const get_app_version = require('./routes/get_app_version');
+const get_user_businesses = require('./routes/get_user_businesses');
 
 // Set up routes
 app.use('/login_user', login_user);
@@ -54,6 +55,7 @@ app.use('/get_service_slot_x1', get_service_slot_x1);
 app.use('/get_service_slot_x2', get_service_slot_x2);
 app.use('/get_service_slot_x3', get_service_slot_x3);
 app.use('/get_app_version', get_app_version);
+app.use('/get_user_businesses', get_user_businesses);
 
 // Root route
 app.get('/', (req, res) => {

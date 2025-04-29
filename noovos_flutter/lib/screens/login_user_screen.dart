@@ -7,6 +7,7 @@ Once logged in, it goes straight to the dashboard
 import 'package:flutter/material.dart';
 import '../api/login_user_api.dart';
 import '../styles/app_styles.dart';
+import '../helpers/auth_helper.dart';
 import 'hidden_developer_screen.dart';
 
 class LoginUserScreen extends StatefulWidget {
@@ -79,9 +80,17 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
 
       // Check if login was successful
       if (result['success']) {
-        // Navigate to dashboard
+        // Check if user has business owner role
+        final isBusinessOwner = await AuthHelper.isBusinessOwner();
+
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/dashboard');
+          if (isBusinessOwner) {
+            // Navigate to business owner screen
+            Navigator.pushReplacementNamed(context, '/business_owner');
+          } else {
+            // Navigate to dashboard
+            Navigator.pushReplacementNamed(context, '/dashboard');
+          }
         }
       } else {
         // Show error message
