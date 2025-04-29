@@ -49,11 +49,7 @@ class GetStaffRotaApi {
       }
 
       // Make API request
-      final response = await BaseApiClient.post(
-        endpoint: _endpoint,
-        body: requestBody,
-        token: token,
-      );
+      final response = await BaseApiClient.postWithAuth(_endpoint, requestBody, token);
 
       // Parse response
       final Map<String, dynamic> responseData = json.decode(response.body);

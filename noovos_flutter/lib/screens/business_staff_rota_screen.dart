@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../styles/app_styles.dart';
 import '../api/get_business_staff_api.dart';
+import '../api/get_staff_rota_api.dart';
 
 class BusinessStaffRotaScreen extends StatefulWidget {
   // Business details
@@ -47,8 +48,14 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
   final TextEditingController _startTimeController = TextEditingController(text: '09:00');
   final TextEditingController _endTimeController = TextEditingController(text: '17:00');
 
-  // Rota entries (placeholder for now)
-  final List<Map<String, dynamic>> _rotaEntries = [];
+  // Rota entries
+  List<Map<String, dynamic>> _rotaEntries = [];
+
+  // Current month for rota display
+  DateTime _currentMonth = DateTime.now();
+
+  // Loading rota state
+  bool _loadingRota = false;
 
   @override
   void initState() {
@@ -117,9 +124,99 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
     }
   }
 
+  // Load rota entries for selected staff
+  Future<void> _loadRotaEntries() async {
+    // Check if a staff member is selected
+    if (_selectedStaff == null) {
+      setState(() {
+        _rotaEntries = [];
+      });
+      return;
+    }
+
+    setState(() {
+      _loadingRota = true;
+    });
+
+    try {
+      // Get business ID and staff ID
+      final int businessId = widget.business['id'];
+      final int staffId = _selectedStaff!['id'];
+
+      // Calculate start and end dates (selected month)
+      final DateTime startDate = DateTime(_currentMonth.year, _currentMonth.month, 1);
+      final DateTime endDate = DateTime(_currentMonth.year, _currentMonth.month + 1, 0); // Last day of month
+
+      // Format dates for API
+      final String startDateStr = _formatDate(startDate);
+      final String endDateStr = _formatDate(endDate);
+
+      // Call API to get rota entries
+      final result = await GetStaffRotaApi.getStaffRota(
+        businessId: businessId,
+        staffId: staffId,
+        startDate: startDateStr,
+        endDate: endDateStr,
+      );
+
+      if (mounted) {
+        setState(() {
+          _loadingRota = false;
+
+          if (result['success']) {
+            _rotaEntries = List<Map<String, dynamic>>.from(result['rota']);
+            // Sort entries by date and time
+            _rotaEntries.sort((a, b) {
+              // First compare by date
+              final int dateCompare = a['rota_date'].compareTo(b['rota_date']);
+              if (dateCompare != 0) return dateCompare;
+
+              // Then compare by start time
+              return a['start_time'].compareTo(b['start_time']);
+            });
+          } else {
+            // Show error in snackbar but don't set error message (to keep UI visible)
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message'] ?? 'Failed to load rota entries'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            _rotaEntries = [];
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingRota = false;
+          _rotaEntries = [];
+        });
+
+        // Show error in snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An error occurred: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   // Format date (YYYY-MM-DD)
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  // Format display date (e.g., "Monday, 1 May 2023")
+  String _formatDisplayDate(String dateStr) {
+    try {
+      final DateTime date = DateTime.parse(dateStr);
+      return DateFormat('EEEE, d MMMM yyyy').format(date);
+    } catch (e) {
+      return dateStr;
+    }
   }
 
   // Show date picker
@@ -288,6 +385,9 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
                 setState(() {
                   _selectedStaff = value;
                 });
+
+                // Load rota entries for selected staff
+                _loadRotaEntries();
               },
             ),
           ],
@@ -407,26 +507,65 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
 
   // Build rota entries section
   Widget _buildRotaEntriesSection() {
+    // Title with month indicator
+    final String monthTitle = DateFormat('MMMM yyyy').format(_currentMonth);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Scheduled Working Hours',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+        // Title row with month navigation
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Scheduled Working Hours - $monthTitle',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            // Previous month button
+            IconButton(
+              icon: const Icon(Icons.chevron_left),
+              onPressed: () {
+                setState(() {
+                  _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1);
+                });
+                _loadRotaEntries();
+              },
+              tooltip: 'Previous Month',
+            ),
+            // Next month button
+            IconButton(
+              icon: const Icon(Icons.chevron_right),
+              onPressed: () {
+                setState(() {
+                  _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
+                });
+                _loadRotaEntries();
+              },
+              tooltip: 'Next Month',
+            ),
+          ],
         ),
         const SizedBox(height: 16),
 
-        // Placeholder for rota entries
-        if (_rotaEntries.isEmpty)
+        // Loading indicator or content
+        if (_loadingRota)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else if (_selectedStaff == null)
           const Card(
             child: Padding(
               padding: EdgeInsets.all(16),
               child: Center(
                 child: Text(
-                  'No working hours scheduled',
+                  'Please select a staff member to view their schedule',
                   style: TextStyle(
                     fontStyle: FontStyle.italic,
                     color: AppStyles.secondaryTextColor,
@@ -435,45 +574,156 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
               ),
             ),
           )
+        else if (_rotaEntries.isEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: Text(
+                  'No working hours scheduled for ${_selectedStaff!['name']}',
+                  style: const TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: AppStyles.secondaryTextColor,
+                  ),
+                ),
+              ),
+            ),
+          )
         else
-          ..._rotaEntries.map(_buildRotaEntryCard),
+          ..._buildGroupedRotaEntries(),
       ],
     );
   }
 
+  // Group rota entries by date
+  List<Widget> _buildGroupedRotaEntries() {
+    // Group entries by date
+    final Map<String, List<Map<String, dynamic>>> groupedEntries = {};
+
+    for (final entry in _rotaEntries) {
+      final String date = entry['rota_date'];
+      if (!groupedEntries.containsKey(date)) {
+        groupedEntries[date] = [];
+      }
+      groupedEntries[date]!.add(entry);
+    }
+
+    // Build a card for each date
+    final List<Widget> dateCards = [];
+
+    // Sort dates
+    final List<String> sortedDates = groupedEntries.keys.toList()..sort();
+
+    for (final date in sortedDates) {
+      dateCards.add(
+        Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Date header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEEF2F6),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(4),
+                  ),
+                ),
+                child: Text(
+                  _formatDisplayDate(date),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+
+              // Entries for this date
+              ...groupedEntries[date]!.map((entry) => _buildRotaEntryCard(entry)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return dateCards;
+  }
+
   // Build rota entry card
   Widget _buildRotaEntryCard(Map<String, dynamic> entry) {
-    // This is a placeholder - will be implemented with real data later
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        title: Text('Staff Name'),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Date: 2023-05-01'),
-            Text('Time: 09:00 - 17:00'),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.edit, color: AppStyles.primaryColor),
-              onPressed: () {
-                // Edit functionality will be implemented later
-              },
-              tooltip: 'Edit',
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          // Time information
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${entry['start_time']} - ${entry['end_time']}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: AppStyles.primaryColor,
+                  ),
+                ),
+                if (entry['staff_name'] != null && _selectedStaff != null && entry['staff_name'] != _selectedStaff!['name'])
+                  Text(
+                    entry['staff_name'],
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppStyles.secondaryTextColor,
+                    ),
+                  ),
+              ],
             ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () {
-                // Delete functionality will be implemented later
-              },
-              tooltip: 'Delete',
-            ),
-          ],
-        ),
+          ),
+
+          // Action buttons
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit, color: AppStyles.primaryColor),
+                onPressed: () {
+                  // Edit functionality will be implemented later
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Edit functionality coming soon!'),
+                    ),
+                  );
+                },
+                tooltip: 'Edit',
+                constraints: const BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 40,
+                ),
+                padding: EdgeInsets.zero,
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () {
+                  // Delete functionality will be implemented later
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Delete functionality coming soon!'),
+                    ),
+                  );
+                },
+                tooltip: 'Delete',
+                constraints: const BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 40,
+                ),
+                padding: EdgeInsets.zero,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
