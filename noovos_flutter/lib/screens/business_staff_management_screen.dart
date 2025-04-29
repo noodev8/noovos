@@ -490,10 +490,13 @@ class _BusinessStaffManagementScreenState extends State<BusinessStaffManagementS
             ],
           ),
           trailing: status == 'active'
-              ? IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _removeStaff(appuserId, fullName),
-                  tooltip: 'Remove staff member',
+              ? (role.toLowerCase() == 'business_owner'
+                  ? null  // No delete button for business owners
+                  : IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _removeStaff(appuserId, fullName),
+                      tooltip: 'Remove staff member',
+                    )
                 )
               : Row(
                   mainAxisSize: MainAxisSize.min,

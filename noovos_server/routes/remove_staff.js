@@ -88,7 +88,7 @@ router.post('/', verifyToken, async (req, res) => {
 
         // Check if the staff member exists for this business
         const staffQuery = await pool.query(
-            `SELECT id FROM appuser_business_role
+            `SELECT id, role FROM appuser_business_role
              WHERE appuser_id = $1 AND business_id = $2`,
             [appuser_id, business_id]
         );
@@ -97,6 +97,15 @@ router.post('/', verifyToken, async (req, res) => {
             return res.status(404).json({
                 return_code: "STAFF_NOT_FOUND",
                 message: "Staff member not found for this business"
+            });
+        }
+
+        // Check if the staff member is a business owner
+        const staffRole = staffQuery.rows[0].role;
+        if (staffRole && staffRole.toLowerCase() === 'business_owner') {
+            return res.status(400).json({
+                return_code: "CANNOT_REMOVE_BUSINESS_OWNER",
+                message: "Business owners cannot be removed from the staff list"
             });
         }
 
