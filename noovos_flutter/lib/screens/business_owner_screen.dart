@@ -2,6 +2,7 @@
 Business Owner Landing Page
 This screen shows businesses owned by the user
 Allows navigation back to the normal user search/dashboard
+Provides access to business management features like staff management
 */
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../styles/app_styles.dart';
 import '../helpers/auth_helper.dart';
 import '../helpers/image_helper.dart';
 import '../api/get_user_businesses_api.dart';
+import 'business_staff_management_screen.dart';
 
 class BusinessOwnerScreen extends StatefulWidget {
   const BusinessOwnerScreen({Key? key}) : super(key: key);
@@ -242,11 +244,13 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: InkWell(
         onTap: () {
-          // TODO: Navigate to business detail screen
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Business management for $businessName coming soon!'),
-              duration: const Duration(seconds: 2),
+          // Navigate to staff management screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BusinessStaffManagementScreen(
+                business: business,
+              ),
             ),
           );
         },
@@ -392,11 +396,13 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        // TODO: Navigate to business detail screen
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Business management for $businessName coming soon!'),
-                            duration: const Duration(seconds: 2),
+                        // Navigate to staff management screen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => BusinessStaffManagementScreen(
+                              business: business,
+                            ),
                           ),
                         );
                       },
@@ -408,7 +414,7 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text('Manage Business'),
+                      child: const Text('Manage Staff'),
                     ),
                   ),
                 ],
