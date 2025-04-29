@@ -46,6 +46,10 @@ const respond_to_staff_request = require('./routes/respond_to_staff_request');
 const remove_staff = require('./routes/remove_staff');
 const get_staff_invitations = require('./routes/get_staff_invitations');
 const respond_to_staff_invitation = require('./routes/respond_to_staff_invitation');
+const get_staff_rota = require('./routes/get_staff_rota');
+const add_staff_rota = require('./routes/add_staff_rota');
+const update_staff_rota = require('./routes/update_staff_rota');
+const delete_staff_rota = require('./routes/delete_staff_rota');
 
 // Set up routes
 app.use('/login_user', login_user);
@@ -68,6 +72,10 @@ app.use('/respond_to_staff_request', respond_to_staff_request);
 app.use('/remove_staff', remove_staff);
 app.use('/get_staff_invitations', get_staff_invitations);
 app.use('/respond_to_staff_invitation', respond_to_staff_invitation);
+app.use('/get_staff_rota', get_staff_rota);
+app.use('/add_staff_rota', add_staff_rota);
+app.use('/update_staff_rota', update_staff_rota);
+app.use('/delete_staff_rota', delete_staff_rota);
 
 // Root route
 app.get('/', (req, res) => {
