@@ -32,7 +32,6 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
 
   // Error message
   String? _errorMessage;
-  String? _errorCode;
 
   @override
   void dispose() {
@@ -71,7 +70,6 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _errorCode = null;
     });
 
     try {
@@ -97,7 +95,6 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
 
         if (mounted) {
           setState(() {
-            _errorCode = errorCode;
             _errorMessage = _getUserFriendlyErrorMessage(errorCode, defaultMessage);
           });
         }
@@ -106,8 +103,8 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
       // Show error message
       if (mounted) {
         setState(() {
-          _errorCode = 'SERVER_ERROR';
-          _errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+          _errorMessage = _getUserFriendlyErrorMessage('SERVER_ERROR',
+              'Unable to connect to the server. Please check your internet connection.');
         });
       }
     } finally {

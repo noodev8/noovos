@@ -7,7 +7,7 @@ Ensures consistent handling of API URLs and requests
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../helpers/config_helper.dart';
-import '../config/app_config.dart';
+// import '../config/app_config.dart';
 
 class BaseApiClient {
   // Get the API base URL from SharedPreferences or default

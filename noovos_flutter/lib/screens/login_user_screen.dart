@@ -29,7 +29,6 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
 
   // Error message
   String? _errorMessage;
-  String? _errorCode;
 
   // Secret tap counter for developer screen
   int _logoTapCount = 0;
@@ -69,7 +68,6 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _errorCode = null;
     });
 
     try {
@@ -92,7 +90,6 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
 
         if (mounted) {
           setState(() {
-            _errorCode = errorCode;
             _errorMessage = _getUserFriendlyErrorMessage(errorCode, defaultMessage);
           });
         }
@@ -101,8 +98,8 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
       // Show error message
       if (mounted) {
         setState(() {
-          _errorCode = 'SERVER_ERROR';
-          _errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+          _errorMessage = _getUserFriendlyErrorMessage('SERVER_ERROR',
+              'Unable to connect to the server. Please check your internet connection.');
         });
       }
     } finally {
