@@ -80,7 +80,10 @@ class AuthHelper {
     }
   }
 
-  // Check if user is a business owner
+  // Check if user is a business owner by querying the appuser_business_role table
+  // This makes an API call to get_user_businesses which checks if the user has any businesses
+  // with a 'business_owner' role. The role is stored in the appuser_business_role table,
+  // not in the app_user table.
   static Future<bool> isBusinessOwner() async {
     try {
       // First check if user is logged in
@@ -97,7 +100,7 @@ class AuthHelper {
         final businesses = result['businesses'] as List;
         // Check if any of the businesses have the user with a business_owner role
         return businesses.any((business) =>
-          business['role'] == 'business_owner' || business['role'] == 'Business Owner');
+          business['role']?.toString().toLowerCase() == 'business_owner');
       }
 
       return false;

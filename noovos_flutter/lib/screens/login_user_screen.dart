@@ -80,7 +80,9 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
 
       // Check if login was successful
       if (result['success']) {
-        // Check if user has business owner role
+        // Check if user has business owner role by querying the appuser_business_role table
+        // This makes an API call to get_user_businesses which checks if the user has any businesses
+        // with a 'business_owner' role
         final isBusinessOwner = await AuthHelper.isBusinessOwner();
 
         if (mounted) {

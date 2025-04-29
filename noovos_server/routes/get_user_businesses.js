@@ -91,30 +91,9 @@ router.post('/', verifyToken, async (req, res) => {
 
         // Check if any businesses were found
         if (result.rows.length === 0) {
-            // Get user details for debugging
-            const userQuery = await pool.query(
-                "SELECT id, email, role FROM app_user WHERE id = $1",
-                [userId]
-            );
-
-            const userDetails = userQuery.rows.length > 0 ? userQuery.rows[0] : { id: userId, email: 'unknown', role: 'unknown' };
-
-            // Check if user has any roles in appuser_business_role
-            const roleQuery = await pool.query(
-                "SELECT business_id, role FROM appuser_business_role WHERE appuser_id = $1",
-                [userId]
-            );
-
-            const roleDetails = roleQuery.rows.length > 0 ? roleQuery.rows : [];
-
             return res.status(404).json({
                 return_code: "NO_BUSINESSES_FOUND",
-                message: "No businesses found for this user",
-                debug: {
-                    user_id: userId,
-                    user_details: userDetails,
-                    roles: roleDetails
-                }
+                message: "No businesses found for this user"
             });
         }
 

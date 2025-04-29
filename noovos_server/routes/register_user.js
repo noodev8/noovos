@@ -74,10 +74,10 @@ router.post('/', async (req, res) => {
         // Insert the new user into the database
         const newUserQuery = await pool.query(
             `INSERT INTO app_user
-            (user_type, first_name, last_name, email, mobile, password_hash, role)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            (first_name, last_name, email, mobile, password_hash)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING *`,
-            ['consumer', first_name, last_name, email, mobile || null, passwordHash, 'consumer']
+            [first_name, last_name, email, mobile || null, passwordHash]
         );
 
         // Get the newly created user
@@ -87,8 +87,7 @@ router.post('/', async (req, res) => {
         const token = jwt.sign(
             {
                 id: newUser.id,
-                email: newUser.email,
-                role: newUser.role
+                email: newUser.email
             },
             process.env.JWT_SECRET,
             { expiresIn: '24h' }
@@ -102,7 +101,7 @@ router.post('/', async (req, res) => {
                 id: newUser.id,
                 name: `${newUser.first_name} ${newUser.last_name}`,
                 email: newUser.email,
-                account_level: newUser.role
+                account_level: 'standard'  // Default account level
             }
         });
 

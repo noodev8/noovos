@@ -35,22 +35,14 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
     _loadBusinesses();
   }
 
-  // Debug information
-  Map<String, dynamic>? _debugInfo;
-
   // Load businesses
   Future<void> _loadBusinesses() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _debugInfo = null;
     });
 
     try {
-      // Get user data for debugging
-      final userData = await AuthHelper.getUserData();
-      final userId = userData?['id'];
-
       // Call API to get businesses
       final result = await GetUserBusinessesApi.getUserBusinesses();
 
@@ -61,17 +53,12 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
           if (result['success']) {
             _businesses = result['businesses'];
 
-            // If no businesses found, set a more descriptive error message
+            // If no businesses found, set an error message
             if (_businesses.isEmpty) {
-              _errorMessage = 'No businesses found for user ID: $userId. This could mean you don\'t have any business owner roles assigned in the database.';
+              _errorMessage = 'No businesses found for your account.';
             }
           } else {
-            _errorMessage = '${result['message']} (User ID: $userId)';
-
-            // Store debug information if available
-            if (result['debug'] != null) {
-              _debugInfo = result['debug'];
-            }
+            _errorMessage = result['message'] ?? 'Failed to load businesses.';
           }
         });
       }
@@ -79,7 +66,7 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'An error occurred: $e';
+          _errorMessage = 'An error occurred. Please try again.';
         });
       }
     }
@@ -159,61 +146,6 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Debug information
-            FutureBuilder<Map<String, dynamic>?>(
-              future: AuthHelper.getUserData(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data != null) {
-                  final userData = snapshot.data!;
-                  return Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('User ID: ${userData['id']}'),
-                        Text('Name: ${userData['name']}'),
-                        Text('Email: ${userData['email']}'),
-                        Text('Account Level: ${userData['account_level']}'),
-
-                        // Show API debug info if available
-                        if (_debugInfo != null) ...[
-                          const SizedBox(height: 16),
-                          const Text('API Debug Information:', style: TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-
-                          // User details from API
-                          if (_debugInfo!['user_details'] != null) ...[
-                            Text('User ID from API: ${_debugInfo!['user_details']['id']}'),
-                            Text('User Email from API: ${_debugInfo!['user_details']['email']}'),
-                            Text('User Role from API: ${_debugInfo!['user_details']['role']}'),
-                          ],
-
-                          // Roles from API
-                          if (_debugInfo!['roles'] != null) ...[
-                            const SizedBox(height: 8),
-                            const Text('User Roles:', style: TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 4),
-
-                            if ((_debugInfo!['roles'] as List).isEmpty)
-                              const Text('No roles found for this user'),
-
-                            for (var role in _debugInfo!['roles'])
-                              Text('Business ID: ${role['business_id']}, Role: ${role['role']}'),
-                          ],
-                        ],
-                      ],
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-            const SizedBox(height: 24),
-
             ElevatedButton(
               onPressed: _loadBusinesses,
               style: AppStyles.primaryButtonStyle,
@@ -257,61 +189,6 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Debug information
-            FutureBuilder<Map<String, dynamic>?>(
-              future: AuthHelper.getUserData(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data != null) {
-                  final userData = snapshot.data!;
-                  return Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('User ID: ${userData['id']}'),
-                        Text('Name: ${userData['name']}'),
-                        Text('Email: ${userData['email']}'),
-                        Text('Account Level: ${userData['account_level']}'),
-
-                        // Show API debug info if available
-                        if (_debugInfo != null) ...[
-                          const SizedBox(height: 16),
-                          const Text('API Debug Information:', style: TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-
-                          // User details from API
-                          if (_debugInfo!['user_details'] != null) ...[
-                            Text('User ID from API: ${_debugInfo!['user_details']['id']}'),
-                            Text('User Email from API: ${_debugInfo!['user_details']['email']}'),
-                            Text('User Role from API: ${_debugInfo!['user_details']['role']}'),
-                          ],
-
-                          // Roles from API
-                          if (_debugInfo!['roles'] != null) ...[
-                            const SizedBox(height: 8),
-                            const Text('User Roles:', style: TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 4),
-
-                            if ((_debugInfo!['roles'] as List).isEmpty)
-                              const Text('No roles found for this user'),
-
-                            for (var role in _debugInfo!['roles'])
-                              Text('Business ID: ${role['business_id']}, Role: ${role['role']}'),
-                          ],
-                        ],
-                      ],
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-            const SizedBox(height: 24),
-
             ElevatedButton(
               onPressed: _loadBusinesses,
               style: AppStyles.primaryButtonStyle,
@@ -331,53 +208,13 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
 
   // Build business list
   Widget _buildBusinessList() {
-    return Column(
-      children: [
-        // Debug button to show raw API response
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: ElevatedButton(
-            onPressed: () {
-              // Show dialog with raw API response
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('API Response Debug'),
-                  content: SingleChildScrollView(
-                    child: Text(
-                      _businesses.toString(),
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Close'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.grey[200],
-              foregroundColor: Colors.black87,
-            ),
-            child: const Text('Debug: Show Raw API Response'),
-          ),
-        ),
-
-        // Business list
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _businesses.length,
-            itemBuilder: (context, index) {
-              final business = _businesses[index];
-              return _buildBusinessCard(business);
-            },
-          ),
-        ),
-      ],
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _businesses.length,
+      itemBuilder: (context, index) {
+        final business = _businesses[index];
+        return _buildBusinessCard(business);
+      },
     );
   }
 

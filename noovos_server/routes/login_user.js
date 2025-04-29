@@ -83,8 +83,7 @@ router.post('/', async (req, res) => {
         const token = jwt.sign(
             {
                 id: user.id,
-                email: user.email,
-                role: user.role
+                email: user.email
             },
             process.env.JWT_SECRET,
             { expiresIn: '24h' }
@@ -98,7 +97,7 @@ router.post('/', async (req, res) => {
                 id: user.id,
                 name: `${user.first_name} ${user.last_name}`,
                 email: user.email,
-                account_level: user.role
+                account_level: 'standard'  // Default account level
             }
         });
 

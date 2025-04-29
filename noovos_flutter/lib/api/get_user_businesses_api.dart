@@ -38,12 +38,11 @@ class GetUserBusinessesApi {
           'businesses': responseData['businesses'],
         };
       } else {
-        // Return error with debug information if available
+        // Return error
         return {
           'success': false,
           'message': responseData['message'] ?? 'Failed to get businesses',
           'return_code': responseData['return_code'] ?? 'UNKNOWN_ERROR',
-          'debug': responseData['debug'],
         };
       }
     } catch (e) {
