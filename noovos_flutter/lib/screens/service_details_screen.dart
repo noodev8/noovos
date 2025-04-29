@@ -78,7 +78,13 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     final businessId = _serviceDetails!['business_id'] ?? 0;
 
     // Check if service can be added to cart (based on business restrictions)
-    _canAddToCart = businessId > 0 ? CartHelper.canAddToCart(businessId) : true;
+    bool canAddBasedOnBusiness = businessId > 0 ? CartHelper.canAddToCart(businessId) : true;
+
+    // Check if cart is full (only matters if not already in cart and passes business check)
+    bool isCartFull = !_isInCart && CartHelper.isCartFull();
+
+    // Service can be added only if it passes both checks
+    _canAddToCart = canAddBasedOnBusiness && !isCartFull;
 
     // Get current business in cart (if any)
     _currentBusinessInCart = CartHelper.getCurrentBusinessName();
@@ -187,7 +193,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      
+
       setState(() {
         _isLoading = false;
       });
@@ -610,8 +616,11 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   // Build bottom bar with action buttons
   Widget _buildBottomBar() {
     // Check if we need to show a business restriction warning
-    final bool showBusinessWarning = !_canAddToCart && !_isInCart;
+    final bool showBusinessWarning = !_canAddToCart && !_isInCart && _currentBusinessInCart != null;
     final String? currentBusiness = _currentBusinessInCart;
+
+    // Check if cart is full
+    final bool isCartFull = !_isInCart && CartHelper.isCartFull();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -633,6 +642,33 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   child: Text(
                     'You already have services from $currentBusiness in your cart. '
                     'You can only book services from one business at a time.',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Show warning if cart is full
+        if (isCartFull)
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.orange.shade100,
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Your cart is full (maximum ${CartHelper.maxCartItems} items). '
+                    'Please remove an item before adding a new one.',
                     style: const TextStyle(
                       fontSize: 14,
                       color: Colors.black87,

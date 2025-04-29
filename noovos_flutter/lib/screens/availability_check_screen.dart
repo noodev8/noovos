@@ -102,7 +102,18 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
       _errorMessage = null;
     });
 
+    // Check if there are more than 3 services in the cart (should never happen with our new limit)
+    if (_cartItems.length > CartHelper.maxCartItems) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'You have exceeded the maximum number of services allowed (${CartHelper.maxCartItems}). Please remove some items from your cart.';
+      });
+      return;
+    }
+
     // Check if there are multiple services in the cart
+    // Note: We're keeping this restriction for now, but in the future we could implement
+    // the x2 or x3 service slot APIs based on the number of items in the cart
     if (_cartItems.length > 1) {
       setState(() {
         _isLoading = false;

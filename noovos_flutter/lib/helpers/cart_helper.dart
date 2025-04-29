@@ -64,6 +64,9 @@ class CartHelper {
   // Key for SharedPreferences
   static const String _cartKey = 'cart_items';
 
+  // Maximum number of items allowed in cart
+  static const int maxCartItems = 3;
+
   // In-memory cart items
   static List<CartItem> _cartItems = [];
 
@@ -153,6 +156,11 @@ class CartHelper {
       // Item already exists, replace it
       _cartItems[existingIndex] = item;
     } else {
+      // Check if cart has reached maximum limit
+      if (_cartItems.length >= maxCartItems) {
+        return false; // Cannot add more items, cart is full
+      }
+
       // Add new item
       _cartItems.add(item);
     }
@@ -187,6 +195,16 @@ class CartHelper {
   // Check if item is in cart
   static bool isInCart(int serviceId) {
     return _cartItems.any((item) => item.serviceId == serviceId);
+  }
+
+  // Check if cart has reached maximum limit
+  static bool isCartFull() {
+    return _cartItems.length >= maxCartItems;
+  }
+
+  // Get remaining slots in cart
+  static int getRemainingSlots() {
+    return maxCartItems - _cartItems.length;
   }
 }
 

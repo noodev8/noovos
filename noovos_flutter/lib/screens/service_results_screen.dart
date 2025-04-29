@@ -160,8 +160,14 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
     // Check if service is in cart
     bool isInCart = CartHelper.isInCart(serviceId);
 
-    // Check if service can be added to cart
-    bool canAddToCart = businessId > 0 ? CartHelper.canAddToCart(businessId) : true;
+    // Check if service can be added to cart based on business restrictions
+    bool canAddBasedOnBusiness = businessId > 0 ? CartHelper.canAddToCart(businessId) : true;
+
+    // Check if cart is full (only matters if not already in cart)
+    bool isCartFull = !isInCart && CartHelper.isCartFull();
+
+    // Service can be added only if it passes both checks
+    bool canAddToCart = canAddBasedOnBusiness && !isCartFull;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -402,41 +408,80 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                           onPressed: () async {
                             // Check if service can be added to cart
                             if (!canAddToCart) {
-                              // Show warning dialog
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Cannot Continue'),
-                                  content: Text(
-                                    'You already have services from ${CartHelper.getCurrentBusinessName() ?? 'another business'} in your cart. '
-                                    'You can only book services from one business at a time.\n\n'
-                                    'Would you like to clear your cart and continue with this service instead?'
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                      },
-                                      child: const Text('Cancel'),
+                              // Check if cart is full
+                              if (CartHelper.isCartFull() && !isInCart) {
+                                // Show cart full warning dialog
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Cart is Full'),
+                                    content: Text(
+                                      'Your cart already has the maximum of ${CartHelper.maxCartItems} items. '
+                                      'Please remove an item before adding a new one, or clear your cart to start over.\n\n'
+                                      'Would you like to clear your cart and continue with this service instead?'
                                     ),
-                                    TextButton(
-                                      onPressed: () {
-                                        // Clear cart
-                                        CartHelper.clearCart();
-                                        Navigator.pop(context);
-
-                                        // Check if the service has staff members
-                                        _checkServiceStaff(service);
-                                      },
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: AppStyles.primaryColor,
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text('Cancel'),
                                       ),
-                                      child: const Text('Clear Cart & Continue'),
+                                      TextButton(
+                                        onPressed: () {
+                                          // Clear cart
+                                          CartHelper.clearCart();
+                                          Navigator.pop(context);
+
+                                          // Check if the service has staff members
+                                          _checkServiceStaff(service);
+                                        },
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: AppStyles.primaryColor,
+                                        ),
+                                        child: const Text('Clear Cart & Continue'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                return;
+                              } else {
+                                // Show business restriction warning dialog
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Cannot Continue'),
+                                    content: Text(
+                                      'You already have services from ${CartHelper.getCurrentBusinessName() ?? 'another business'} in your cart. '
+                                      'You can only book services from one business at a time.\n\n'
+                                      'Would you like to clear your cart and continue with this service instead?'
                                     ),
-                                  ],
-                                ),
-                              );
-                              return;
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          // Clear cart
+                                          CartHelper.clearCart();
+                                          Navigator.pop(context);
+
+                                          // Check if the service has staff members
+                                          _checkServiceStaff(service);
+                                        },
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: AppStyles.primaryColor,
+                                        ),
+                                        child: const Text('Clear Cart & Continue'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                return;
+                              }
                             }
 
                             // Check if the service has staff members

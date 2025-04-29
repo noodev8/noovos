@@ -196,13 +196,50 @@ class _CartScreenState extends State<CartScreen> {
 
   // Build cart items list
   Widget _buildCartItems() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _cartItems.length,
-      itemBuilder: (context, index) {
-        final item = _cartItems[index];
-        return _buildCartItemCard(item);
-      },
+    return Column(
+      children: [
+        // Cart limit indicator
+        Container(
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.shade100),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: Colors.blue.shade700,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Cart limit: ${_cartItems.length}/${CartHelper.maxCartItems} items',
+                  style: TextStyle(
+                    color: Colors.blue.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Cart items list
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: _cartItems.length,
+            itemBuilder: (context, index) {
+              final item = _cartItems[index];
+              return _buildCartItemCard(item);
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -384,7 +421,7 @@ class _CartScreenState extends State<CartScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Color.fromRGBO(128, 128, 128, 0.2),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, -2),
