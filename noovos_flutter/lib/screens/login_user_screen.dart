@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../api/login_user_api.dart';
 import '../styles/app_styles.dart';
 import '../helpers/auth_helper.dart';
+import '../helpers/staff_invitation_helper.dart';
 import 'hidden_developer_screen.dart';
 
 class LoginUserScreen extends StatefulWidget {
@@ -86,12 +87,18 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
         final isBusinessOwner = await AuthHelper.isBusinessOwner();
 
         if (mounted) {
-          if (isBusinessOwner) {
-            // Navigate to business owner screen
-            Navigator.pushReplacementNamed(context, '/business_owner');
-          } else {
-            // Navigate to dashboard
-            Navigator.pushReplacementNamed(context, '/dashboard');
+          // Check for staff invitations
+          await StaffInvitationHelper.checkForInvitations(context);
+
+          // Check again if the widget is still mounted after the async operation
+          if (mounted) {
+            if (isBusinessOwner) {
+              // Navigate to business owner screen
+              Navigator.pushReplacementNamed(context, '/business_owner');
+            } else {
+              // Navigate to dashboard
+              Navigator.pushReplacementNamed(context, '/dashboard');
+            }
           }
         }
       } else {

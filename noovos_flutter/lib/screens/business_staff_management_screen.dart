@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 import '../api/get_business_staff_api.dart';
 import '../api/request_staff_join_api.dart';
-import '../api/respond_to_staff_request_api.dart';
+
 import '../api/remove_staff_api.dart';
 
 class BusinessStaffManagementScreen extends StatefulWidget {
@@ -128,52 +128,6 @@ class _BusinessStaffManagementScreenState extends State<BusinessStaffManagementS
         // If successful, clear the email field and reload staff list
         if (result['success']) {
           _emailController.clear();
-          _loadStaff();
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        // Show error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('An error occurred: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  // Respond to staff request
-  Future<void> _respondToStaffRequest(int requestId, String action) async {
-    // Show loading indicator
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Call API to respond to staff request
-      final result = await RespondToStaffRequestApi.respondToStaffRequest(requestId, action);
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        // Show success or error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: result['success'] ? Colors.green : Colors.red,
-          ),
-        );
-
-        // If successful, reload staff list
-        if (result['success']) {
           _loadStaff();
         }
       }
@@ -465,7 +419,7 @@ class _BusinessStaffManagementScreenState extends State<BusinessStaffManagementS
     }
 
     return filteredStaff.map((staff) {
-      final int id = staff['id'];
+      // Get staff details
       final int appuserId = staff['appuser_id'];
       final String firstName = staff['first_name'] ?? '';
       final String lastName = staff['last_name'] ?? '';
@@ -498,20 +452,10 @@ class _BusinessStaffManagementScreenState extends State<BusinessStaffManagementS
                       tooltip: 'Remove staff member',
                     )
                 )
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.check, color: Colors.green),
-                      onPressed: () => _respondToStaffRequest(id, 'accept'),
-                      tooltip: 'Accept request',
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.red),
-                      onPressed: () => _respondToStaffRequest(id, 'reject'),
-                      tooltip: 'Reject request',
-                    ),
-                  ],
+              : IconButton(
+                  icon: const Icon(Icons.close, color: Colors.red),
+                  onPressed: () => _removeStaff(appuserId, fullName),
+                  tooltip: 'Cancel request',
                 ),
         ),
       );

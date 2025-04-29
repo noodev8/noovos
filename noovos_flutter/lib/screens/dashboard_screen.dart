@@ -9,6 +9,7 @@ Provides option to login for booking services
 import 'package:flutter/material.dart';
 import '../helpers/auth_helper.dart';
 import '../styles/app_styles.dart';
+import '../helpers/staff_invitation_helper.dart';
 
 import '../api/get_categories_api.dart';
 import '../helpers/image_helper.dart';
@@ -56,6 +57,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _checkLoginStatus();
     _loadCategories();
+    _checkForInvitations();
+  }
+
+  // Check for staff invitations
+  Future<void> _checkForInvitations() async {
+    // Wait a moment to ensure the screen is fully loaded
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Check if user is logged in
+    final isLoggedIn = await AuthHelper.isLoggedIn();
+
+    // If logged in and the widget is still mounted, check for invitations
+    if (isLoggedIn && mounted) {
+      await StaffInvitationHelper.checkForInvitations(context);
+    }
   }
 
   // Load categories

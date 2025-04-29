@@ -44,6 +44,8 @@ const get_business_staff = require('./routes/get_business_staff');
 const request_staff_join = require('./routes/request_staff_join');
 const respond_to_staff_request = require('./routes/respond_to_staff_request');
 const remove_staff = require('./routes/remove_staff');
+const get_staff_invitations = require('./routes/get_staff_invitations');
+const respond_to_staff_invitation = require('./routes/respond_to_staff_invitation');
 
 // Set up routes
 app.use('/login_user', login_user);
@@ -64,6 +66,8 @@ app.use('/get_business_staff', get_business_staff);
 app.use('/request_staff_join', request_staff_join);
 app.use('/respond_to_staff_request', respond_to_staff_request);
 app.use('/remove_staff', remove_staff);
+app.use('/get_staff_invitations', get_staff_invitations);
+app.use('/respond_to_staff_invitation', respond_to_staff_invitation);
 
 // Root route
 app.get('/', (req, res) => {
