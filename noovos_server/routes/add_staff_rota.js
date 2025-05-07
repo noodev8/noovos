@@ -106,9 +106,9 @@ router.post('/', verifyToken, async (req, res) => {
             let addedCount = 0;
             for (const entry of entries) {
                 await client.query(
-                    `INSERT INTO staff_rota (staff_id, rota_date, start_time, end_time)
-                     VALUES ($1, $2, $3, $4)`,
-                    [entry.staff_id, entry.rota_date, entry.start_time, entry.end_time]
+                    `INSERT INTO staff_rota (staff_id, rota_date, start_time, end_time, business_id)
+                     VALUES ($1, $2, $3, $4, $5)`,
+                    [entry.staff_id, entry.rota_date, entry.start_time, entry.end_time, business_id]
                 );
                 addedCount++;
             }

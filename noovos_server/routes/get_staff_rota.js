@@ -87,10 +87,8 @@ router.post('/', verifyToken, async (req, res) => {
                 staff_rota sr
             JOIN
                 app_user u ON sr.staff_id = u.id
-            JOIN
-                appuser_business_role abr ON u.id = abr.appuser_id
             WHERE
-                abr.business_id = $1
+                sr.business_id = $1
         `;
 
         // Add staff_id filter if provided

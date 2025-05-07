@@ -5,7 +5,7 @@
 -- Dumped from database version 11.18 (Debian 11.18-0+deb10u1)
 -- Dumped by pg_dump version 17.4
 
--- Started on 2025-04-29 21:24:26
+-- Started on 2025-05-07 10:21:29
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1064,7 +1064,8 @@ CREATE TABLE public.staff_rota (
     staff_id integer NOT NULL,
     rota_date date NOT NULL,
     start_time time without time zone NOT NULL,
-    end_time time without time zone NOT NULL
+    end_time time without time zone NOT NULL,
+    business_id integer
 );
 
 
@@ -2105,7 +2106,7 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.staff_rota TO PUBLIC;
 
 
--- Completed on 2025-04-29 21:24:28
+-- Completed on 2025-05-07 10:21:32
 
 --
 -- PostgreSQL database dump complete

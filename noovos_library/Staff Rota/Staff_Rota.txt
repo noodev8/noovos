@@ -1,0 +1,78 @@
+Business: Zen Den (10)
+
+STAFF
+Andreas (21)
+Summer (31)
+
+
+SERVICES
+service_id	service_name		duration	price
+10		Deep Tissue Massage	90		85
+16		Haircut			30		20
+21		Nails			30		45
+17		Nails with varnish	30		40
+19		Tattoo			120		120
+18		Yoga Session		30		10
+
+
+SERVICE STAFF
+service_id	service_name		duration	price	staff_name		staff_id
+10		Deep Tissue Massage	90		85	Robert Smith		23
+16		Haircut			30		20	Andreas Andreou		21
+16		Haircut			30		20	Emma Williams		26
+21		Nails			30		45	<Unallocated>		NULL
+17		Nails with varnish	30		40	Emma Williams		26
+19		Tattoo			120		120	<Unallocated>		NULL
+18		Yoga Session		30		10	Emma Williams		26
+
+
+
+
+
+
+
+
+
+
+
+
+TABLES
+
+app_user
+service_staff
+staff_rota
+booking
+
+
+
+APIs
+
+get_staff_rota
+
+Request Payload:
+{
+  "business_id": 5,                   // integer, required - ID of the business
+  "staff_id": 10,                     // integer, optional - Filter by specific staff member
+  "start_date": "2025-05-01",         // string, optional - Start date for filtering (YYYY-MM-DD)
+  "end_date": "2025-05-31"            // string, optional - End date for filtering (YYYY-MM-DD)
+}
+
+
+add_staff_rota
+{
+  "business_id": 5,                   // integer, required - ID of the business
+  "entries": [                        // array, required - Array of rota entries to add
+    {
+      "staff_id": 10,                 // integer, required - ID of the staff member
+      "rota_date": "2025-05-01",      // string, required - Date for the rota entry (YYYY-MM-DD)
+      "start_time": "09:00",          // string, required - Start time (HH:MM)
+      "end_time": "17:00"             // string, required - End time (HH:MM)
+    }
+  ]
+}
+
+
+
+update_staff_rota
+
+

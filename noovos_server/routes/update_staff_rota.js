@@ -68,12 +68,11 @@ router.post('/', verifyToken, async (req, res) => {
             });
         }
 
-        // Check if the rota entry exists and belongs to a staff member of this business
+        // Check if the rota entry exists and belongs to this business
         const rotaQuery = await pool.query(
             `SELECT sr.id, sr.staff_id
              FROM staff_rota sr
-             JOIN appuser_business_role abr ON sr.staff_id = abr.appuser_id
-             WHERE sr.id = $1 AND abr.business_id = $2`,
+             WHERE sr.id = $1 AND sr.business_id = $2`,
             [rota_id, business_id]
         );
 
