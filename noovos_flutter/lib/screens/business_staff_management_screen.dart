@@ -13,7 +13,7 @@ import '../styles/app_styles.dart';
 import '../api/get_business_staff_api.dart';
 import '../api/request_staff_join_api.dart';
 import '../api/remove_staff_api.dart';
-import 'business_staff_rota_screen.dart';
+import 'staff_rota_2/staff_rota_placeholder_screen.dart';
 
 class BusinessStaffManagementScreen extends StatefulWidget {
   // Business details
@@ -335,11 +335,11 @@ class _BusinessStaffManagementScreenState extends State<BusinessStaffManagementS
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // Navigate to staff rota screen
+                      // Navigate to staff rota placeholder screen
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => BusinessStaffRotaScreen(
+                          builder: (context) => StaffRotaPlaceholderScreen(
                             business: widget.business,
                           ),
                         ),
