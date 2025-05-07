@@ -421,44 +421,22 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Week dropdown with refresh button
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    decoration: const InputDecoration(
-                      labelText: 'Week',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    ),
-                    value: _selectedWeekIndex,
-                    items: _weekOptions.map((week) {
-                      return DropdownMenuItem<int>(
-                        value: week['index'],
-                        child: Text(week['displayText']),
-                      );
-                    }).toList(),
-                    onChanged: _onWeekChanged,
-                    isExpanded: true,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Reload rota data for current week
-                      _loadRotaData();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.all(12),
-                      minimumSize: const Size(0, 48),
-                    ),
-                    child: const Icon(Icons.refresh),
-                  ),
-                ),
-              ],
+            // Week dropdown
+            DropdownButtonFormField<int>(
+              decoration: const InputDecoration(
+                labelText: 'Week',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
+              value: _selectedWeekIndex,
+              items: _weekOptions.map((week) {
+                return DropdownMenuItem<int>(
+                  value: week['index'],
+                  child: Text(week['displayText']),
+                );
+              }).toList(),
+              onChanged: _onWeekChanged,
+              isExpanded: true,
             ),
 
 
@@ -538,8 +516,6 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
   Widget _buildStaffCard(Map<String, dynamic> staff) {
     final int staffId = staff['id'];
     final String name = staff['name'];
-    final String email = staff['email'];
-    final String role = staff['role'];
 
     // Get hours data for this staff member
     final bool hasHoursData = _staffHours.containsKey(staffId);
@@ -612,23 +588,10 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      email,
-                      style: const TextStyle(
-                        color: AppStyles.secondaryTextColor,
-                      ),
-                    ),
-                    Text(
-                      'Role: $role',
-                      style: const TextStyle(
-                        fontStyle: FontStyle.italic,
-                        color: AppStyles.secondaryTextColor,
-                      ),
-                    ),
                     if (!_loadingRotaData) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Hours this week: $formattedHours',
+                        'Hours: $formattedHours',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: hasEntries ? AppStyles.primaryColor : Colors.grey,
