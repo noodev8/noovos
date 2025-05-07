@@ -8,7 +8,6 @@ Authentication: Required - This endpoint requires a valid JWT token
 =======================================================================================================================================
 Request Payload:
 {
-  "business_id": 5,                   // integer, required - ID of the business
   "rota_id": 15,                      // integer, required - ID of the rota entry to update
   "staff_id": 10,                     // integer, optional - New staff ID (if changing staff)
   "rota_date": "2025-05-01",          // string, optional - New date (YYYY-MM-DD)
@@ -36,13 +35,13 @@ router.post('/', verifyToken, async (req, res) => {
         const userId = req.user.id;
 
         // Extract parameters from request body
-        const { business_id, rota_id, staff_id, rota_date, start_time, end_time } = req.body;
+        const { rota_id, staff_id, rota_date, start_time, end_time } = req.body;
 
         // Validate required fields
-        if (!business_id || !rota_id) {
+        if (!rota_id) {
             return res.status(400).json({
                 return_code: "MISSING_FIELDS",
-                message: "Business ID and Rota ID are required"
+                message: "Rota ID is required"
             });
         }
 
@@ -53,6 +52,23 @@ router.post('/', verifyToken, async (req, res) => {
                 message: "At least one field to update is required"
             });
         }
+
+        // Get the rota entry and check if it exists
+        const rotaQuery = await pool.query(
+            `SELECT sr.id, sr.staff_id, sr.business_id
+             FROM staff_rota sr
+             WHERE sr.id = $1`,
+            [rota_id]
+        );
+
+        if (rotaQuery.rows.length === 0) {
+            return res.status(404).json({
+                return_code: "NOT_FOUND",
+                message: "Rota entry not found"
+            });
+        }
+
+        const business_id = rotaQuery.rows[0].business_id;
 
         // Check if the user has permission to update staff rota for this business
         const permissionQuery = await pool.query(
@@ -65,21 +81,6 @@ router.post('/', verifyToken, async (req, res) => {
             return res.status(403).json({
                 return_code: "UNAUTHORIZED",
                 message: "You do not have permission to update staff rota for this business"
-            });
-        }
-
-        // Check if the rota entry exists and belongs to this business
-        const rotaQuery = await pool.query(
-            `SELECT sr.id, sr.staff_id
-             FROM staff_rota sr
-             WHERE sr.id = $1 AND sr.business_id = $2`,
-            [rota_id, business_id]
-        );
-
-        if (rotaQuery.rows.length === 0) {
-            return res.status(404).json({
-                return_code: "NOT_FOUND",
-                message: "Rota entry not found or does not belong to this business"
             });
         }
 

@@ -47,24 +47,29 @@ booking
 
 APIs
 
+add_staff_rota
 get_staff_rota
+update_staff_rota
+delete_staff_rota
 
-Request Payload:
+
+== get_staff_rota ==
 {
-  "business_id": 5,                   // integer, required - ID of the business
-  "staff_id": 10,                     // integer, optional - Filter by specific staff member
+  "business_id": 10,                   // integer, required - ID of the business
+  "staff_id": 21,                     // integer, optional - Filter by specific staff member
   "start_date": "2025-05-01",         // string, optional - Start date for filtering (YYYY-MM-DD)
   "end_date": "2025-05-31"            // string, optional - End date for filtering (YYYY-MM-DD)
 }
 
 
-add_staff_rota
+
+== add_staff_rota ==
 {
-  "business_id": 5,                   // integer, required - ID of the business
+  "business_id": 10,                   // integer, required - ID of the business
   "entries": [                        // array, required - Array of rota entries to add
     {
-      "staff_id": 10,                 // integer, required - ID of the staff member
-      "rota_date": "2025-05-01",      // string, required - Date for the rota entry (YYYY-MM-DD)
+      "staff_id": 21,                 // integer, required - ID of the staff member
+      "rota_date": "2025-05-07",      // string, required - Date for the rota entry (YYYY-MM-DD)
       "start_time": "09:00",          // string, required - Start time (HH:MM)
       "end_time": "17:00"             // string, required - End time (HH:MM)
     }
@@ -72,7 +77,18 @@ add_staff_rota
 }
 
 
+== update_staff_rota ==
+{
+  "rota_id": 6,                      // integer, required - ID of the rota entry to update
+  "staff_id": 21,                     // integer, optional - New staff ID (if changing staff)
+  "rota_date": "2025-05-07",          // string, optional - New date (YYYY-MM-DD)
+  "start_time": "10:00",              // string, optional - New start time (HH:MM)
+  "end_time": "17:00"                 // string, optional - New end time (HH:MM)
+}
 
-update_staff_rota
 
+== delete_staff_rota ==
+{
+  "rota_id": 6                       // integer, required - ID of the rota entry to delete
+}
 

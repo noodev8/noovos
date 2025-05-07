@@ -8,7 +8,6 @@ Authentication: Required - This endpoint requires a valid JWT token
 =======================================================================================================================================
 Request Payload:
 {
-  "business_id": 5,                   // integer, required - ID of the business
   "rota_id": 15                       // integer, required - ID of the rota entry to delete
 }
 =======================================================================================================================================
@@ -32,15 +31,32 @@ router.post('/', verifyToken, async (req, res) => {
         const userId = req.user.id;
 
         // Extract parameters from request body
-        const { business_id, rota_id } = req.body;
+        const { rota_id } = req.body;
 
         // Validate required fields
-        if (!business_id || !rota_id) {
+        if (!rota_id) {
             return res.status(400).json({
                 return_code: "MISSING_FIELDS",
-                message: "Business ID and Rota ID are required"
+                message: "Rota ID is required"
             });
         }
+
+        // Get the rota entry and check if it exists
+        const rotaQuery = await pool.query(
+            `SELECT sr.id, sr.business_id
+             FROM staff_rota sr
+             WHERE sr.id = $1`,
+            [rota_id]
+        );
+
+        if (rotaQuery.rows.length === 0) {
+            return res.status(404).json({
+                return_code: "NOT_FOUND",
+                message: "Rota entry not found"
+            });
+        }
+
+        const business_id = rotaQuery.rows[0].business_id;
 
         // Check if the user has permission to delete staff rota for this business
         const permissionQuery = await pool.query(
@@ -53,22 +69,6 @@ router.post('/', verifyToken, async (req, res) => {
             return res.status(403).json({
                 return_code: "UNAUTHORIZED",
                 message: "You do not have permission to delete staff rota for this business"
-            });
-        }
-
-        // Check if the rota entry exists and belongs to a staff member of this business
-        const rotaQuery = await pool.query(
-            `SELECT sr.id
-             FROM staff_rota sr
-             JOIN appuser_business_role abr ON sr.staff_id = abr.appuser_id
-             WHERE sr.id = $1 AND abr.business_id = $2`,
-            [rota_id, business_id]
-        );
-
-        if (rotaQuery.rows.length === 0) {
-            return res.status(404).json({
-                return_code: "NOT_FOUND",
-                message: "Rota entry not found or does not belong to this business"
             });
         }
 
