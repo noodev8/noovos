@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../styles/app_styles.dart';
 import '../../api/get_business_staff_api.dart';
+import '../../api/get_staff_rota_api.dart';
 
 class BusinessStaffRotaScreen extends StatefulWidget {
   // Business details
@@ -40,12 +41,18 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
   int _selectedWeekIndex = 0;
   List<Map<String, dynamic>> _weekOptions = [];
 
+  // Rota data
+  bool _loadingRotaData = false;
+  Map<int, Map<String, dynamic>> _staffHours = {}; // Map of staff ID to hours data
+
   @override
   void initState() {
     super.initState();
     _generateWeekOptions();
     _loadStaff();
   }
+
+
 
   // Generate week options (Sunday to Saturday)
   void _generateWeekOptions() {
@@ -114,6 +121,9 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
                   };
                 })
                 .toList();
+
+            // Load rota data after staff is loaded
+            _loadRotaData();
           } else {
             _errorMessage = result['message'] ?? 'Failed to load staff members';
           }
@@ -142,6 +152,157 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
       setState(() {
         _selectedWeekIndex = newIndex;
       });
+
+      // Load rota data for the new week
+      _loadRotaData();
+    }
+  }
+
+  // Format time string to DateTime
+  DateTime _parseTimeString(String timeStr) {
+    // The API returns time in format "HH12:MI AM" like "09:00 AM"
+    try {
+      // Parse the time string
+      final DateFormat format = DateFormat('hh:mm a');
+      return format.parse(timeStr);
+    } catch (e) {
+      // Fallback for other formats (like "09:00")
+      try {
+        final List<String> parts = timeStr.split(':');
+        final int hours = int.parse(parts[0]);
+        final int minutes = int.parse(parts[1].split(' ')[0]); // Remove AM/PM if present
+
+        // Use a base date (doesn't matter which one)
+        return DateTime(2023, 1, 1, hours, minutes);
+      } catch (e) {
+        // Error parsing time
+        return DateTime(2023, 1, 1); // Return midnight as fallback
+      }
+    }
+  }
+
+  // Calculate hours between two time strings
+  double _calculateHours(String startTime, String endTime) {
+    try {
+      final DateTime start = _parseTimeString(startTime);
+      final DateTime end = _parseTimeString(endTime);
+
+      // Calculate difference in minutes
+      final int differenceMinutes = end.difference(start).inMinutes;
+
+      // Convert to hours (with decimal)
+      return differenceMinutes / 60.0;
+    } catch (e) {
+      // Error calculating hours
+      return 0.0;
+    }
+  }
+
+
+
+  // Load rota data for all staff for the selected week
+  Future<void> _loadRotaData() async {
+    // Skip if no staff or no week selected
+    if (_staffList.isEmpty || _weekOptions.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _loadingRotaData = true;
+    });
+
+    try {
+      // Get business ID
+      final int businessId = widget.business['id'];
+
+      // Get selected week dates
+      final Map<String, dynamic> selectedWeek = _weekOptions[_selectedWeekIndex];
+      final DateTime startDate = selectedWeek['startDate'];
+      final DateTime endDate = selectedWeek['endDate'];
+
+      // Format dates for API (YYYY-MM-DD)
+      final String startDateStr = DateFormat('yyyy-MM-dd').format(startDate);
+      final String endDateStr = DateFormat('yyyy-MM-dd').format(endDate);
+
+      // Clear previous data
+      final Map<int, Map<String, dynamic>> newStaffHours = {};
+
+      // Initialize with zero hours for all staff
+      for (final staff in _staffList) {
+        final int staffId = staff['id'];
+        newStaffHours[staffId] = {
+          'totalHours': 0.0,
+          'entries': [],
+        };
+      }
+
+      // For each staff member, get their rota entries
+      for (final staff in _staffList) {
+        final int staffId = staff['id'];
+
+        // Call API to get rota entries
+        final result = await GetStaffRotaApi.getStaffRota(
+          businessId: businessId,
+          staffId: staffId,
+          startDate: startDateStr,
+          endDate: endDateStr,
+        );
+
+        if (result['success']) {
+          final List<Map<String, dynamic>> rotaEntries = List<Map<String, dynamic>>.from(result['rota']);
+
+          // Process rota entries
+
+          double totalHours = 0.0;
+
+          // Calculate total hours
+          for (final entry in rotaEntries) {
+            final String startTime = entry['start_time'];
+            final String endTime = entry['end_time'];
+
+            final double hours = _calculateHours(startTime, endTime);
+
+            totalHours += hours;
+          }
+
+
+
+          // Store data
+          newStaffHours[staffId] = {
+            'totalHours': totalHours,
+            'entries': rotaEntries,
+          };
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _staffHours = newStaffHours;
+          _loadingRotaData = false;
+        });
+
+        // Show debug message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Loaded hours data for ${newStaffHours.length} staff members'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingRotaData = false;
+        });
+
+        // Show error in snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load rota data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -260,35 +421,47 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Week dropdown
-            DropdownButtonFormField<int>(
-              decoration: const InputDecoration(
-                labelText: 'Week',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              ),
-              value: _selectedWeekIndex,
-              items: _weekOptions.map((week) {
-                return DropdownMenuItem<int>(
-                  value: week['index'],
-                  child: Text(week['displayText']),
-                );
-              }).toList(),
-              onChanged: _onWeekChanged,
-              isExpanded: true,
+            // Week dropdown with refresh button
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    decoration: const InputDecoration(
+                      labelText: 'Week',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    ),
+                    value: _selectedWeekIndex,
+                    items: _weekOptions.map((week) {
+                      return DropdownMenuItem<int>(
+                        value: week['index'],
+                        child: Text(week['displayText']),
+                      );
+                    }).toList(),
+                    onChanged: _onWeekChanged,
+                    isExpanded: true,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // Reload rota data for current week
+                      _loadRotaData();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.all(12),
+                      minimumSize: const Size(0, 48),
+                    ),
+                    child: const Icon(Icons.refresh),
+                  ),
+                ),
+              ],
             ),
 
-            const SizedBox(height: 8),
 
-            // Current selection info
-            if (_weekOptions.isNotEmpty)
-              Text(
-                'Selected: ${_weekOptions[_selectedWeekIndex]['displayText']}',
-                style: const TextStyle(
-                  fontStyle: FontStyle.italic,
-                  color: AppStyles.secondaryTextColor,
-                ),
-              ),
           ],
         ),
       ),
@@ -300,14 +473,40 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Staff Members',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+        // Header with loading indicator
+        Row(
+          children: [
+            const Text(
+              'Staff Members',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (_loadingRotaData)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 8),
+
+        // Selected week info
+        if (_weekOptions.isNotEmpty)
+          Text(
+            'Week: ${_weekOptions[_selectedWeekIndex]['displayText']}',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppStyles.primaryColor,
+            ),
+          ),
+        const SizedBox(height: 8),
+
         const Text(
           'Tap on a staff member to manage their working hours',
           style: TextStyle(
@@ -337,9 +536,34 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
 
   // Build staff card
   Widget _buildStaffCard(Map<String, dynamic> staff) {
+    final int staffId = staff['id'];
     final String name = staff['name'];
     final String email = staff['email'];
     final String role = staff['role'];
+
+    // Get hours data for this staff member
+    final bool hasHoursData = _staffHours.containsKey(staffId);
+
+    // Get total hours (safely handle potential type issues)
+    double totalHours = 0.0;
+    if (hasHoursData) {
+      final dynamic hoursValue = _staffHours[staffId]!['totalHours'];
+      if (hoursValue is double) {
+        totalHours = hoursValue;
+      } else if (hoursValue is int) {
+        totalHours = hoursValue.toDouble();
+      } else if (hoursValue is String) {
+        totalHours = double.tryParse(hoursValue) ?? 0.0;
+      }
+    }
+
+    // Check if there are any entries
+    final bool hasEntries = hasHoursData &&
+                           _staffHours[staffId]!.containsKey('entries') &&
+                           (_staffHours[staffId]!['entries'] as List).isNotEmpty;
+
+    // Format total hours (show 1 decimal place)
+    final String formattedHours = totalHours.toStringAsFixed(1);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -401,16 +625,35 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
                         color: AppStyles.secondaryTextColor,
                       ),
                     ),
+                    if (!_loadingRotaData) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Hours this week: $formattedHours',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: hasEntries ? AppStyles.primaryColor : Colors.grey,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
 
-              // Arrow icon
-              const Icon(
-                Icons.arrow_forward_ios,
-                color: AppStyles.secondaryTextColor,
-                size: 16,
-              ),
+              // Loading indicator or arrow icon
+              if (_loadingRotaData)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                  ),
+                )
+              else
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  color: AppStyles.secondaryTextColor,
+                  size: 16,
+                ),
             ],
           ),
         ),
