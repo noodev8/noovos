@@ -41,6 +41,7 @@ TABLES
 app_user
 service_staff
 staff_rota
+staff_schedule
 booking
 
 

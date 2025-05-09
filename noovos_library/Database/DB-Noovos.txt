@@ -18,6 +18,7 @@ WHERE table_schema = 'public'
 app_user
 service_staff
 staff_rota
+staff_schedule
 booking
 
 app_version_requirement
