@@ -4,6 +4,8 @@ API Route: set_staff_schedule
 =======================================================================================================================================
 Method: POST
 Purpose: Applies a new schedule to the database for a staff member
+         Includes comprehensive conflict checking with existing bookings and manual rota entries
+         (This API now incorporates the functionality previously provided by check_schedule_conflict)
 Authentication: Required - This endpoint requires a valid JWT token
 =======================================================================================================================================
 Request Payload:

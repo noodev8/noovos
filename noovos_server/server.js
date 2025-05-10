@@ -52,7 +52,7 @@ const add_staff_rota = require('./routes/add_staff_rota');
 const update_staff_rota = require('./routes/update_staff_rota');
 const delete_staff_rota = require('./routes/delete_staff_rota');
 const set_staff_schedule = require('./routes/set_staff_schedule');
-const check_schedule_conflict = require('./routes/check_schedule_conflict');
+// Removed check_schedule_conflict - functionality integrated into set_staff_schedule
 const create_auto_staff_rota = require('./routes/create_auto_staff_rota');
 const get_staff_schedule = require('./routes/get_staff_schedule');
 const create_booking = require('./routes/create_booking');
@@ -84,7 +84,7 @@ app.use('/add_staff_rota', add_staff_rota);
 app.use('/update_staff_rota', update_staff_rota);
 app.use('/delete_staff_rota', delete_staff_rota);
 app.use('/set_staff_schedule', set_staff_schedule);
-app.use('/check_schedule_conflict', check_schedule_conflict);
+// Removed check_schedule_conflict route - functionality integrated into set_staff_schedule
 app.use('/create_auto_staff_rota', create_auto_staff_rota);
 app.use('/get_staff_schedule', get_staff_schedule);
 app.use('/create_booking', create_booking);
