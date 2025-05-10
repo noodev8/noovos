@@ -271,6 +271,40 @@ router.post('/', verifyToken, async (req, res) => {
             // Initialize bookingConflicts array outside the conditional scope
             let bookingConflicts = [];
 
+            // First, get all manual rota entries for this staff member
+            // These will be used to check if bookings are covered by manual entries
+            const manualRotaQuery = await client.query(
+                `SELECT
+                    rota_date,
+                    start_time,
+                    end_time
+                FROM
+                    staff_rota
+                WHERE
+                    staff_id = $1
+                    AND business_id = $2
+                    AND is_generated = false
+                    AND rota_date >= CURRENT_DATE`,
+                [staff_id, business_id]
+            );
+
+            // Create a lookup map for manual rota entries
+            // Key format: 'YYYY-MM-DD'
+            const manualRotaEntries = {};
+
+            for (const entry of manualRotaQuery.rows) {
+                const dateKey = entry.rota_date.toISOString().split('T')[0];
+
+                if (!manualRotaEntries[dateKey]) {
+                    manualRotaEntries[dateKey] = [];
+                }
+
+                manualRotaEntries[dateKey].push({
+                    start_time: entry.start_time,
+                    end_time: entry.end_time
+                });
+            }
+
             // Check for conflicts with existing bookings
             // Get all confirmed bookings for this staff member
             const bookingsQuery = await client.query(
@@ -298,7 +332,7 @@ router.post('/', verifyToken, async (req, res) => {
 
             // If there are bookings, check if they would be orphaned by the new schedule
             if (bookingsQuery.rows.length > 0) {
-                // Check each booking against the new schedule
+                // Check each booking against the new schedule and manual rota entries
                 for (const booking of bookingsQuery.rows) {
                     const bookingDate = new Date(booking.booking_date);
                     let bookingCovered = false;
@@ -314,7 +348,21 @@ router.post('/', verifyToken, async (req, res) => {
                         }
                     }
 
-                    // If the booking is not covered by any schedule entry, it's a conflict
+                    // If not covered by schedule, check if covered by manual rota entry
+                    if (!bookingCovered) {
+                        const dateKey = booking.booking_date.toISOString().split('T')[0];
+                        const manualEntries = manualRotaEntries[dateKey] || [];
+
+                        for (const manualEntry of manualEntries) {
+                            // Check if the booking time falls within the manual rota time
+                            if (booking.start_time >= manualEntry.start_time && booking.end_time <= manualEntry.end_time) {
+                                bookingCovered = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // If the booking is not covered by any schedule entry or manual rota, it's a conflict
                     if (!bookingCovered) {
                         bookingConflicts.push({
                             booking_id: booking.booking_id,
@@ -332,7 +380,7 @@ router.post('/', verifyToken, async (req, res) => {
                     await client.query('ROLLBACK');
                     return res.status(409).json({
                         return_code: "BOOKING_CONFLICTS",
-                        message: "The new schedule conflicts with existing bookings. Use force=true to override.",
+                        message: "The new schedule conflicts with existing bookings. Use force=true to override or create manual rota entries for these bookings.",
                         conflicts: bookingConflicts
                     });
                 }
@@ -380,7 +428,7 @@ router.post('/', verifyToken, async (req, res) => {
             if (bookingConflicts.length > 0) {
                 return res.status(200).json({
                     return_code: "SUCCESS_WITH_WARNINGS",
-                    message: "Staff schedule updated successfully, but there are booking conflicts",
+                    message: "Staff schedule updated successfully, but there are booking conflicts. Consider creating manual rota entries for these bookings.",
                     conflicts: bookingConflicts
                 });
             }
