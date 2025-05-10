@@ -3,7 +3,8 @@
 API Route: create_auto_staff_rota
 =======================================================================================================================================
 Method: POST
-Purpose: Automatically generates staff rota entries based on staff schedules for the next 60 days
+Purpose: Automatically generates staff rota entries based on staff schedules for the next 60 days.
+         Replaces all future auto-generated entries with new ones based on current schedules.
 Authentication: Required - This endpoint requires a valid JWT token
 =======================================================================================================================================
 Request Payload:
@@ -97,7 +98,17 @@ router.post('/', verifyToken, async (req, res) => {
             const formattedCurrentDate = currentDate.toISOString().split('T')[0];
             const formattedEndDate = endDate.toISOString().split('T')[0];
 
-            // Get all staff schedules for this business to determine which dates to clear
+            // Delete all future auto-generated entries for this business
+            // This simplifies the approach by replacing the entire future schedule
+            await client.query(
+                `DELETE FROM staff_rota
+                 WHERE business_id = $1
+                 AND is_generated = TRUE
+                 AND rota_date >= CURRENT_DATE`,
+                [business_id]
+            );
+
+            // Get all staff schedules for this business
             const scheduleCheckQuery = await client.query(
                 `SELECT
                     ss.id,
@@ -122,28 +133,6 @@ router.post('/', verifyToken, async (req, res) => {
                     message: "No staff schedules found for this business"
                 });
             }
-
-            // Find the earliest start date from all schedules
-            let earliestStartDate = null;
-            for (const schedule of scheduleCheckQuery.rows) {
-                const scheduleStartDate = new Date(schedule.start_date);
-                if (!earliestStartDate || scheduleStartDate < earliestStartDate) {
-                    earliestStartDate = scheduleStartDate;
-                }
-            }
-
-            // Format the earliest start date for PostgreSQL
-            const formattedEarliestStartDate = earliestStartDate.toISOString().split('T')[0];
-
-            // Delete future auto-generated entries for this business from the earliest schedule start date
-            // This preserves any existing entries before the new schedule takes effect
-            await client.query(
-                `DELETE FROM staff_rota
-                 WHERE business_id = $1
-                 AND is_generated = TRUE
-                 AND rota_date >= $2`,
-                [business_id, formattedEarliestStartDate]
-            );
 
             // Now get all schedules for generating the rota
             // We'll look ahead for 10 days

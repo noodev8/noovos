@@ -53,6 +53,7 @@ const delete_staff_rota = require('./routes/delete_staff_rota');
 const set_staff_schedule = require('./routes/set_staff_schedule');
 const check_schedule_conflict = require('./routes/check_schedule_conflict');
 const create_auto_staff_rota = require('./routes/create_auto_staff_rota');
+const get_staff_schedule = require('./routes/get_staff_schedule');
 
 // Set up routes
 app.use('/login_user', login_user);
@@ -82,6 +83,7 @@ app.use('/delete_staff_rota', delete_staff_rota);
 app.use('/set_staff_schedule', set_staff_schedule);
 app.use('/check_schedule_conflict', check_schedule_conflict);
 app.use('/create_auto_staff_rota', create_auto_staff_rota);
+app.use('/get_staff_schedule', get_staff_schedule);
 
 // Root route
 app.get('/', (req, res) => {
