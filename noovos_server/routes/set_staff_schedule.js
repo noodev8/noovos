@@ -20,13 +20,31 @@ Request Payload:
       "repeat_every_n_weeks": 1       // integer, optional - Repeat frequency in weeks
     },
     ...
-  ]
+  ],
+  "force": false                      // boolean, optional - Force schedule update even if booking conflicts exist (default: false)
 }
 
 Success Response:
 {
   "return_code": "SUCCESS",
   "message": "Staff schedule updated successfully"
+}
+
+Success Response (With Warnings):
+{
+  "return_code": "SUCCESS_WITH_WARNINGS",
+  "message": "Staff schedule updated successfully, but there are booking conflicts",
+  "conflicts": [
+    {
+      "booking_id": 123,
+      "booking_date": "2023-06-05",
+      "start_time": "10:00:00",
+      "end_time": "11:00:00",
+      "service_name": "Haircut",
+      "customer_name": "John Doe"
+    },
+    ...
+  ]
 }
 
 Error Responses:
@@ -67,6 +85,11 @@ Error Responses:
   "message": "Overlapping schedule entries for [day]"
 }
 {
+  "return_code": "BOOKING_CONFLICTS",
+  "message": "The new schedule conflicts with existing bookings. Use force=true to override.",
+  "conflicts": [...]
+}
+{
   "return_code": "SERVER_ERROR",
   "message": "An error occurred while updating the staff schedule"
 }
@@ -78,6 +101,45 @@ const router = express.Router();
 const pool = require('../db');
 const verifyToken = require('../middleware/auth');
 
+// Helper function to check if a date falls on a specific day of the week
+function isDateOnDayOfWeek(date, dayOfWeek) {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayIndex = days.indexOf(dayOfWeek);
+    return date.getDay() === dayIndex;
+}
+
+// Helper function to check if a date is within a schedule's date range and repeat pattern
+function isDateInSchedule(date, schedule) {
+    // Check if date is within the schedule's date range
+    const scheduleStartDate = new Date(schedule.start_date);
+    let scheduleEndDate = null;
+    if (schedule.end_date) {
+        scheduleEndDate = new Date(schedule.end_date);
+    }
+
+    if (date < scheduleStartDate || (scheduleEndDate && date > scheduleEndDate)) {
+        return false;
+    }
+
+    // Check if the date matches the day of week
+    if (!isDateOnDayOfWeek(date, schedule.day_of_week)) {
+        return false;
+    }
+
+    // Check repeat pattern if specified
+    if (schedule.repeat_every_n_weeks) {
+        // Calculate weeks between schedule start date and current date
+        const msPerDay = 24 * 60 * 60 * 1000;
+        const daysDiff = Math.round(Math.abs(date - scheduleStartDate) / msPerDay);
+        const weeksDiff = Math.floor(daysDiff / 7);
+
+        // Only include dates that match the repeat pattern
+        return (weeksDiff % schedule.repeat_every_n_weeks === 0);
+    }
+
+    return true;
+}
+
 // POST /set_staff_schedule
 router.post('/', verifyToken, async (req, res) => {
     try {
@@ -85,7 +147,10 @@ router.post('/', verifyToken, async (req, res) => {
         const userId = req.user.id;
 
         // Extract parameters from request body
-        const { business_id, staff_id, schedule } = req.body;
+        const { business_id, staff_id, schedule, force } = req.body;
+
+        // Default force to false if not provided
+        const forceUpdate = force === true;
 
         // Validate required fields
         if (!business_id) {
@@ -203,6 +268,76 @@ router.post('/', verifyToken, async (req, res) => {
                 }
             }
 
+            // Initialize bookingConflicts array outside the conditional scope
+            let bookingConflicts = [];
+
+            // Check for conflicts with existing bookings
+            // Get all confirmed bookings for this staff member
+            const bookingsQuery = await client.query(
+                `SELECT
+                    b.id AS booking_id,
+                    b.booking_date,
+                    b.start_time,
+                    b.end_time,
+                    s.service_name,
+                    CONCAT(c.first_name, ' ', c.last_name) AS customer_name
+                FROM
+                    booking b
+                JOIN
+                    service s ON b.service_id = s.id
+                JOIN
+                    app_user c ON b.customer_id = c.id
+                WHERE
+                    b.staff_id = $1
+                    AND b.status = 'confirmed'
+                    AND b.booking_date >= CURRENT_DATE
+                ORDER BY
+                    b.booking_date, b.start_time`,
+                [staff_id]
+            );
+
+            // If there are bookings, check if they would be orphaned by the new schedule
+            if (bookingsQuery.rows.length > 0) {
+                // Check each booking against the new schedule
+                for (const booking of bookingsQuery.rows) {
+                    const bookingDate = new Date(booking.booking_date);
+                    let bookingCovered = false;
+
+                    // Check if any schedule entry covers this booking
+                    for (const entry of schedule) {
+                        if (isDateInSchedule(bookingDate, entry)) {
+                            // Check if the booking time falls within the schedule time
+                            if (booking.start_time >= entry.start_time && booking.end_time <= entry.end_time) {
+                                bookingCovered = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // If the booking is not covered by any schedule entry, it's a conflict
+                    if (!bookingCovered) {
+                        bookingConflicts.push({
+                            booking_id: booking.booking_id,
+                            booking_date: booking.booking_date.toISOString().split('T')[0],
+                            start_time: booking.start_time,
+                            end_time: booking.end_time,
+                            service_name: booking.service_name,
+                            customer_name: booking.customer_name
+                        });
+                    }
+                }
+
+                // If there are conflicts and force is not true, return an error
+                if (bookingConflicts.length > 0 && !forceUpdate) {
+                    await client.query('ROLLBACK');
+                    return res.status(409).json({
+                        return_code: "BOOKING_CONFLICTS",
+                        message: "The new schedule conflicts with existing bookings. Use force=true to override.",
+                        conflicts: bookingConflicts
+                    });
+                }
+            }
+
             // Delete existing generated rota entries for this staff member
             await client.query(
                 `DELETE FROM staff_rota
@@ -240,6 +375,15 @@ router.post('/', verifyToken, async (req, res) => {
             }
 
             await client.query('COMMIT');
+
+            // If there were conflicts but force was true, return success with warnings
+            if (bookingConflicts.length > 0) {
+                return res.status(200).json({
+                    return_code: "SUCCESS_WITH_WARNINGS",
+                    message: "Staff schedule updated successfully, but there are booking conflicts",
+                    conflicts: bookingConflicts
+                });
+            }
 
             // Return success response
             return res.status(200).json({
