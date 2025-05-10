@@ -52,6 +52,15 @@ add_staff_rota
 get_staff_rota
 update_staff_rota
 delete_staff_rota
+set_staff_schedule
+check_schedule_conflict
+
+
+== login_user
+{
+  "email": "aandreou25@gmail.com",         // string, required
+  "password": "1234"      // string, required
+}
 
 
 == get_staff_rota ==
@@ -93,3 +102,37 @@ delete_staff_rota
   "rota_id": 6                       // integer, required - ID of the rota entry to delete
 }
 
+
+
+== set_staff_schedule ==
+{
+  "business_id": 10,                   // integer, required - ID of the business
+  "staff_id": 21,                     // integer, required - ID of the staff member
+  "schedule": [                       // array, required - Array of schedule entries
+    {
+      "day_of_week": "Monday",        // string, required - Day of the week (Monday, Tuesday, etc.)
+      "start_time": "09:00",          // string, required - Start time (HH:MM)
+      "end_time": "17:00",            // string, required - End time (HH:MM)
+      "start_date": "2025-05-10",     // string, required - Start date (YYYY-MM-DD)
+      "end_date": "2025-05-30",       // string, optional - End date (YYYY-MM-DD)
+      "repeat_every_n_weeks": 1       // integer, optional - Repeat frequency in weeks
+    }
+  ]
+}
+
+
+== check_schedule_conflict ==
+{
+  "business_id": 10,                   // integer, required - ID of the business
+  "staff_id": 21,                     // integer, required - ID of the staff member
+  "schedule": [                       // array, required - Array of schedule entries
+    {
+      "day_of_week": "Monday",        // string, required - Day of the week (Monday, Tuesday, etc.)
+      "start_time": "09:00",          // string, required - Start time (HH:MM)
+      "end_time": "17:00",            // string, required - End time (HH:MM)
+      "start_date": "2023-06-01",     // string, required - Start date (YYYY-MM-DD)
+      "end_date": "2023-12-31",       // string, optional - End date (YYYY-MM-DD)
+      "repeat_every_n_weeks": 1       // integer, optional - Repeat frequency in weeks
+    }
+  ]
+}

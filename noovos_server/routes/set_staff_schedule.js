@@ -1,25 +1,82 @@
 /*
-API: set_staff_schedule
-Description: Applies a new schedule to the database for a staff member
-Input:
-  - business_id: ID of the business
-  - staff_id: ID of the staff member
-  - schedule: Array of schedule entries with:
-    - day_of_week: Day of the week (Monday, Tuesday, etc.)
-    - start_time: Start time (HH:MM)
-    - end_time: End time (HH:MM)
-    - start_date: Start date (YYYY-MM-DD)
-    - end_date: End date (YYYY-MM-DD) - optional
-    - repeat_every_n_weeks: Repeat frequency in weeks - optional
-Output:
-  - Success: return_code: "SUCCESS", message: "Staff schedule updated successfully"
-  - Error: return_code: error code, message: error message
+=======================================================================================================================================
+API Route: set_staff_schedule
+=======================================================================================================================================
+Method: POST
+Purpose: Applies a new schedule to the database for a staff member
+Authentication: Required - This endpoint requires a valid JWT token
+=======================================================================================================================================
+Request Payload:
+{
+  "business_id": 5,                   // integer, required - ID of the business
+  "staff_id": 10,                     // integer, required - ID of the staff member
+  "schedule": [                       // array, required - Array of schedule entries
+    {
+      "day_of_week": "Monday",        // string, required - Day of the week (Monday, Tuesday, etc.)
+      "start_time": "09:00",          // string, required - Start time (HH:MM)
+      "end_time": "17:00",            // string, required - End time (HH:MM)
+      "start_date": "2023-06-01",     // string, required - Start date (YYYY-MM-DD)
+      "end_date": "2023-12-31",       // string, optional - End date (YYYY-MM-DD)
+      "repeat_every_n_weeks": 1       // integer, optional - Repeat frequency in weeks
+    },
+    ...
+  ]
+}
+
+Success Response:
+{
+  "return_code": "SUCCESS",
+  "message": "Staff schedule updated successfully"
+}
+
+Error Responses:
+{
+  "return_code": "MISSING_FIELDS",
+  "message": "Business ID is required"
+}
+{
+  "return_code": "MISSING_FIELDS",
+  "message": "Staff ID is required"
+}
+{
+  "return_code": "MISSING_FIELDS",
+  "message": "Schedule entries are required"
+}
+{
+  "return_code": "MISSING_FIELDS",
+  "message": "Each schedule entry must include day_of_week, start_time, end_time, and start_date"
+}
+{
+  "return_code": "UNAUTHORIZED",
+  "message": "You do not have permission to manage staff schedules for this business"
+}
+{
+  "return_code": "INVALID_STAFF",
+  "message": "The specified staff member does not belong to this business"
+}
+{
+  "return_code": "INVALID_DAY",
+  "message": "Invalid day_of_week: [day]. Must be one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"
+}
+{
+  "return_code": "INVALID_TIME",
+  "message": "End time must be after start time"
+}
+{
+  "return_code": "SCHEDULE_OVERLAP",
+  "message": "Overlapping schedule entries for [day]"
+}
+{
+  "return_code": "SERVER_ERROR",
+  "message": "An error occurred while updating the staff schedule"
+}
+=======================================================================================================================================
 */
 
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const verifyToken = require('../middleware/verify_token');
+const verifyToken = require('../middleware/auth');
 
 // POST /set_staff_schedule
 router.post('/', verifyToken, async (req, res) => {
@@ -132,7 +189,7 @@ router.post('/', verifyToken, async (req, res) => {
                     for (let j = i + 1; j < entries.length; j++) {
                         const a = entries[i];
                         const b = entries[j];
-                        
+
                         // Check for overlap
                         if ((a.start_time < b.end_time && a.end_time > b.start_time) ||
                             (b.start_time < a.end_time && b.end_time > a.start_time)) {
@@ -146,23 +203,32 @@ router.post('/', verifyToken, async (req, res) => {
                 }
             }
 
-            // Delete existing generated schedule entries for this staff member
+            // Delete existing generated rota entries for this staff member
             await client.query(
-                `DELETE FROM staff_rota 
-                 WHERE staff_id = $1 
+                `DELETE FROM staff_rota
+                 WHERE staff_id = $1
                  AND business_id = $2
                  AND is_generated = true`,
+                [staff_id, business_id]
+            );
+
+            // Delete existing schedule entries for this staff member at this business
+            await client.query(
+                `DELETE FROM staff_schedule
+                 WHERE staff_id = $1
+                 AND business_id = $2`,
                 [staff_id, business_id]
             );
 
             // Insert new schedule entries
             for (const entry of schedule) {
                 await client.query(
-                    `INSERT INTO staff_schedule 
-                     (staff_id, day_of_week, start_time, end_time, start_date, end_date, repeat_every_n_weeks)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                    `INSERT INTO staff_schedule
+                     (staff_id, business_id, day_of_week, start_time, end_time, start_date, end_date, repeat_every_n_weeks)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
                     [
                         staff_id,
+                        business_id,
                         entry.day_of_week,
                         entry.start_time,
                         entry.end_time,
@@ -183,7 +249,7 @@ router.post('/', verifyToken, async (req, res) => {
         } catch (error) {
             await client.query('ROLLBACK');
             console.error('Error in set_staff_schedule:', error);
-            
+
             return res.status(500).json({
                 return_code: "SERVER_ERROR",
                 message: "An error occurred while updating the staff schedule"
@@ -193,7 +259,7 @@ router.post('/', verifyToken, async (req, res) => {
         }
     } catch (error) {
         console.error('Error in set_staff_schedule:', error);
-        
+
         return res.status(500).json({
             return_code: "SERVER_ERROR",
             message: "An error occurred while processing your request"

@@ -1,26 +1,124 @@
 /*
-API: check_schedule_conflict
-Description: Checks if a new schedule has conflicts with existing bookings
-Input:
-  - business_id: ID of the business
-  - staff_id: ID of the staff member
-  - schedule: Array of schedule entries with:
-    - day_of_week: Day of the week (Monday, Tuesday, etc.)
-    - start_time: Start time (HH:MM)
-    - end_time: End time (HH:MM)
-    - start_date: Start date (YYYY-MM-DD)
-    - end_date: End date (YYYY-MM-DD) - optional
-    - repeat_every_n_weeks: Repeat frequency in weeks - optional
-Output:
-  - Success with no conflicts: return_code: "SUCCESS", conflicts: []
-  - Success with conflicts: return_code: "SUCCESS", conflicts: [array of conflict details]
-  - Error: return_code: error code, message: error message
+=======================================================================================================================================
+API Route: check_schedule_conflict
+=======================================================================================================================================
+Method: POST
+Purpose: Checks if a new schedule has conflicts with existing bookings or rota entries
+Authentication: Required - This endpoint requires a valid JWT token
+=======================================================================================================================================
+Request Payload:
+{
+  "business_id": 5,                   // integer, required - ID of the business
+  "staff_id": 10,                     // integer, required - ID of the staff member
+  "schedule": [                       // array, required - Array of schedule entries
+    {
+      "day_of_week": "Monday",        // string, required - Day of the week (Monday, Tuesday, etc.)
+      "start_time": "09:00",          // string, required - Start time (HH:MM)
+      "end_time": "17:00",            // string, required - End time (HH:MM)
+      "start_date": "2023-06-01",     // string, required - Start date (YYYY-MM-DD)
+      "end_date": "2023-12-31",       // string, optional - End date (YYYY-MM-DD)
+      "repeat_every_n_weeks": 1       // integer, optional - Repeat frequency in weeks
+    },
+    ...
+  ]
+}
+
+Success Response (No Conflicts):
+{
+  "return_code": "SUCCESS",
+  "has_conflicts": false,
+  "conflicts": []
+}
+
+Success Response (With Conflicts):
+{
+  "return_code": "SUCCESS",
+  "has_conflicts": true,
+  "conflicts": [
+    {
+      "type": "schedule_overlap",
+      "day_of_week": "Monday",
+      "entries": [
+        {
+          "day_of_week": "Monday",
+          "start_time": "09:00",
+          "end_time": "12:00",
+          "start_date": "2023-06-01"
+        },
+        {
+          "day_of_week": "Monday",
+          "start_time": "11:00",
+          "end_time": "14:00",
+          "start_date": "2023-06-01"
+        }
+      ]
+    },
+    {
+      "type": "rota_conflict",
+      "rota_id": 123,
+      "rota_date": "2023-06-05",
+      "start_time": "13:00",
+      "end_time": "17:00",
+      "booking_id": 456,
+      "service_name": "Haircut",
+      "customer_name": "John Doe"
+    },
+    {
+      "type": "booking_conflict",
+      "booking_id": 789,
+      "booking_date": "2023-06-06",
+      "start_time": "10:00",
+      "end_time": "11:30",
+      "service_name": "Massage",
+      "customer_name": "Jane Smith"
+    }
+  ]
+}
+
+Error Responses:
+{
+  "return_code": "MISSING_FIELDS",
+  "message": "Business ID is required"
+}
+{
+  "return_code": "MISSING_FIELDS",
+  "message": "Staff ID is required"
+}
+{
+  "return_code": "MISSING_FIELDS",
+  "message": "Schedule entries are required"
+}
+{
+  "return_code": "MISSING_FIELDS",
+  "message": "Each schedule entry must include day_of_week, start_time, end_time, and start_date"
+}
+{
+  "return_code": "UNAUTHORIZED",
+  "message": "You do not have permission to manage staff schedules for this business"
+}
+{
+  "return_code": "INVALID_STAFF",
+  "message": "The specified staff member does not belong to this business"
+}
+{
+  "return_code": "INVALID_DAY",
+  "message": "Invalid day_of_week: [day]. Must be one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"
+}
+{
+  "return_code": "INVALID_TIME",
+  "message": "End time must be after start time"
+}
+{
+  "return_code": "SERVER_ERROR",
+  "message": "An error occurred while checking for schedule conflicts"
+}
+=======================================================================================================================================
 */
 
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const verifyToken = require('../middleware/verify_token');
+const verifyToken = require('../middleware/auth');
 
 // POST /check_schedule_conflict
 router.post('/', verifyToken, async (req, res) => {
@@ -126,7 +224,7 @@ router.post('/', verifyToken, async (req, res) => {
                 for (let j = i + 1; j < entries.length; j++) {
                     const a = entries[i];
                     const b = entries[j];
-                    
+
                     // Check for overlap
                     if ((a.start_time < b.end_time && a.end_time > b.start_time) ||
                         (b.start_time < a.end_time && b.end_time > a.start_time)) {
@@ -152,20 +250,20 @@ router.post('/', verifyToken, async (req, res) => {
         // Check for conflicts with existing non-generated rota entries
         const rotaConflictsQuery = `
             WITH schedule_days AS (
-                SELECT 
+                SELECT
                     generate_series(
-                        $1::date, 
-                        COALESCE($2::date, $1::date + INTERVAL '30 days'), 
+                        $1::date,
+                        COALESCE($2::date, $1::date + INTERVAL '30 days'),
                         '1 day'
                     )::date AS date
             ),
             day_mapping AS (
-                SELECT 
+                SELECT
                     date,
                     to_char(date, 'Day') AS day_name
                 FROM schedule_days
             )
-            SELECT 
+            SELECT
                 sr.id AS rota_id,
                 sr.rota_date,
                 sr.start_time,
@@ -173,29 +271,30 @@ router.post('/', verifyToken, async (req, res) => {
                 s.service_name,
                 c.first_name || ' ' || c.last_name AS customer_name,
                 b.id AS booking_id
-            FROM 
+            FROM
                 staff_rota sr
-            LEFT JOIN 
-                booking b ON sr.staff_id = b.staff_id 
-                AND sr.rota_date = b.booking_date 
-                AND sr.start_time <= b.end_time 
+            LEFT JOIN
+                booking b ON sr.staff_id = b.staff_id
+                AND sr.rota_date = b.booking_date
+                AND sr.start_time <= b.end_time
                 AND sr.end_time >= b.start_time
-            LEFT JOIN 
+            LEFT JOIN
                 service s ON b.service_id = s.id
-            LEFT JOIN 
+            LEFT JOIN
                 app_user c ON b.customer_id = c.id
-            WHERE 
+            WHERE
                 sr.staff_id = $3
+                AND sr.business_id = $4
                 AND sr.is_generated = false
                 AND sr.rota_date >= $1
                 AND (sr.rota_date <= $2 OR $2 IS NULL)
                 AND NOT EXISTS (
                     SELECT 1 FROM day_mapping dm
-                    JOIN unnest($4::text[]) AS schedule_day ON trim(dm.day_name) = schedule_day
+                    JOIN unnest($5::text[]) AS schedule_day ON trim(dm.day_name) = schedule_day
                     WHERE dm.date = sr.rota_date
                     AND EXISTS (
-                        SELECT 1 FROM unnest($5::time[]) AS start_time
-                        JOIN unnest($6::time[]) AS end_time ON true
+                        SELECT 1 FROM unnest($6::time[]) AS start_time
+                        JOIN unnest($7::time[]) AS end_time ON true
                         WHERE start_time <= sr.end_time AND end_time >= sr.start_time
                     )
                 )
@@ -210,7 +309,7 @@ router.post('/', verifyToken, async (req, res) => {
 
         const rotaConflictsResult = await pool.query(
             rotaConflictsQuery,
-            [startDate, endDate, staff_id, days, startTimes, endTimes]
+            [startDate, endDate, staff_id, business_id, days, startTimes, endTimes]
         );
 
         const rotaConflicts = rotaConflictsResult.rows.map(row => ({
@@ -227,56 +326,57 @@ router.post('/', verifyToken, async (req, res) => {
         // Check for conflicts with existing bookings
         const bookingConflictsQuery = `
             WITH schedule_days AS (
-                SELECT 
+                SELECT
                     generate_series(
-                        $1::date, 
-                        COALESCE($2::date, $1::date + INTERVAL '30 days'), 
+                        $1::date,
+                        COALESCE($2::date, $1::date + INTERVAL '30 days'),
                         '1 day'
                     )::date AS date
             ),
             day_mapping AS (
-                SELECT 
+                SELECT
                     date,
                     to_char(date, 'Day') AS day_name
                 FROM schedule_days
             ),
             schedule_times AS (
-                SELECT 
+                SELECT
                     dm.date,
-                    unnest($5::time[]) AS start_time,
-                    unnest($6::time[]) AS end_time
+                    unnest($6::time[]) AS start_time,
+                    unnest($7::time[]) AS end_time
                 FROM day_mapping dm
-                WHERE trim(dm.day_name) = ANY($4::text[])
+                WHERE trim(dm.day_name) = ANY($5::text[])
             )
-            SELECT 
+            SELECT
                 b.id AS booking_id,
                 b.booking_date,
                 b.start_time,
                 b.end_time,
                 s.service_name,
                 c.first_name || ' ' || c.last_name AS customer_name
-            FROM 
+            FROM
                 booking b
-            JOIN 
+            JOIN
                 service s ON b.service_id = s.id
-            JOIN 
+            JOIN
                 app_user c ON b.customer_id = c.id
-            WHERE 
+            WHERE
                 b.staff_id = $3
+                AND s.business_id = $4
                 AND b.status = 'confirmed'
                 AND b.booking_date >= $1
                 AND (b.booking_date <= $2 OR $2 IS NULL)
                 AND NOT EXISTS (
                     SELECT 1 FROM schedule_times st
                     WHERE st.date = b.booking_date
-                    AND st.start_time <= b.end_time 
+                    AND st.start_time <= b.end_time
                     AND st.end_time >= b.start_time
                 )
         `;
 
         const bookingConflictsResult = await pool.query(
             bookingConflictsQuery,
-            [startDate, endDate, staff_id, days, startTimes, endTimes]
+            [startDate, endDate, staff_id, business_id, days, startTimes, endTimes]
         );
 
         const bookingConflicts = bookingConflictsResult.rows.map(row => ({
@@ -300,7 +400,7 @@ router.post('/', verifyToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Error in check_schedule_conflict:', error);
-        
+
         return res.status(500).json({
             return_code: "SERVER_ERROR",
             message: "An error occurred while checking for schedule conflicts"
