@@ -5,7 +5,7 @@
 -- Dumped from database version 11.18 (Debian 11.18-0+deb10u1)
 -- Dumped by pg_dump version 17.4
 
--- Started on 2025-05-10 09:25:06
+-- Started on 2025-05-10 21:20:38
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -213,7 +213,6 @@ ALTER SEQUENCE public.audit_log_id_seq OWNED BY public.audit_log.id;
 
 CREATE TABLE public.booking (
     id integer NOT NULL,
-    booking_id integer,
     customer_id integer,
     booking_date date,
     start_time time without time zone,
@@ -2170,7 +2169,7 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.staff_rota TO PUBLIC;
 
 
--- Completed on 2025-05-10 09:25:08
+-- Completed on 2025-05-10 21:20:40
 
 --
 -- PostgreSQL database dump complete
