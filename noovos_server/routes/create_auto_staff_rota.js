@@ -9,7 +9,8 @@ Authentication: Required - This endpoint requires a valid JWT token
 =======================================================================================================================================
 Request Payload:
 {
-  "business_id": 10                   // integer, required - ID of the business
+  "business_id": 10,                  // integer, required - ID of the business
+  "staff_id": 21                      // integer, optional - ID of the staff member to generate rota for
 }
 
 Success Response:
@@ -33,6 +34,10 @@ Error Responses:
   "message": "No staff schedules found for this business"
 }
 {
+  "return_code": "INVALID_STAFF",
+  "message": "The specified staff member does not belong to this business"
+}
+{
   "return_code": "SERVER_ERROR",
   "message": "An error occurred while generating staff rota"
 }
@@ -51,7 +56,7 @@ router.post('/', verifyToken, async (req, res) => {
         const userId = req.user.id;
 
         // Extract parameters from request body
-        const { business_id } = req.body;
+        const { business_id, staff_id } = req.body;
 
         // Validate required fields
         if (!business_id) {
@@ -73,6 +78,22 @@ router.post('/', verifyToken, async (req, res) => {
                 return_code: "UNAUTHORIZED",
                 message: "You do not have permission to generate rota for this business"
             });
+        }
+
+        // If staff_id is provided, validate that the staff member belongs to this business
+        if (staff_id) {
+            const staffQuery = await pool.query(
+                `SELECT 1 FROM appuser_business_role
+                 WHERE appuser_id = $1 AND business_id = $2 AND status = 'active'`,
+                [staff_id, business_id]
+            );
+
+            if (staffQuery.rows.length === 0) {
+                return res.status(400).json({
+                    return_code: "INVALID_STAFF",
+                    message: "The specified staff member does not belong to this business"
+                });
+            }
         }
 
         // Begin transaction
@@ -98,33 +119,68 @@ router.post('/', verifyToken, async (req, res) => {
             const formattedCurrentDate = currentDate.toISOString().split('T')[0];
             const formattedEndDate = endDate.toISOString().split('T')[0];
 
-            // Delete all future auto-generated entries for this business
-            // This simplifies the approach by replacing the entire future schedule
-            await client.query(
-                `DELETE FROM staff_rota
-                 WHERE business_id = $1
-                 AND is_generated = TRUE
-                 AND rota_date >= CURRENT_DATE`,
-                [business_id]
-            );
+            // Delete future auto-generated entries
+            // If staff_id is provided, only delete entries for that staff member
+            if (staff_id) {
+                await client.query(
+                    `DELETE FROM staff_rota
+                     WHERE business_id = $1
+                     AND staff_id = $2
+                     AND is_generated = TRUE
+                     AND rota_date >= CURRENT_DATE`,
+                    [business_id, staff_id]
+                );
+            } else {
+                // Otherwise delete all future auto-generated entries for this business
+                await client.query(
+                    `DELETE FROM staff_rota
+                     WHERE business_id = $1
+                     AND is_generated = TRUE
+                     AND rota_date >= CURRENT_DATE`,
+                    [business_id]
+                );
+            }
 
-            // Get all staff schedules for this business
-            const scheduleCheckQuery = await client.query(
-                `SELECT
-                    ss.id,
-                    ss.staff_id,
-                    ss.day_of_week,
-                    ss.start_time,
-                    ss.end_time,
-                    ss.start_date,
-                    ss.end_date,
-                    ss.repeat_every_n_weeks
-                 FROM staff_schedule ss
-                 WHERE ss.business_id = $1
-                 AND ss.start_date <= $3
-                 AND (ss.end_date IS NULL OR ss.end_date >= $2)`,
-                [business_id, formattedCurrentDate, formattedEndDate]
-            );
+            // Get staff schedules
+            let scheduleCheckQuery;
+            if (staff_id) {
+                // If staff_id is provided, only get schedules for that staff member
+                scheduleCheckQuery = await client.query(
+                    `SELECT
+                        ss.id,
+                        ss.staff_id,
+                        ss.day_of_week,
+                        ss.start_time,
+                        ss.end_time,
+                        ss.start_date,
+                        ss.end_date,
+                        ss.repeat_every_n_weeks
+                     FROM staff_schedule ss
+                     WHERE ss.business_id = $1
+                     AND ss.staff_id = $2
+                     AND ss.start_date <= $4
+                     AND (ss.end_date IS NULL OR ss.end_date >= $3)`,
+                    [business_id, staff_id, formattedCurrentDate, formattedEndDate]
+                );
+            } else {
+                // Otherwise get all staff schedules for this business
+                scheduleCheckQuery = await client.query(
+                    `SELECT
+                        ss.id,
+                        ss.staff_id,
+                        ss.day_of_week,
+                        ss.start_time,
+                        ss.end_time,
+                        ss.start_date,
+                        ss.end_date,
+                        ss.repeat_every_n_weeks
+                     FROM staff_schedule ss
+                     WHERE ss.business_id = $1
+                     AND ss.start_date <= $3
+                     AND (ss.end_date IS NULL OR ss.end_date >= $2)`,
+                    [business_id, formattedCurrentDate, formattedEndDate]
+                );
+            }
 
             if (scheduleCheckQuery.rows.length === 0) {
                 await client.query('ROLLBACK');
@@ -135,26 +191,48 @@ router.post('/', verifyToken, async (req, res) => {
             }
 
             // Now get all schedules for generating the rota
-            // We'll look ahead for 10 days
             // We can reuse the same date variables since we're using the same date range
 
-            // Get all staff schedules for this business
-            const schedulesQuery = await client.query(
-                `SELECT
-                    ss.id,
-                    ss.staff_id,
-                    ss.day_of_week,
-                    ss.start_time,
-                    ss.end_time,
-                    ss.start_date,
-                    ss.end_date,
-                    ss.repeat_every_n_weeks
-                 FROM staff_schedule ss
-                 WHERE ss.business_id = $1
-                 AND ss.start_date <= $3
-                 AND (ss.end_date IS NULL OR ss.end_date >= $2)`,
-                [business_id, formattedCurrentDate, formattedEndDate]
-            );
+            // Get staff schedules for generating the rota
+            let schedulesQuery;
+            if (staff_id) {
+                // If staff_id is provided, only get schedules for that staff member
+                schedulesQuery = await client.query(
+                    `SELECT
+                        ss.id,
+                        ss.staff_id,
+                        ss.day_of_week,
+                        ss.start_time,
+                        ss.end_time,
+                        ss.start_date,
+                        ss.end_date,
+                        ss.repeat_every_n_weeks
+                     FROM staff_schedule ss
+                     WHERE ss.business_id = $1
+                     AND ss.staff_id = $2
+                     AND ss.start_date <= $4
+                     AND (ss.end_date IS NULL OR ss.end_date >= $3)`,
+                    [business_id, staff_id, formattedCurrentDate, formattedEndDate]
+                );
+            } else {
+                // Otherwise get all staff schedules for this business
+                schedulesQuery = await client.query(
+                    `SELECT
+                        ss.id,
+                        ss.staff_id,
+                        ss.day_of_week,
+                        ss.start_time,
+                        ss.end_time,
+                        ss.start_date,
+                        ss.end_date,
+                        ss.repeat_every_n_weeks
+                     FROM staff_schedule ss
+                     WHERE ss.business_id = $1
+                     AND ss.start_date <= $3
+                     AND (ss.end_date IS NULL OR ss.end_date >= $2)`,
+                    [business_id, formattedCurrentDate, formattedEndDate]
+                );
+            }
 
             if (schedulesQuery.rows.length === 0) {
                 await client.query('ROLLBACK');
