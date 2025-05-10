@@ -5,6 +5,11 @@ API Route: create_auto_staff_rota
 Method: POST
 Purpose: Automatically generates staff rota entries based on staff schedules for the next 60 days.
          Replaces all future auto-generated entries with new ones based on current schedules.
+         Intelligently handles existing manual entries (is_generated=false) by:
+         1. Skipping auto-generation for dates with manual entries that cover the entire schedule time
+         2. Creating partial entries for remaining time slots when manual entries only cover part of the day
+            (e.g., if a manual entry exists for 9:00-12:00 and the schedule is 9:00-17:00,
+            it will generate an entry for 12:00-17:00)
 Authentication: Required - This endpoint requires a valid JWT token
 =======================================================================================================================================
 Request Payload:
@@ -48,6 +53,78 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const verifyToken = require('../middleware/auth');
+
+// Helper function to convert time string (HH:MM:SS) to minutes since midnight
+function convertTimeToMinutes(timeStr) {
+    // Handle different time formats
+    let hours, minutes, seconds = 0;
+
+    if (typeof timeStr === 'string') {
+        const parts = timeStr.split(':');
+        hours = parseInt(parts[0], 10);
+        minutes = parseInt(parts[1], 10);
+        if (parts.length > 2) {
+            seconds = parseInt(parts[2], 10);
+        }
+    } else if (timeStr instanceof Date) {
+        hours = timeStr.getHours();
+        minutes = timeStr.getMinutes();
+        seconds = timeStr.getSeconds();
+    } else {
+        // If it's already a number, assume it's already in minutes
+        return timeStr;
+    }
+
+    return hours * 60 + minutes + seconds / 60;
+}
+
+// Helper function to convert minutes since midnight back to time string (HH:MM:SS)
+function convertMinutesToTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.floor(minutes % 60);
+
+    // Format as HH:MM:00
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:00`;
+}
+
+// Helper function to find non-overlapping time ranges
+function findNonOverlappingRanges(scheduleStart, scheduleEnd, manualRanges) {
+    // Convert manual ranges to minutes for easier comparison
+    const manualRangesInMinutes = manualRanges.map(range => ({
+        start: convertTimeToMinutes(range.start_time),
+        end: convertTimeToMinutes(range.end_time)
+    }));
+
+    // Sort manual ranges by start time
+    manualRangesInMinutes.sort((a, b) => a.start - b.start);
+
+    // Find gaps between manual ranges
+    const nonOverlappingRanges = [];
+    let currentStart = scheduleStart;
+
+    for (const range of manualRangesInMinutes) {
+        // If there's a gap before this manual range, add it
+        if (currentStart < range.start) {
+            nonOverlappingRanges.push({
+                start: currentStart,
+                end: Math.min(scheduleEnd, range.start)
+            });
+        }
+
+        // Move current start to after this manual range
+        currentStart = Math.max(currentStart, range.end);
+    }
+
+    // Add any remaining time after the last manual range
+    if (currentStart < scheduleEnd) {
+        nonOverlappingRanges.push({
+            start: currentStart,
+            end: scheduleEnd
+        });
+    }
+
+    return nonOverlappingRanges;
+}
 
 // POST /create_auto_staff_rota
 router.post('/', verifyToken, async (req, res) => {
@@ -266,6 +343,61 @@ router.post('/', verifyToken, async (req, res) => {
                 tempDate.setDate(tempDate.getDate() + 1);
             }
 
+            // Fetch existing manual entries (is_generated=false) to handle time conflicts
+            // We'll respect manual entries by either skipping or adjusting auto-generated entries
+            let manualEntriesQuery;
+            if (staff_id) {
+                // If staff_id is provided, only get manual entries for that staff member
+                manualEntriesQuery = await client.query(
+                    `SELECT
+                        staff_id,
+                        TO_CHAR(rota_date, 'YYYY-MM-DD') as rota_date,
+                        start_time,
+                        end_time
+                     FROM staff_rota
+                     WHERE business_id = $1
+                     AND staff_id = $2
+                     AND is_generated = FALSE
+                     AND rota_date >= $3
+                     AND rota_date <= $4`,
+                    [business_id, staff_id, formattedCurrentDate, formattedEndDate]
+                );
+            } else {
+                // Otherwise get all manual entries for this business
+                manualEntriesQuery = await client.query(
+                    `SELECT
+                        staff_id,
+                        TO_CHAR(rota_date, 'YYYY-MM-DD') as rota_date,
+                        start_time,
+                        end_time
+                     FROM staff_rota
+                     WHERE business_id = $1
+                     AND is_generated = FALSE
+                     AND rota_date >= $2
+                     AND rota_date <= $3`,
+                    [business_id, formattedCurrentDate, formattedEndDate]
+                );
+            }
+
+            // Create a lookup map for quick checking if a manual entry exists
+            // The key format is 'staffId-YYYY-MM-DD' and the value is an array of time ranges
+            const manualEntries = {};
+
+            for (const entry of manualEntriesQuery.rows) {
+                const key = `${entry.staff_id}-${entry.rota_date}`;
+
+                // Initialize array if this is the first entry for this staff/date
+                if (!manualEntries[key]) {
+                    manualEntries[key] = [];
+                }
+
+                // Add the time range to the array
+                manualEntries[key].push({
+                    start_time: entry.start_time,
+                    end_time: entry.end_time
+                });
+            }
+
             // Process each schedule
             for (const schedule of schedulesQuery.rows) {
                 // Get the day of week for this schedule (e.g., "Monday")
@@ -314,6 +446,62 @@ router.post('/', verifyToken, async (req, res) => {
 
                             // Format the date for PostgreSQL
                             const formattedDate = date.toISOString().split('T')[0];
+
+                            // Check if there are manual entries for this staff member and date
+                            const manualEntryKey = `${schedule.staff_id}-${formattedDate}`;
+                            const manualTimeRanges = manualEntries[manualEntryKey];
+
+                            if (manualTimeRanges && manualTimeRanges.length > 0) {
+                                // There are manual entries for this date
+                                // We need to check if we can generate non-overlapping entries
+
+                                // Convert schedule times to comparable format (minutes since midnight)
+                                const scheduleStartMinutes = convertTimeToMinutes(schedule.start_time);
+                                const scheduleEndMinutes = convertTimeToMinutes(schedule.end_time);
+
+                                // Find all non-overlapping time ranges
+                                const nonOverlappingRanges = findNonOverlappingRanges(
+                                    scheduleStartMinutes,
+                                    scheduleEndMinutes,
+                                    manualTimeRanges
+                                );
+
+                                // If there are no non-overlapping ranges, skip this date
+                                if (nonOverlappingRanges.length === 0) {
+                                    continue;
+                                }
+
+                                // Generate entries for each non-overlapping range
+                                for (const range of nonOverlappingRanges) {
+                                    // Convert minutes back to time format
+                                    const rangeStartTime = convertMinutesToTime(range.start);
+                                    const rangeEndTime = convertMinutesToTime(range.end);
+
+                                    // Insert rota entry for this time range
+                                    try {
+                                        await client.query(
+                                            `INSERT INTO staff_rota
+                                             (staff_id, rota_date, start_time, end_time, business_id, is_generated)
+                                             VALUES ($1, $2, $3, $4, $5, TRUE)`,
+                                            [
+                                                schedule.staff_id,
+                                                formattedDate,
+                                                rangeStartTime,
+                                                rangeEndTime,
+                                                business_id
+                                            ]
+                                        );
+
+                                        generatedCount++;
+                                    } catch (insertError) {
+                                        console.error(`Error inserting rota entry: ${insertError.message}`);
+                                        // Continue processing other ranges even if one insert fails
+                                    }
+                                }
+
+                                // Skip the normal insertion since we've handled this date with custom ranges
+                                continue;
+                            }
 
                             // Insert rota entry
                             try {
