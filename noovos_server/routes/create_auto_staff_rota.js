@@ -172,7 +172,8 @@ router.post('/', verifyToken, async (req, res) => {
             const tempDate = new Date(currentDate);
 
             // Make sure we're working with just the date part (no time)
-            tempDate.setHours(0, 0, 0, 0);
+            // Also ensure we're working with UTC dates to avoid time zone issues
+            tempDate.setUTCHours(0, 0, 0, 0);
 
             // Create a proper end date that's 60 days from now
             // Reuse the existing endDate variable
@@ -181,7 +182,9 @@ router.post('/', verifyToken, async (req, res) => {
 
             // Generate all dates in the range
             while (tempDate <= endDate) {
-                dateRange.push(new Date(tempDate));
+                // Create a new date object for each day to avoid reference issues
+                const newDate = new Date(tempDate);
+                dateRange.push(newDate);
                 tempDate.setDate(tempDate.getDate() + 1);
             }
 
@@ -193,7 +196,8 @@ router.post('/', verifyToken, async (req, res) => {
                 // Process each date in the range
                 for (const date of dateRange) {
                     // Get the day of week for this date (0 = Sunday, 1 = Monday, etc.)
-                    const dayOfWeek = date.getDay();
+                    // Use UTC methods to avoid time zone issues
+                    const dayOfWeek = date.getUTCDay();
 
                     // Convert JavaScript day of week to day name
                     const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -202,15 +206,25 @@ router.post('/', verifyToken, async (req, res) => {
                     // Check if this date matches the schedule day
                     if (dateDayName === scheduleDay) {
                         // Check if the date is within the schedule's date range
+                        // Parse dates and ensure they're in UTC
                         const scheduleStartDate = new Date(schedule.start_date);
-                        const scheduleEndDate = schedule.end_date ? new Date(schedule.end_date) : null;
+                        scheduleStartDate.setUTCHours(0, 0, 0, 0);
+
+                        let scheduleEndDate = null;
+                        if (schedule.end_date) {
+                            scheduleEndDate = new Date(schedule.end_date);
+                            scheduleEndDate.setUTCHours(0, 0, 0, 0);
+                        }
 
                         if (date >= scheduleStartDate && (!scheduleEndDate || date <= scheduleEndDate)) {
                             // Check repeat pattern if specified
                             let includeDate = true;
                             if (schedule.repeat_every_n_weeks) {
                                 // Calculate weeks between schedule start date and current date
-                                const weeksDiff = Math.floor((date - scheduleStartDate) / (7 * 24 * 60 * 60 * 1000));
+                                // Use a more accurate method to calculate whole weeks difference
+                                const msPerDay = 24 * 60 * 60 * 1000;
+                                const daysDiff = Math.round(Math.abs(date - scheduleStartDate) / msPerDay);
+                                const weeksDiff = Math.floor(daysDiff / 7);
 
                                 // Only include dates that match the repeat pattern
                                 includeDate = (weeksDiff % schedule.repeat_every_n_weeks === 0);
