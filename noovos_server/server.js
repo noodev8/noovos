@@ -32,7 +32,8 @@ const search_business = require('./routes/search_business');
 const get_categories = require('./routes/get_categories');
 //const search_category_service = require('./routes/search_category_service');
 const search_service = require('./routes/search_service');
-const create_booking_slot = require('./routes/create_booking_slot');
+// DEPRECATED: Uses outdated 'available_slot' table which has been replaced by staff_schedule and staff_rota
+// const create_booking_slot = require('./routes/create_booking_slot');
 const get_service = require('./routes/get_service');
 const get_service_staff = require('./routes/get_service_staff');
 const get_service_slot_x1 = require('./routes/get_service_slot_x1');
@@ -62,7 +63,8 @@ app.use('/search_business', search_business);
 app.use('/get_categories', get_categories);
 //app.use('/search_category_service', search_category_service);
 app.use('/search_service', search_service);
-app.use('/create_booking_slot', create_booking_slot);
+// DEPRECATED: Uses outdated 'available_slot' table which has been replaced by staff_schedule and staff_rota
+// app.use('/create_booking_slot', create_booking_slot);
 app.use('/get_service', get_service);
 app.use('/get_service_staff', get_service_staff);
 app.use('/get_service_slot_x1', get_service_slot_x1);

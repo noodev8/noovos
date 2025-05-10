@@ -1,5 +1,8 @@
 /*
 =======================================================================================================================================
+DEPRECATED: This API is no longer used and has been replaced by staff_schedule and staff_rota functionality.
+It references the 'available_slot' table which no longer exists in the database schema.
+=======================================================================================================================================
 API Route: create_booking_slot
 =======================================================================================================================================
 Method: POST
@@ -51,11 +54,20 @@ Return Codes:
 
 const express = require('express');
 const router = express.Router();
-const pool = require('../db');
-const auth = require('../middleware/auth');
+// const pool = require('../db');
+// const auth = require('../middleware/auth');
 
+// DEPRECATED: This API is no longer used as it references the 'available_slot' table which no longer exists
+// It has been replaced by staff_schedule and staff_rota functionality
 // POST /create_booking_slot
-router.post('/', auth, async (req, res) => {
+router.post('/', (req, res) => {
+    return res.status(410).json({
+        return_code: "API_DEPRECATED",
+        message: "This API is deprecated. It has been replaced by staff_schedule and staff_rota functionality."
+    });
+
+    /* Original implementation commented out:
+    async (req, res) => {
     try {
         // Extract user ID from the JWT token
         const userId = req.user.id;
@@ -282,6 +294,7 @@ router.post('/', auth, async (req, res) => {
             message: "An error occurred while creating booking slot(s): " + error.message
         });
     }
+    */
 });
 
 module.exports = router;
