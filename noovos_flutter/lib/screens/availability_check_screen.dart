@@ -9,6 +9,8 @@ import 'package:intl/intl.dart';
 import '../styles/app_styles.dart';
 import '../helpers/cart_helper.dart';
 import '../api/get_service_slot_x1_api.dart';
+import '../api/get_service_slot_x2_api.dart';
+import '../api/get_service_slot_x3_api.dart';
 import '../api/create_booking_api.dart';
 import 'cart_screen.dart';
 import 'booking_confirmation_screen.dart';
@@ -113,17 +115,6 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
       return;
     }
 
-    // Check if there are multiple services in the cart
-    // Note: We're keeping this restriction for now, but in the future we could implement
-    // the x2 or x3 service slot APIs based on the number of items in the cart
-    if (_cartItems.length > 1) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Multiple service availability check is not yet available. Please keep only one service in your cart.';
-      });
-      return;
-    }
-
     // Check if cart is empty
     if (_cartItems.isEmpty) {
       setState(() {
@@ -134,16 +125,49 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
     }
 
     try {
-      // Get the first (and only) service from the cart
-      final CartItem service = _cartItems.first;
+      Map<String, dynamic> result;
 
-      // Call the API to get available slots
-      final result = await GetServiceSlotX1Api.getServiceSlots(
-        serviceId: service.serviceId,
-        date: _formatDateForApi(_selectedDate),
-        staffId: service.staffId,
-        timePreference: _timePreference.toLowerCase(),
-      );
+      // Call the appropriate API based on number of services
+      switch (_cartItems.length) {
+        case 1:
+          // Single service
+          result = await GetServiceSlotX1Api.getServiceSlots(
+            serviceId: _cartItems[0].serviceId,
+            date: _formatDateForApi(_selectedDate),
+            staffId: _cartItems[0].staffId,
+            timePreference: _timePreference.toLowerCase(),
+          );
+          break;
+
+        case 2:
+          // Two services
+          result = await GetServiceSlotX2Api.getServiceSlots(
+            serviceId1: _cartItems[0].serviceId,
+            serviceId2: _cartItems[1].serviceId,
+            date: _formatDateForApi(_selectedDate),
+            staffId1: _cartItems[0].staffId,
+            staffId2: _cartItems[1].staffId,
+            timePreference: _timePreference.toLowerCase(),
+          );
+          break;
+
+        case 3:
+          // Three services
+          result = await GetServiceSlotX3Api.getServiceSlots(
+            serviceId1: _cartItems[0].serviceId,
+            serviceId2: _cartItems[1].serviceId,
+            serviceId3: _cartItems[2].serviceId,
+            date: _formatDateForApi(_selectedDate),
+            staffId1: _cartItems[0].staffId,
+            staffId2: _cartItems[1].staffId,
+            staffId3: _cartItems[2].staffId,
+            timePreference: _timePreference.toLowerCase(),
+          );
+          break;
+
+        default:
+          throw Exception('Invalid number of services in cart');
+      }
 
       if (mounted) {
         setState(() {
@@ -154,8 +178,14 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
           // Extract data from the response
           final data = result['data'];
           setState(() {
-            _serviceDetails = data['service'];
-            _availableSlots = List<Map<String, dynamic>>.from(data['slots']);
+            // For single service, use 'service' field
+            // For multiple services, use 'services' field
+            _serviceDetails = _cartItems.length == 1 ? data['service'] : data['services'];
+            // For single service, use 'slots' field
+            // For multiple services, use 'combined_slots' field
+            _availableSlots = List<Map<String, dynamic>>.from(
+              _cartItems.length == 1 ? data['slots'] : data['combined_slots']
+            );
           });
         } else {
           // Handle error
@@ -182,50 +212,98 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
     });
 
     try {
-      // Get the first (and only) service from the cart
-      final CartItem service = _cartItems.first;
+      // For multiple services, we need to create bookings for each service
+      if (_cartItems.length > 1) {
+        // Get the services in the correct order based on the slot data
+        List<CartItem> orderedServices = _cartItems;
+        if (_cartItems.length == 2 && slot['order'] == '2-1') {
+          // For x2 API, if order is 2-1, swap the services
+          orderedServices = [_cartItems[1], _cartItems[0]];
+        }
 
-      // Format times to HH:MM format
-      String startTime = slot['start_time'].toString().substring(0, 5);
-      String endTime = slot['end_time'].toString().substring(0, 5);
+        // Create bookings for each service
+        for (int i = 0; i < orderedServices.length; i++) {
+          final service = orderedServices[i];
+          final serviceSlot = slot['service_${i + 1}'];
 
-      // Call the API to create the booking
-      final result = await CreateBookingApi.createBooking(
-        serviceId: service.serviceId,
-        staffId: slot['staff_id'],
-        bookingDate: _formatDateForApi(_selectedDate),
-        startTime: startTime,
-        endTime: endTime,
-      );
+          // Format times to HH:MM format
+          String startTime = serviceSlot['start_time'].toString().substring(0, 5);
+          String endTime = serviceSlot['end_time'].toString().substring(0, 5);
 
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+          // Call the API to create the booking
+          final result = await CreateBookingApi.createBooking(
+            serviceId: service.serviceId,
+            staffId: serviceSlot['staff_id'],
+            bookingDate: _formatDateForApi(_selectedDate),
+            startTime: startTime,
+            endTime: endTime,
+          );
 
-        if (result['success']) {
-          // Clear the cart
-          CartHelper.clearCart();
+          if (!result['success']) {
+            throw Exception(result['message'] ?? 'Failed to create booking');
+          }
+        }
 
-          // Navigate to booking confirmation screen
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => BookingConfirmationScreen(
-                  bookingDetails: result['data'],
+        // Clear the cart
+        CartHelper.clearCart();
+
+        // Navigate to booking confirmation screen with the last booking details
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BookingConfirmationScreen(
+                bookingDetails: slot,
+              ),
+            ),
+          );
+        }
+      } else {
+        // Single service booking (existing code)
+        final CartItem service = _cartItems.first;
+
+        // Format times to HH:MM format
+        String startTime = slot['start_time'].toString().substring(0, 5);
+        String endTime = slot['end_time'].toString().substring(0, 5);
+
+        // Call the API to create the booking
+        final result = await CreateBookingApi.createBooking(
+          serviceId: service.serviceId,
+          staffId: slot['staff_id'],
+          bookingDate: _formatDateForApi(_selectedDate),
+          startTime: startTime,
+          endTime: endTime,
+        );
+
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+
+          if (result['success']) {
+            // Clear the cart
+            CartHelper.clearCart();
+
+            // Navigate to booking confirmation screen
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => BookingConfirmationScreen(
+                    bookingDetails: result['data'],
+                  ),
                 ),
+              );
+            }
+          } else {
+            // Show error message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message'] ?? 'Failed to create booking'),
+                backgroundColor: Colors.red,
               ),
             );
           }
-        } else {
-          // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Failed to create booking'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       }
     } catch (e) {
@@ -666,90 +744,135 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
 
   // Build slot card
   Widget _buildSlotCard(Map<String, dynamic> slot) {
-    // Extract slot data
-    final String startTime = _formatTime(slot['start_time'] ?? '');
-    final String endTime = _formatTime(slot['end_time'] ?? '');
-    final String staffName = slot['staff_name'] ?? 'Unknown';
-
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: InkWell(
+        onTap: () => _createBooking(slot),
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // For multiple services, show each service's details
+              if (_cartItems.length > 1) ...[
+                for (int i = 0; i < _cartItems.length; i++) ...[
+                  if (i > 0) const Divider(height: 24),
+                  _buildServiceSlotDetails(
+                    service: _cartItems[i],
+                    slot: slot['service_${i + 1}'],
+                    isLast: i == _cartItems.length - 1,
+                  ),
+                ],
+                const SizedBox(height: 16),
+                // Show total duration
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.access_time,
+                      size: 16,
+                      color: AppStyles.secondaryTextColor,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Total Duration: ${slot['total_duration']} minutes',
+                      style: const TextStyle(
+                        color: AppStyles.secondaryTextColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                // Single service slot details
+                _buildServiceSlotDetails(
+                  service: _cartItems[0],
+                  slot: slot,
+                  isLast: true,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Build service slot details
+  Widget _buildServiceSlotDetails({
+    required CartItem service,
+    required Map<String, dynamic> slot,
+    required bool isLast,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Service name
+        Text(
+          service.serviceName,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Time and staff
+        Row(
           children: [
-            // Time slot with updated styling
-            Row(
-              children: [
-                const Icon(
-                  Icons.access_time,
-                  color: AppStyles.primaryColor,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '$startTime - $endTime',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
-                    color: AppStyles.primaryColor,
-                  ),
-                ),
-              ],
+            const Icon(
+              Icons.access_time,
+              size: 16,
+              color: AppStyles.secondaryTextColor,
             ),
-            const SizedBox(height: 8),
-
-            // Staff info
-            Row(
-              children: [
-                const Icon(
-                  Icons.person,
-                  color: AppStyles.secondaryTextColor,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Staff: $staffName',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppStyles.secondaryTextColor,
-                  ),
-                ),
-              ],
-            ),
-
-            // Book button
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : () => _createBooking(slot),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppStyles.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Book This Slot'),
+            const SizedBox(width: 8),
+            Text(
+              '${_formatTime(slot['start_time'])} - ${_formatTime(slot['end_time'])}',
+              style: const TextStyle(
+                color: AppStyles.secondaryTextColor,
               ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            const Icon(
+              Icons.person,
+              size: 16,
+              color: AppStyles.secondaryTextColor,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              slot['staff_name'] ?? 'Any Staff',
+              style: const TextStyle(
+                color: AppStyles.secondaryTextColor,
+              ),
+            ),
+          ],
+        ),
+        if (!isLast) ...[
+          const SizedBox(height: 8),
+          const Row(
+            children: [
+              Icon(
+                Icons.arrow_downward,
+                size: 16,
+                color: AppStyles.secondaryTextColor,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Followed by',
+                style: TextStyle(
+                  color: AppStyles.secondaryTextColor,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }
