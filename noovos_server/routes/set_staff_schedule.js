@@ -15,8 +15,8 @@ Request Payload:
   "schedule": [                       // array, required - Array of schedule entries
     {
       "day_of_week": "Monday",        // string, required - Day of the week (Monday, Tuesday, etc.)
-      "start_time": "09:00",          // string, required - Start time (HH:MM)
-      "end_time": "17:00",            // string, required - End time (HH:MM)
+      "start_time": "09:00",          // string, required - Start time (HH:MM or HH:MM AM/PM)
+      "end_time": "17:00",            // string, required - End time (HH:MM or HH:MM AM/PM)
       "start_date": "2023-06-01",     // string, required - Start date (YYYY-MM-DD)
       "end_date": "2023-12-31",       // string, optional - End date (YYYY-MM-DD)
       "repeat_every_n_weeks": 1       // integer, optional - Repeat frequency in weeks
@@ -80,7 +80,11 @@ Error Responses:
 }
 {
   "return_code": "INVALID_TIME",
-  "message": "End time must be after start time"
+  "message": "End time must be after or equal to start time"
+}
+{
+  "return_code": "INVALID_FORMAT",
+  "message": "Invalid time format. Use HH:MM or HH:MM AM/PM format."
 }
 {
   "return_code": "SCHEDULE_OVERLAP",
@@ -231,11 +235,66 @@ router.post('/', verifyToken, async (req, res) => {
                 }
 
                 // Validate times
-                if (entry.start_time >= entry.end_time) {
+                console.log(`DEBUG - Time validation: start_time=${entry.start_time}, end_time=${entry.end_time}`);
+
+                // Helper function to parse time string to minutes
+                function parseTimeToMinutes(timeStr) {
+                    // Remove any whitespace
+                    timeStr = timeStr.trim();
+
+                    let hours = 0;
+                    let minutes = 0;
+                    let isPM = false;
+
+                    // Check if time includes AM/PM
+                    if (timeStr.includes('AM') || timeStr.includes('PM')) {
+                        isPM = timeStr.includes('PM');
+                        // Remove AM/PM
+                        timeStr = timeStr.replace('AM', '').replace('PM', '').trim();
+                    }
+
+                    // Split into hours and minutes
+                    const parts = timeStr.split(':');
+                    if (parts.length === 2) {
+                        hours = parseInt(parts[0], 10);
+                        minutes = parseInt(parts[1], 10);
+
+                        // Adjust for PM
+                        if (isPM && hours < 12) {
+                            hours += 12;
+                        }
+
+                        // Adjust for 12 AM
+                        if (!isPM && hours === 12) {
+                            hours = 0;
+                        }
+
+                        return hours * 60 + minutes;
+                    }
+
+                    return -1; // Invalid format
+                }
+
+                // Parse times to minutes
+                const startMinutes = parseTimeToMinutes(entry.start_time);
+                const endMinutes = parseTimeToMinutes(entry.end_time);
+
+                console.log(`DEBUG - Converted to minutes: start=${startMinutes}, end=${endMinutes}`);
+
+                if (startMinutes >= 0 && endMinutes >= 0) {
+                    if (startMinutes > endMinutes) {
+                        await client.query('ROLLBACK');
+                        return res.status(400).json({
+                            return_code: "INVALID_TIME",
+                            message: "End time must be after or equal to start time"
+                        });
+                    }
+                } else {
+                    console.log(`DEBUG - Invalid time format: start_time=${entry.start_time}, end_time=${entry.end_time}`);
                     await client.query('ROLLBACK');
                     return res.status(400).json({
-                        return_code: "INVALID_TIME",
-                        message: "End time must be after start time"
+                        return_code: "INVALID_FORMAT",
+                        message: "Invalid time format. Use HH:MM or HH:MM AM/PM format."
                     });
                 }
             }

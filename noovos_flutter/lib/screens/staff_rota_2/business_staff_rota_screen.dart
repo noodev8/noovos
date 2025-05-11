@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 import '../../styles/app_styles.dart';
 import '../../api/get_business_staff_api.dart';
 import '../../api/get_staff_rota_api.dart';
+import 'staff_schedule_screen.dart';
 
 class BusinessStaffRotaScreen extends StatefulWidget {
   // Business details
@@ -547,10 +548,18 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: InkWell(
         onTap: () {
-          // Show message for now (will be implemented later)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Manage hours for $name - Coming soon!'),
+          // Navigate to staff schedule screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StaffScheduleScreen(
+                business: widget.business,
+                staff: {
+                  'appuser_id': staffId,
+                  'first_name': name.split(' ').first,
+                  'last_name': name.split(' ').length > 1 ? name.split(' ').last : '',
+                },
+              ),
             ),
           );
         },

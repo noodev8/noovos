@@ -14,6 +14,7 @@ import '../api/get_business_staff_api.dart';
 import '../api/request_staff_join_api.dart';
 import '../api/remove_staff_api.dart';
 import 'staff_rota_2/business_staff_rota_screen.dart';
+import 'staff_rota_2/staff_schedule_screen.dart';
 
 class BusinessStaffManagementScreen extends StatefulWidget {
   // Business details
@@ -502,20 +503,58 @@ class _BusinessStaffManagementScreenState extends State<BusinessStaffManagementS
               ),
             ],
           ),
-          trailing: status == 'active'
-              ? (role.toLowerCase() == 'business_owner'
-                  ? null  // No delete button for business owners
-                  : IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _removeStaff(appuserId, fullName),
-                      tooltip: 'Remove staff member',
-                    )
-                )
-              : IconButton(
-                  icon: const Icon(Icons.close, color: Colors.red),
-                  onPressed: () => _removeStaff(appuserId, fullName),
-                  tooltip: 'Cancel request',
+          // Add onTap handler for active staff members
+          onTap: status == 'active' ? () {
+            // Navigate to staff schedule screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => StaffScheduleScreen(
+                  business: widget.business,
+                  staff: staff,
                 ),
+              ),
+            );
+          } : null,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Only show schedule button for active staff (not pending)
+              if (status == 'active')
+                IconButton(
+                  icon: const Icon(Icons.schedule, color: AppStyles.primaryColor),
+                  onPressed: () {
+                    // Navigate to staff schedule screen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StaffScheduleScreen(
+                          business: widget.business,
+                          staff: staff,
+                        ),
+                      ),
+                    );
+                  },
+                  tooltip: 'Manage Schedule',
+                ),
+
+              // Delete/cancel button
+              status == 'active'
+                ? (role.toLowerCase() == 'business_owner'
+                    ? Container(width: 0) // No delete button for business owners
+                    : IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _removeStaff(appuserId, fullName),
+                        tooltip: 'Remove staff member',
+                      )
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.close, color: Colors.red),
+                    onPressed: () => _removeStaff(appuserId, fullName),
+                    tooltip: 'Cancel request',
+                  ),
+            ],
+          ),
         ),
       );
     }).toList();

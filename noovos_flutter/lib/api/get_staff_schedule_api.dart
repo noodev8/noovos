@@ -1,22 +1,20 @@
 /*
-API client for the set_staff_schedule endpoint
-Applies a new schedule to the database for a staff member
+API client for the get_staff_schedule endpoint
+Retrieves staff schedules for a business, optionally filtered by staff member
 */
 
 import 'dart:convert';
 import '../helpers/auth_helper.dart';
 import 'base_api_client.dart';
 
-class SetStaffScheduleApi {
-  // Endpoint for set staff schedule
-  static const String _endpoint = '/set_staff_schedule';
+class GetStaffScheduleApi {
+  // Endpoint for get staff schedule
+  static const String _endpoint = '/get_staff_schedule';
 
-  // Set staff schedule
-  static Future<Map<String, dynamic>> setStaffSchedule({
+  // Get staff schedule
+  static Future<Map<String, dynamic>> getStaffSchedule({
     required int businessId,
-    required int staffId,
-    required List<Map<String, dynamic>> schedule,
-    bool force = false,
+    int? staffId,
   }) async {
     try {
       // Get auth token
@@ -30,34 +28,18 @@ class SetStaffScheduleApi {
         };
       }
 
-      // Validate schedule
-      if (schedule.isEmpty) {
-        return {
-          'success': false,
-          'message': 'At least one schedule entry is required',
-          'return_code': 'MISSING_FIELDS',
-        };
-      }
-
       // Create request body
       final Map<String, dynamic> requestBody = {
         'business_id': businessId,
-        'staff_id': staffId,
-        'schedule': schedule,
-        'force': force,
       };
 
-      // Debug log request
-      print('DEBUG API - Request body:');
-      print(json.encode(requestBody));
+      // Add optional parameters if provided
+      if (staffId != null) {
+        requestBody['staff_id'] = staffId;
+      }
 
       // Make API request
       final response = await BaseApiClient.postWithAuth(_endpoint, requestBody, token);
-
-      // Debug log response
-      print('DEBUG API - Response status code: ${response.statusCode}');
-      print('DEBUG API - Response body:');
-      print(response.body);
 
       // Parse response
       final Map<String, dynamic> responseData = json.decode(response.body);
@@ -66,13 +48,13 @@ class SetStaffScheduleApi {
       if (response.statusCode == 200 && responseData['return_code'] == 'SUCCESS') {
         return {
           'success': true,
-          'message': responseData['message'],
+          'schedules': responseData['schedules'],
         };
       } else {
         // Return error response
         return {
           'success': false,
-          'message': responseData['message'] ?? 'Failed to set staff schedule',
+          'message': responseData['message'] ?? 'Failed to get staff schedule',
           'return_code': responseData['return_code'] ?? 'UNKNOWN_ERROR',
         };
       }
