@@ -49,6 +49,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
     super.initState();
 
     // Load cart items
+
     _loadCartItems();
   }
 
@@ -876,4 +877,5 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
     );
   }
 }
+
 
