@@ -12,7 +12,7 @@ import 'package:intl/intl.dart';
 import '../../styles/app_styles.dart';
 import '../../api/get_business_staff_api.dart';
 import '../../api/get_staff_rota_api.dart';
-import 'staff_schedule_screen.dart';
+import 'add_staff_rota_screen.dart';
 
 class BusinessStaffRotaScreen extends StatefulWidget {
   // Business details
@@ -548,17 +548,18 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: InkWell(
         onTap: () {
-          // Navigate to staff schedule screen
+          // Navigate to add staff rota screen
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => StaffScheduleScreen(
+              builder: (context) => AddStaffRotaScreen(
                 business: widget.business,
                 staff: {
                   'appuser_id': staffId,
                   'first_name': name.split(' ').first,
                   'last_name': name.split(' ').length > 1 ? name.split(' ').last : '',
                 },
+                weekData: _weekOptions[_selectedWeekIndex],
               ),
             ),
           );
