@@ -235,7 +235,6 @@ router.post('/', verifyToken, async (req, res) => {
                 }
 
                 // Validate times
-                console.log(`DEBUG - Time validation: start_time=${entry.start_time}, end_time=${entry.end_time}`);
 
                 // Helper function to parse time string to minutes
                 function parseTimeToMinutes(timeStr) {
@@ -279,8 +278,6 @@ router.post('/', verifyToken, async (req, res) => {
                 const startMinutes = parseTimeToMinutes(entry.start_time);
                 const endMinutes = parseTimeToMinutes(entry.end_time);
 
-                console.log(`DEBUG - Converted to minutes: start=${startMinutes}, end=${endMinutes}`);
-
                 if (startMinutes >= 0 && endMinutes >= 0) {
                     if (startMinutes > endMinutes) {
                         await client.query('ROLLBACK');
@@ -290,7 +287,6 @@ router.post('/', verifyToken, async (req, res) => {
                         });
                     }
                 } else {
-                    console.log(`DEBUG - Invalid time format: start_time=${entry.start_time}, end_time=${entry.end_time}`);
                     await client.query('ROLLBACK');
                     return res.status(400).json({
                         return_code: "INVALID_FORMAT",

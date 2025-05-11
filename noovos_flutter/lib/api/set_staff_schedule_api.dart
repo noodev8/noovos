@@ -47,17 +47,8 @@ class SetStaffScheduleApi {
         'force': force,
       };
 
-      // Debug log request
-      print('DEBUG API - Request body:');
-      print(json.encode(requestBody));
-
       // Make API request
       final response = await BaseApiClient.postWithAuth(_endpoint, requestBody, token);
-
-      // Debug log response
-      print('DEBUG API - Response status code: ${response.statusCode}');
-      print('DEBUG API - Response body:');
-      print(response.body);
 
       // Parse response
       final Map<String, dynamic> responseData = json.decode(response.body);

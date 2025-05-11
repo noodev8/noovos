@@ -157,13 +157,6 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
         'start_date': _startDateController.text,
       };
 
-      // Debug log
-      print('DEBUG - Schedule entry being sent to server:');
-      print('DEBUG - day_of_week: ${scheduleEntry['day_of_week']}');
-      print('DEBUG - start_time: ${scheduleEntry['start_time']}');
-      print('DEBUG - end_time: ${scheduleEntry['end_time']}');
-      print('DEBUG - start_date: ${scheduleEntry['start_date']}');
-
       // Add optional fields if provided
       if (_endDateController.text.isNotEmpty) {
         scheduleEntry['end_date'] = _endDateController.text;
@@ -195,18 +188,11 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
       }
 
       // Call API to set schedule
-      print('DEBUG - Calling API with schedule data');
       final result = await SetStaffScheduleApi.setStaffSchedule(
         businessId: businessId,
         staffId: staffId,
         schedule: schedule,
       );
-
-      // Debug log API response
-      print('DEBUG - API response:');
-      print('DEBUG - success: ${result['success']}');
-      print('DEBUG - message: ${result['message']}');
-      print('DEBUG - return_code: ${result['return_code']}');
 
       if (mounted) {
         setState(() {
