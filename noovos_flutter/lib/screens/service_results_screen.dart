@@ -629,7 +629,10 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                 icon: const Icon(Icons.shopping_cart),
                 onPressed: () {
                   // Navigate to cart screen while preserving the search results page in the stack
-                  Navigator.pushNamed(context, '/cart');
+                  Navigator.pushNamed(context, '/cart').then((_) {
+                    // Refresh the state when returning from cart screen
+                    setState(() {});
+                  });
                 },
                 tooltip: 'View Cart',
               ),
