@@ -58,8 +58,18 @@ router.post('/', verifyToken, async (req, res) => {
         // Extract parameters from request body
         const { service_id, staff_id, booking_date, start_time, end_time } = req.body;
 
+        // Add debug logging for incoming request
+        console.log('=== DEBUG: Incoming Booking Request ===');
+        console.log('Raw request body:', req.body);
+        console.log('Parsed times:', {
+            start_time,
+            end_time,
+            booking_date
+        });
+
         // Validate required fields
         if (!service_id || !staff_id || !booking_date || !start_time || !end_time) {
+            console.log('DEBUG: Missing required fields');
             return res.status(400).json({
                 return_code: "MISSING_FIELDS",
                 message: "All fields are required: service_id, staff_id, booking_date, start_time, end_time"
@@ -148,20 +158,81 @@ router.post('/', verifyToken, async (req, res) => {
         // 1. Check if they have a rota entry for that day
         const rotaQuery = `
             SELECT 
-                id 
+                id,
+                start_time,
+                end_time
             FROM 
                 staff_rota 
             WHERE 
                 staff_id = $1 
                 AND rota_date = $2
-                AND start_time <= $3::time
-                AND end_time >= $4::time
-                AND business_id = $5
+                AND business_id = $3
         `;
         
-        const rotaResult = await pool.query(rotaQuery, [staff_id, booking_date, start_time, end_time, businessId]);
+        console.log('=== DEBUG: Rota Check ===');
+        console.log('Checking rota availability with params:', {
+            staff_id,
+            booking_date,
+            businessId,
+            requested_start_time: start_time,
+            requested_end_time: end_time
+        });
+        
+        const rotaResult = await pool.query(rotaQuery, [staff_id, booking_date, businessId]);
+        
+        console.log('Found rota entries:', rotaResult.rows);
         
         if (rotaResult.rows.length === 0) {
+            console.log('DEBUG: No rota entries found for this date');
+            return res.status(400).json({
+                return_code: "STAFF_NOT_AVAILABLE",
+                message: "Staff member is not scheduled to work on this date"
+            });
+        }
+
+        // Check if the booking time falls within any of the staff's rota entries
+        let isAvailable = false;
+        for (const rota of rotaResult.rows) {
+            // Convert all times to minutes since midnight for easier comparison
+            const bookingStartMinutes = convertTimeToMinutes(start_time);
+            const bookingEndMinutes = convertTimeToMinutes(end_time);
+            const rotaStartMinutes = convertTimeToMinutes(rota.start_time);
+            const rotaEndMinutes = convertTimeToMinutes(rota.end_time);
+
+            console.log('=== DEBUG: Time Comparison ===');
+            console.log('Raw times:', {
+                booking_start: start_time,
+                booking_end: end_time,
+                rota_start: rota.start_time,
+                rota_end: rota.end_time
+            });
+            console.log('Converted to minutes:', {
+                booking_start_minutes: bookingStartMinutes,
+                booking_end_minutes: bookingEndMinutes,
+                rota_start_minutes: rotaStartMinutes,
+                rota_end_minutes: rotaEndMinutes
+            });
+            console.log('Comparison results:', {
+                start_time_check: bookingStartMinutes >= rotaStartMinutes,
+                end_time_check: bookingEndMinutes <= rotaEndMinutes
+            });
+
+            // Check if booking time falls within rota time
+            if (bookingStartMinutes >= rotaStartMinutes && bookingEndMinutes <= rotaEndMinutes) {
+                console.log('DEBUG: Found matching rota entry:', rota.id);
+                isAvailable = true;
+                break;
+            } else {
+                console.log('DEBUG: Rota entry does not match:', {
+                    rota_id: rota.id,
+                    start_time_check: bookingStartMinutes >= rotaStartMinutes,
+                    end_time_check: bookingEndMinutes <= rotaEndMinutes
+                });
+            }
+        }
+
+        if (!isAvailable) {
+            console.log('No matching rota entries found for the requested time');
             return res.status(400).json({
                 return_code: "STAFF_NOT_AVAILABLE",
                 message: "Staff member is not scheduled to work at the requested time"
@@ -215,7 +286,8 @@ router.post('/', verifyToken, async (req, res) => {
                 service_id, 
                 staff_id, 
                 status, 
-                created_at
+                created_at,
+                updated_at
         `;
         
         const createBookingResult = await pool.query(createBookingQuery, [
@@ -242,7 +314,28 @@ router.post('/', verifyToken, async (req, res) => {
                 start_time: booking.start_time,
                 end_time: booking.end_time,
                 status: booking.status,
-                created_at: booking.created_at
+                created_at: new Date(booking.created_at).toLocaleString('en-GB', {
+                    timeZone: 'Europe/London',
+                    hour12: false,
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    fractionalSecondDigits: 3
+                }).replace(',', ''),
+                updated_at: new Date(booking.updated_at).toLocaleString('en-GB', {
+                    timeZone: 'Europe/London',
+                    hour12: false,
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    fractionalSecondDigits: 3
+                }).replace(',', '')
             }
         });
 
@@ -297,6 +390,16 @@ function isValidTime(timeStr) {
  */
 function isStartBeforeEnd(startTime, endTime) {
     return startTime < endTime;
+}
+
+/**
+ * Convert time string (HH:MM) to minutes since midnight
+ * @param {string} timeStr - Time string in HH:MM format
+ * @returns {number} Minutes since midnight
+ */
+function convertTimeToMinutes(timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
 }
 
 module.exports = router;

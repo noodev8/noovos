@@ -186,8 +186,8 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
       final CartItem service = _cartItems.first;
 
       // Format times to HH:MM format
-      final String startTime = slot['start_time'].toString().substring(0, 5);
-      final String endTime = slot['end_time'].toString().substring(0, 5);
+      String startTime = slot['start_time'].toString().substring(0, 5);
+      String endTime = slot['end_time'].toString().substring(0, 5);
 
       // Call the API to create the booking
       final result = await CreateBookingApi.createBooking(
