@@ -9,7 +9,9 @@ import 'package:intl/intl.dart';
 import '../styles/app_styles.dart';
 import '../helpers/cart_helper.dart';
 import '../api/get_service_slot_x1_api.dart';
+import '../api/create_booking_api.dart';
 import 'cart_screen.dart';
+import 'booking_confirmation_screen.dart';
 
 class AvailabilityCheckScreen extends StatefulWidget {
   const AvailabilityCheckScreen({super.key});
@@ -168,6 +170,76 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
           _isLoading = false;
           _errorMessage = 'An error occurred: $e';
         });
+      }
+    }
+  }
+
+  // Create booking
+  Future<void> _createBooking(Map<String, dynamic> slot) async {
+    // Show loading indicator
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Get the first (and only) service from the cart
+      final CartItem service = _cartItems.first;
+
+      // Format times to HH:MM format
+      final String startTime = slot['start_time'].toString().substring(0, 5);
+      final String endTime = slot['end_time'].toString().substring(0, 5);
+
+      // Call the API to create the booking
+      final result = await CreateBookingApi.createBooking(
+        serviceId: service.serviceId,
+        staffId: slot['staff_id'],
+        bookingDate: _formatDateForApi(_selectedDate),
+        startTime: startTime,
+        endTime: endTime,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (result['success']) {
+          // Clear the cart
+          CartHelper.clearCart();
+
+          // Navigate to booking confirmation screen
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => BookingConfirmationScreen(
+                  bookingDetails: result['data'],
+                ),
+              ),
+            );
+          }
+        } else {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Failed to create booking'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An error occurred: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -597,7 +669,6 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
     // Extract slot data
     final String startTime = _formatTime(slot['start_time'] ?? '');
     final String endTime = _formatTime(slot['end_time'] ?? '');
-    //final int staffId = slot['staff_id'] ?? 0;
     final String staffName = slot['staff_name'] ?? 'Unknown';
 
     return Card(
@@ -655,15 +726,7 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  // TODO: Implement booking functionality
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Booking functionality coming soon!'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
+                onPressed: _isLoading ? null : () => _createBooking(slot),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppStyles.primaryColor,
                   foregroundColor: Colors.white,
@@ -672,7 +735,16 @@ class _AvailabilityCheckScreenState extends State<AvailabilityCheckScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Book This Slot'),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Book This Slot'),
               ),
             ),
           ],
