@@ -87,14 +87,31 @@ class _ManageServiceStaffScreenState extends State<ManageServiceStaffScreen> {
   Future<void> _addStaff(String staffId) async {
     try {
       // Call API to add staff
-      await ManageStaffToServiceApi.addStaffToService(
+      final response = await ManageStaffToServiceApi.addStaffToService(
         serviceId: widget.serviceId,
         staffId: staffId,
         businessId: widget.businessId,
       );
 
-      // Reload data to reflect changes
-      await _loadData();
+      if (response['success']) {
+        // Reload data to reflect changes
+        await _loadData();
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Staff added successfully'),
+            backgroundColor: AppStyles.successColor,
+          ),
+        );
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Failed to add staff'),
+            backgroundColor: AppStyles.errorColor,
+          ),
+        );
+      }
     } catch (e) {
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
@@ -110,14 +127,31 @@ class _ManageServiceStaffScreenState extends State<ManageServiceStaffScreen> {
   Future<void> _removeStaff(String staffId) async {
     try {
       // Call API to remove staff
-      await ManageStaffToServiceApi.removeStaffFromService(
+      final response = await ManageStaffToServiceApi.removeStaffFromService(
         serviceId: widget.serviceId,
         staffId: staffId,
         businessId: widget.businessId,
       );
 
-      // Reload data to reflect changes
-      await _loadData();
+      if (response['success']) {
+        // Reload data to reflect changes
+        await _loadData();
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Staff removed successfully'),
+            backgroundColor: AppStyles.successColor,
+          ),
+        );
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Failed to remove staff'),
+            backgroundColor: AppStyles.errorColor,
+          ),
+        );
+      }
     } catch (e) {
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
@@ -127,6 +161,13 @@ class _ManageServiceStaffScreenState extends State<ManageServiceStaffScreen> {
         ),
       );
     }
+  }
+
+  // Get staff name from staff data
+  String _getStaffName(Map<String, dynamic> staff) {
+    final firstName = staff['first_name'] ?? '';
+    final lastName = staff['last_name'] ?? '';
+    return '$firstName $lastName'.trim();
   }
 
   // Build the screen
@@ -168,12 +209,12 @@ class _ManageServiceStaffScreenState extends State<ManageServiceStaffScreen> {
                                 ],
                               ),
                               child: ListTile(
-                                title: Text(staff['name'] ?? 'Unknown'),
+                                title: Text(_getStaffName(staff)),
                                 subtitle: Text(staff['role'] ?? 'No role specified'),
                                 trailing: IconButton(
                                   icon: const Icon(Icons.remove_circle_outline),
                                   color: AppStyles.errorColor,
-                                  onPressed: () => _removeStaff(staff['id'].toString()),
+                                  onPressed: () => _removeStaff(staff['staff_id'].toString()),
                                 ),
                               ),
                             );
@@ -191,7 +232,7 @@ class _ManageServiceStaffScreenState extends State<ManageServiceStaffScreen> {
                           itemBuilder: (context, index) {
                             final staff = _availableStaff[index];
                             // Check if staff is already assigned
-                            final isAssigned = _currentStaff.any((s) => s['id'] == staff['id']);
+                            final isAssigned = _currentStaff.any((s) => s['staff_id'] == staff['appuser_id']);
                             
                             return Container(
                               decoration: BoxDecoration(
@@ -207,14 +248,14 @@ class _ManageServiceStaffScreenState extends State<ManageServiceStaffScreen> {
                                 ],
                               ),
                               child: ListTile(
-                                title: Text(staff['name'] ?? 'Unknown'),
+                                title: Text(_getStaffName(staff)),
                                 subtitle: Text(staff['role'] ?? 'No role specified'),
                                 trailing: isAssigned
                                     ? const Icon(Icons.check_circle, color: AppStyles.successColor)
                                     : IconButton(
                                         icon: const Icon(Icons.add_circle_outline),
                                         color: AppStyles.primaryColor,
-                                        onPressed: () => _addStaff(staff['id'].toString()),
+                                        onPressed: () => _addStaff(staff['appuser_id'].toString()),
                                       ),
                               ),
                             );
