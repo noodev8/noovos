@@ -56,6 +56,7 @@ const set_staff_schedule = require('./routes/set_staff_schedule');
 const create_auto_staff_rota = require('./routes/create_auto_staff_rota');
 const get_staff_schedule = require('./routes/get_staff_schedule');
 const create_booking = require('./routes/create_booking');
+const manage_staff_to_service = require('./routes/manage_staff_to_service');
 
 // Set up routes
 app.use('/login_user', login_user);
@@ -88,6 +89,7 @@ app.use('/set_staff_schedule', set_staff_schedule);
 app.use('/create_auto_staff_rota', create_auto_staff_rota);
 app.use('/get_staff_schedule', get_staff_schedule);
 app.use('/create_booking', create_booking);
+app.use('/manage_staff_to_service', manage_staff_to_service);
 
 // Root route
 app.get('/', (req, res) => {
