@@ -1,30 +1,28 @@
 /*
-API client for the get_service endpoint
-Handles retrieving detailed information about a specific service by its ID
-Also provides methods to get all services for a business
+API client for managing staff assignments to services
+Handles adding and removing staff members from services
 */
 
 import 'dart:convert';
 import 'base_api_client.dart';
 
-class GetServiceApi {
-  // Endpoint for get service
-  static const String _endpoint = '/get_service';
-  
-  // Endpoint for get business services
-  static const String _businessServicesEndpoint = '/get_business_services';
+class ManageStaffToServiceApi {
+  // Endpoint for manage staff to service
+  static const String _endpoint = '/manage_staff_to_service';
 
-  /*
-  * Get service details by ID
-  *
-  * @param serviceId ID of the service to retrieve
-  * @return A map containing the service details or error information
-  */
-  static Future<Map<String, dynamic>> getService(int serviceId) async {
+  // Add staff to a service
+  static Future<Map<String, dynamic>> addStaffToService({
+    required String serviceId,
+    required String staffId,
+    required String businessId,
+  }) async {
     try {
       // Set up request body
       final Map<String, dynamic> requestBody = {
         'service_id': serviceId,
+        'staff_id': staffId,
+        'business_id': businessId,
+        'action': 'add'
       };
 
       // Send POST request using the base client
@@ -37,18 +35,16 @@ class GetServiceApi {
       if (response.statusCode == 200 && responseData['return_code'] == 'SUCCESS') {
         return {
           'success': true,
-          'data': responseData,
+          'message': responseData['message'],
         };
       } else {
-        // Handle error response
         return {
           'success': false,
-          'message': responseData['message'] ?? 'Failed to get service details',
+          'message': responseData['message'] ?? 'Failed to add staff to service',
           'return_code': responseData['return_code'] ?? 'UNKNOWN_ERROR',
         };
       }
     } catch (e) {
-      // Handle exceptions
       return {
         'success': false,
         'message': 'An error occurred: $e',
@@ -57,21 +53,23 @@ class GetServiceApi {
     }
   }
 
-  /*
-  * Get all services for a business
-  *
-  * @param businessId ID of the business to get services for
-  * @return A map containing the list of services or error information
-  */
-  static Future<Map<String, dynamic>> getBusinessServices(int businessId) async {
+  // Remove staff from a service
+  static Future<Map<String, dynamic>> removeStaffFromService({
+    required String serviceId,
+    required String staffId,
+    required String businessId,
+  }) async {
     try {
       // Set up request body
       final Map<String, dynamic> requestBody = {
+        'service_id': serviceId,
+        'staff_id': staffId,
         'business_id': businessId,
+        'action': 'remove'
       };
 
       // Send POST request using the base client
-      final response = await BaseApiClient.post(_businessServicesEndpoint, requestBody);
+      final response = await BaseApiClient.post(_endpoint, requestBody);
 
       // Parse response
       final Map<String, dynamic> responseData = jsonDecode(response.body);
@@ -80,18 +78,16 @@ class GetServiceApi {
       if (response.statusCode == 200 && responseData['return_code'] == 'SUCCESS') {
         return {
           'success': true,
-          'services': responseData['services'] ?? [],
+          'message': responseData['message'],
         };
       } else {
-        // Handle error response
         return {
           'success': false,
-          'message': responseData['message'] ?? 'Failed to get business services',
+          'message': responseData['message'] ?? 'Failed to remove staff from service',
           'return_code': responseData['return_code'] ?? 'UNKNOWN_ERROR',
         };
       }
     } catch (e) {
-      // Handle exceptions
       return {
         'success': false,
         'message': 'An error occurred: $e',
@@ -99,4 +95,4 @@ class GetServiceApi {
       };
     }
   }
-}
+} 

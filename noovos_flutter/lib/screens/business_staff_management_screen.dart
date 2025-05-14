@@ -6,6 +6,8 @@ Features:
 - Send join requests to new staff members
 - Accept/reject pending requests
 - Remove existing staff members
+- Manage staff assignments to services
+- Manage staff working hours (rota)
 */
 
 import 'package:flutter/material.dart';
@@ -15,6 +17,7 @@ import '../api/request_staff_join_api.dart';
 import '../api/remove_staff_api.dart';
 import 'staff_rota_2/business_staff_rota_screen.dart';
 import 'staff_rota_2/staff_schedule_screen.dart';
+import 'select_service_screen.dart';
 
 class BusinessStaffManagementScreen extends StatefulWidget {
   // Business details
@@ -293,131 +296,138 @@ class _BusinessStaffManagementScreenState extends State<BusinessStaffManagementS
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Add new staff section
-          _buildAddStaffSection(),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Add New Staff', style: AppStyles.subheadingStyle),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: AppStyles.inputDecoration(
+                        'Staff Email',
+                        hint: 'Enter staff member\'s email address',
+                        prefixIcon: const Icon(Icons.email),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter an email address';
+                        }
+                        if (!value.contains('@')) {
+                          return 'Please enter a valid email address';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _requestStaffJoin,
+                        style: AppStyles.primaryButtonStyle,
+                        child: const Text('Send Join Request'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
 
           const SizedBox(height: 24),
 
-          // Staff list section
-          _buildStaffListSection(),
-        ],
-      ),
-    );
-  }
-
-  // Build add staff section
-  Widget _buildAddStaffSection() {
-    return Column(
-      children: [
-        // Staff Rota Management Button
-        Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Staff Working Hours',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Manage staff working hours and availability',
-                  style: TextStyle(
-                    color: AppStyles.secondaryTextColor,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Navigate to staff rota screen
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BusinessStaffRotaScreen(
-                            business: widget.business,
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.calendar_month),
-                    label: const Text('Manage Staff Rota'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppStyles.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // Add New Staff Member Card
-        Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
+          // Staff Rota Management Button
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Add New Staff Member',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text('Staff Working Hours', style: AppStyles.subheadingStyle),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email Address',
-                      hintText: 'Enter staff member\'s email',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter an email address';
-                      }
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                        return 'Please enter a valid email address';
-                      }
-                      return null;
-                    },
+                  Text(
+                    'Manage staff working hours and availability',
+                    style: AppStyles.bodyStyle,
                   ),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _requestStaffJoin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppStyles.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Send Invitation'),
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        // Navigate to staff rota screen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => BusinessStaffRotaScreen(
+                              business: widget.business,
+                            ),
+                          ),
+                        );
+                      },
+                      style: AppStyles.primaryButtonStyle,
+                      icon: const Icon(Icons.calendar_month),
+                      label: const Text('Manage Staff Rota'),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-        ),
-      ],
+
+          const SizedBox(height: 24),
+
+          // Manage service staff button
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Service Staff Management', style: AppStyles.subheadingStyle),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Manage which staff members can perform each service',
+                    style: AppStyles.bodyStyle,
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SelectServiceScreen(
+                              business: widget.business,
+                            ),
+                          ),
+                        );
+                      },
+                      style: AppStyles.primaryButtonStyle,
+                      icon: const Icon(Icons.assignment_ind),
+                      label: const Text('Manage Service Staff'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Current staff section
+          Text('Current Staff', style: AppStyles.subheadingStyle),
+          const SizedBox(height: 16),
+
+          // Staff list section
+          _buildStaffListSection(),
+        ],
+      ),
     );
   }
 
