@@ -5,6 +5,7 @@ Handles adding and removing staff members from services
 
 import 'dart:convert';
 import 'base_api_client.dart';
+import '../helpers/auth_helper.dart';
 
 class ManageStaffToServiceApi {
   // Endpoint for manage staff to service
@@ -17,6 +18,17 @@ class ManageStaffToServiceApi {
     required String businessId,
   }) async {
     try {
+      // Get auth token
+      final token = await AuthHelper.getToken();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'Authentication required',
+          'return_code': 'UNAUTHORIZED',
+        };
+      }
+
       // Set up request body
       final Map<String, dynamic> requestBody = {
         'service_id': serviceId,
@@ -25,8 +37,8 @@ class ManageStaffToServiceApi {
         'action': 'add'
       };
 
-      // Send POST request using the base client
-      final response = await BaseApiClient.post(_endpoint, requestBody);
+      // Send POST request using the base client with auth token
+      final response = await BaseApiClient.postWithAuth(_endpoint, requestBody, token);
 
       // Parse response
       final Map<String, dynamic> responseData = jsonDecode(response.body);
@@ -60,6 +72,17 @@ class ManageStaffToServiceApi {
     required String businessId,
   }) async {
     try {
+      // Get auth token
+      final token = await AuthHelper.getToken();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'Authentication required',
+          'return_code': 'UNAUTHORIZED',
+        };
+      }
+
       // Set up request body
       final Map<String, dynamic> requestBody = {
         'service_id': serviceId,
@@ -68,8 +91,8 @@ class ManageStaffToServiceApi {
         'action': 'remove'
       };
 
-      // Send POST request using the base client
-      final response = await BaseApiClient.post(_endpoint, requestBody);
+      // Send POST request using the base client with auth token
+      final response = await BaseApiClient.postWithAuth(_endpoint, requestBody, token);
 
       // Parse response
       final Map<String, dynamic> responseData = jsonDecode(response.body);
