@@ -54,9 +54,20 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
     'Sunday',
   ];
 
+  // Day group options
+  final List<Map<String, dynamic>> _dayGroups = [
+    {'name': 'Single Day', 'value': 'single'},
+    {'name': 'Weekdays (Mon-Fri)', 'value': 'weekdays'},
+    {'name': 'Weekend (Sat-Sun)', 'value': 'weekend'},
+    {'name': 'All Days', 'value': 'all'},
+    {'name': 'Custom Selection', 'value': 'custom'},
+  ];
+
   // Form controllers for adding/editing schedule
   final _formKey = GlobalKey<FormState>();
+  String _selectedDayGroup = 'single';
   String _selectedDay = 'Monday';
+  List<String> _selectedDays = ['Monday'];
   final _startTimeController = TextEditingController();
   final _endTimeController = TextEditingController();
   final _startDateController = TextEditingController();
@@ -65,6 +76,12 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
 
   // Selected schedule entry for editing
   Map<String, dynamic>? _selectedScheduleEntry;
+
+  // Pending changes (local only, not yet saved to server)
+  List<Map<String, dynamic>> _pendingScheduleEntries = [];
+
+  // Has unsaved changes
+  bool _hasUnsavedChanges = false;
 
   @override
   void initState() {
@@ -133,10 +150,424 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
     }
   }
 
-  // Save schedule entry
-  Future<void> _saveScheduleEntry() async {
+  // Check for time overlap between two time ranges
+  bool _hasTimeOverlap(String startTime1, String endTime1, String startTime2, String endTime2) {
+    // Parse times to minutes since midnight for easier comparison
+    int start1 = _parseTimeToMinutes(startTime1);
+    int end1 = _parseTimeToMinutes(endTime1);
+    int start2 = _parseTimeToMinutes(startTime2);
+    int end2 = _parseTimeToMinutes(endTime2);
+
+    // Check for overlap
+    return (start1 < end2 && start2 < end1);
+  }
+
+  // Parse time string to minutes since midnight
+  int _parseTimeToMinutes(String timeStr) {
+    try {
+      // Handle both formats (HH:MM and HH:MM AM/PM)
+      if (timeStr.contains('AM') || timeStr.contains('PM')) {
+        // 12-hour format
+        bool isPM = timeStr.contains('PM');
+        timeStr = timeStr.replaceAll('AM', '').replaceAll('PM', '').trim();
+
+        List<String> parts = timeStr.split(':');
+        int hour = int.parse(parts[0]);
+        int minute = int.parse(parts[1]);
+
+        // Convert to 24-hour
+        if (isPM && hour < 12) hour += 12;
+        if (!isPM && hour == 12) hour = 0;
+
+        return hour * 60 + minute;
+      } else {
+        // 24-hour format
+        List<String> parts = timeStr.split(':');
+        int hour = int.parse(parts[0]);
+        int minute = int.parse(parts[1]);
+        return hour * 60 + minute;
+      }
+    } catch (e) {
+      return 0; // Default in case of parsing error
+    }
+  }
+
+  // Validate new time block against existing entries
+  List<Map<String, dynamic>> _checkForTimeConflicts(String day, String startTime, String endTime) {
+    List<Map<String, dynamic>> conflicts = [];
+
+    // Check against existing entries
+    for (final entry in _scheduleEntries) {
+      if (entry['day_of_week'] == day) {
+        if (_hasTimeOverlap(
+          startTime,
+          endTime,
+          entry['start_time'],
+          entry['end_time']
+        )) {
+          conflicts.add(entry);
+        }
+      }
+    }
+
+    // Check against pending entries
+    for (final entry in _pendingScheduleEntries) {
+      if (entry['day_of_week'] == day && entry['action'] != 'delete') {
+        if (_hasTimeOverlap(
+          startTime,
+          endTime,
+          entry['start_time'],
+          entry['end_time']
+        )) {
+          conflicts.add(entry);
+        }
+      }
+    }
+
+    return conflicts;
+  }
+
+  // Add schedule entry to pending changes
+  void _addScheduleEntry() {
     // Validate form
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // Get time values for validation
+    final String startTime = _startTimeController.text;
+    final String endTime = _endTimeController.text;
+
+    // If editing an existing entry
+    if (_selectedScheduleEntry != null) {
+      setState(() {
+        // If editing an existing entry in the pending list
+        if (_selectedScheduleEntry!['pending'] == true) {
+          // Find and remove the entry from pending list
+          _pendingScheduleEntries.removeWhere((entry) =>
+            entry['temp_id'] == _selectedScheduleEntry!['temp_id']);
+        }
+
+        // Create an updated entry
+        final Map<String, dynamic> updatedEntry = {
+          'id': _selectedScheduleEntry!['id'],
+          'day_of_week': _selectedDay,
+          'start_time': startTime,
+          'end_time': endTime,
+          'start_date': _startDateController.text,
+          'pending': true,
+          'action': 'update',
+          'original': Map<String, dynamic>.from(_selectedScheduleEntry!),
+        };
+
+        // Add optional fields if provided
+        if (_endDateController.text.isNotEmpty) {
+          updatedEntry['end_date'] = _endDateController.text;
+        }
+
+        if (_repeatController.text.isNotEmpty) {
+          updatedEntry['repeat_every_n_weeks'] = int.tryParse(_repeatController.text) ?? 1;
+        }
+
+        // Add to pending changes
+        _pendingScheduleEntries.add(updatedEntry);
+
+        // Set flag for unsaved changes
+        _hasUnsavedChanges = true;
+
+        // Clear form
+        _clearForm();
+      });
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Schedule entry updated'),
+        ),
+      );
+
+      return;
+    }
+
+    // For new entries, check each selected day for conflicts
+    List<String> daysWithConflicts = [];
+    Map<String, List<Map<String, dynamic>>> conflictsByDay = {};
+
+    for (final String day in _selectedDays) {
+      List<Map<String, dynamic>> conflicts = _checkForTimeConflicts(day, startTime, endTime);
+      if (conflicts.isNotEmpty) {
+        daysWithConflicts.add(day);
+        conflictsByDay[day] = conflicts;
+      }
+    }
+
+    // If there are conflicts, show a dialog
+    if (daysWithConflicts.isNotEmpty) {
+      _showTimeConflictDialog(daysWithConflicts, conflictsByDay, startTime, endTime);
+      return;
+    }
+
+    // No conflicts, add the entries
+    setState(() {
+      // For new entries, create one entry for each selected day
+      for (final String day in _selectedDays) {
+        final Map<String, dynamic> newEntry = {
+          'day_of_week': day,
+          'start_time': startTime,
+          'end_time': endTime,
+          'start_date': _startDateController.text,
+          'pending': true,
+          'action': 'add',
+          'temp_id': '${DateTime.now().millisecondsSinceEpoch}_$day',
+        };
+
+        // Add optional fields if provided
+        if (_endDateController.text.isNotEmpty) {
+          newEntry['end_date'] = _endDateController.text;
+        }
+
+        if (_repeatController.text.isNotEmpty) {
+          newEntry['repeat_every_n_weeks'] = int.tryParse(_repeatController.text) ?? 1;
+        }
+
+        // Add to pending changes
+        _pendingScheduleEntries.add(newEntry);
+      }
+
+      // Set flag for unsaved changes
+      _hasUnsavedChanges = true;
+
+      // Clear form
+      _clearForm();
+    });
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Schedule entries added for ${_selectedDays.length} day(s)'),
+      ),
+    );
+  }
+
+  // Show dialog for time conflicts
+  void _showTimeConflictDialog(
+    List<String> daysWithConflicts,
+    Map<String, List<Map<String, dynamic>>> conflictsByDay,
+    String newStartTime,
+    String newEndTime
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Time Conflict Detected'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'The time block $newStartTime - $newEndTime conflicts with existing schedule entries for the following days:',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                ...daysWithConflicts.map((day) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        day,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      ...conflictsByDay[day]!.map((conflict) {
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 16, bottom: 8),
+                          child: Text('${conflict['start_time']} - ${conflict['end_time']}'),
+                        );
+                      }),
+                      const SizedBox(height: 8),
+                    ],
+                  );
+                }),
+                const SizedBox(height: 16),
+                const Text(
+                  'What would you like to do?',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _addEntriesWithoutConflictDays(daysWithConflicts, newStartTime, newEndTime);
+            },
+            child: const Text('Skip Conflicting Days'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _addEntriesReplacingConflicts(daysWithConflicts, conflictsByDay, newStartTime, newEndTime);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Replace Existing Entries'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Add entries for days without conflicts
+  void _addEntriesWithoutConflictDays(List<String> daysWithConflicts, String startTime, String endTime) {
+    setState(() {
+      // Create entries only for days without conflicts
+      List<String> daysWithoutConflicts = _selectedDays.where((day) => !daysWithConflicts.contains(day)).toList();
+
+      for (final String day in daysWithoutConflicts) {
+        final Map<String, dynamic> newEntry = {
+          'day_of_week': day,
+          'start_time': startTime,
+          'end_time': endTime,
+          'start_date': _startDateController.text,
+          'pending': true,
+          'action': 'add',
+          'temp_id': '${DateTime.now().millisecondsSinceEpoch}_$day',
+        };
+
+        // Add optional fields if provided
+        if (_endDateController.text.isNotEmpty) {
+          newEntry['end_date'] = _endDateController.text;
+        }
+
+        if (_repeatController.text.isNotEmpty) {
+          newEntry['repeat_every_n_weeks'] = int.tryParse(_repeatController.text) ?? 1;
+        }
+
+        // Add to pending changes
+        _pendingScheduleEntries.add(newEntry);
+      }
+
+      // Set flag for unsaved changes if any entries were added
+      _hasUnsavedChanges = daysWithoutConflicts.isNotEmpty;
+
+      // Clear form
+      _clearForm();
+    });
+
+    // Show success message if any entries were added
+    List<String> daysWithoutConflicts = _selectedDays.where((day) => !daysWithConflicts.contains(day)).toList();
+    if (daysWithoutConflicts.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Added entries for ${daysWithoutConflicts.length} day(s) without conflicts'),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No entries added - all selected days had conflicts'),
+        ),
+      );
+    }
+  }
+
+  // Add entries replacing conflicts
+  void _addEntriesReplacingConflicts(
+    List<String> daysWithConflicts,
+    Map<String, List<Map<String, dynamic>>> conflictsByDay,
+    String startTime,
+    String endTime
+  ) {
+    setState(() {
+      // First, mark conflicting entries for deletion
+      for (final String day in daysWithConflicts) {
+        for (final conflict in conflictsByDay[day]!) {
+          // If it's an existing entry (not pending)
+          if (conflict['pending'] != true) {
+            // Add to pending changes as delete
+            _pendingScheduleEntries.add({
+              'id': conflict['id'],
+              'day_of_week': conflict['day_of_week'],
+              'start_time': conflict['start_time'],
+              'end_time': conflict['end_time'],
+              'start_date': conflict['start_date'],
+              'end_date': conflict['end_date'],
+              'repeat_every_n_weeks': conflict['repeat_every_n_weeks'],
+              'pending': true,
+              'action': 'delete',
+              'original': Map<String, dynamic>.from(conflict),
+            });
+          }
+          // If it's a pending entry, just remove it
+          else {
+            if (conflict['temp_id'] != null) {
+              _pendingScheduleEntries.removeWhere((e) => e['temp_id'] == conflict['temp_id']);
+            } else if (conflict['id'] != null) {
+              _pendingScheduleEntries.removeWhere((e) =>
+                e['action'] == 'update' && e['id'] == conflict['id']);
+            }
+          }
+        }
+      }
+
+      // Now add new entries for all selected days
+      for (final String day in _selectedDays) {
+        final Map<String, dynamic> newEntry = {
+          'day_of_week': day,
+          'start_time': startTime,
+          'end_time': endTime,
+          'start_date': _startDateController.text,
+          'pending': true,
+          'action': 'add',
+          'temp_id': '${DateTime.now().millisecondsSinceEpoch}_$day',
+        };
+
+        // Add optional fields if provided
+        if (_endDateController.text.isNotEmpty) {
+          newEntry['end_date'] = _endDateController.text;
+        }
+
+        if (_repeatController.text.isNotEmpty) {
+          newEntry['repeat_every_n_weeks'] = int.tryParse(_repeatController.text) ?? 1;
+        }
+
+        // Add to pending changes
+        _pendingScheduleEntries.add(newEntry);
+      }
+
+      // Set flag for unsaved changes
+      _hasUnsavedChanges = true;
+
+      // Clear form
+      _clearForm();
+    });
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Added entries for ${_selectedDays.length} day(s), replacing ${daysWithConflicts.length} conflicting day(s)'),
+      ),
+    );
+  }
+
+  // Save all pending changes to the server
+  Future<void> _saveAllChanges() async {
+    // Check if there are any pending changes
+    if (_pendingScheduleEntries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No changes to save'),
+          backgroundColor: Colors.blue,
+        ),
+      );
       return;
     }
 
@@ -150,42 +581,52 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
       final int businessId = widget.business['id'];
       final int staffId = widget.staff['appuser_id'];
 
-      // Create schedule entry
-      final Map<String, dynamic> scheduleEntry = {
-        'day_of_week': _selectedDay,
-        'start_time': _startTimeController.text,
-        'end_time': _endTimeController.text,
-        'start_date': _startDateController.text,
-      };
-
-      // Add optional fields if provided
-      if (_endDateController.text.isNotEmpty) {
-        scheduleEntry['end_date'] = _endDateController.text;
-      }
-
-      if (_repeatController.text.isNotEmpty) {
-        scheduleEntry['repeat_every_n_weeks'] = int.tryParse(_repeatController.text) ?? 1;
-      }
-
       // Create schedule list (we're replacing the entire schedule)
-      final List<Map<String, dynamic>> schedule = [scheduleEntry];
+      final List<Map<String, dynamic>> schedule = [];
 
-      // Add all existing schedule entries except the one being edited
+      // Add all existing entries that aren't being updated or deleted
       for (final entry in _scheduleEntries) {
-        // Skip the entry being edited
-        if (_selectedScheduleEntry != null && entry['id'] == _selectedScheduleEntry!['id']) {
+        // Skip entries that are being updated or deleted
+        bool isBeingModified = _pendingScheduleEntries.any((pendingEntry) =>
+          (pendingEntry['action'] == 'update' || pendingEntry['action'] == 'delete') &&
+          pendingEntry['id'] == entry['id']);
+
+        if (!isBeingModified) {
+          schedule.add({
+            'day_of_week': entry['day_of_week'],
+            'start_time': entry['start_time'],
+            'end_time': entry['end_time'],
+            'start_date': entry['start_date'],
+            'end_date': entry['end_date'],
+            'repeat_every_n_weeks': entry['repeat_every_n_weeks'],
+          });
+        }
+      }
+
+      // Add all pending entries (new and updated, but not deleted)
+      for (final entry in _pendingScheduleEntries) {
+        // Skip entries marked for deletion
+        if (entry['action'] == 'delete') {
           continue;
         }
 
-        // Add entry to schedule
-        schedule.add({
+        final Map<String, dynamic> scheduleEntry = {
           'day_of_week': entry['day_of_week'],
           'start_time': entry['start_time'],
           'end_time': entry['end_time'],
           'start_date': entry['start_date'],
-          'end_date': entry['end_date'],
-          'repeat_every_n_weeks': entry['repeat_every_n_weeks'],
-        });
+        };
+
+        // Add optional fields if provided
+        if (entry['end_date'] != null) {
+          scheduleEntry['end_date'] = entry['end_date'];
+        }
+
+        if (entry['repeat_every_n_weeks'] != null) {
+          scheduleEntry['repeat_every_n_weeks'] = entry['repeat_every_n_weeks'];
+        }
+
+        schedule.add(scheduleEntry);
       }
 
       // Call API to set schedule
@@ -200,8 +641,9 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
           _isLoading = false;
 
           if (result['success']) {
-            // Clear form
-            _clearForm();
+            // Clear pending changes
+            _pendingScheduleEntries = [];
+            _hasUnsavedChanges = false;
 
             // Reload schedule
             _loadSchedule();
@@ -212,7 +654,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
             // Show success message
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(result['message'] ?? 'Schedule updated successfully'),
+                content: Text(result['message'] ?? 'All changes saved successfully'),
                 backgroundColor: AppStyles.successColor,
               ),
             );
@@ -220,7 +662,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
             // Show error message
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(result['message'] ?? 'Failed to update schedule'),
+                content: Text(result['message'] ?? 'Failed to save changes'),
                 backgroundColor: AppStyles.errorColor,
               ),
             );
@@ -285,7 +727,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
     }
   }
 
-  // Delete schedule entry
+  // Mark schedule entry for deletion (adds to pending changes)
   Future<void> _deleteScheduleEntry(Map<String, dynamic> entry) async {
     // Show confirmation dialog
     final bool confirm = await showDialog(
@@ -311,87 +753,39 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
       return;
     }
 
-    // Show loading indicator
+    // Add to pending changes as a delete action
     setState(() {
-      _isLoading = true;
+      // Add entry to pending changes with 'delete' action
+      _pendingScheduleEntries.add({
+        'id': entry['id'],
+        'day_of_week': entry['day_of_week'],
+        'start_time': entry['start_time'],
+        'end_time': entry['end_time'],
+        'start_date': entry['start_date'],
+        'end_date': entry['end_date'],
+        'repeat_every_n_weeks': entry['repeat_every_n_weeks'],
+        'pending': true,
+        'action': 'delete',
+        'original': Map<String, dynamic>.from(entry),
+      });
+
+      // Set flag for unsaved changes
+      _hasUnsavedChanges = true;
     });
 
-    try {
-      // Get business ID and staff ID
-      final int businessId = widget.business['id'];
-      final int staffId = widget.staff['appuser_id'];
-
-      // Create schedule list (we're replacing the entire schedule)
-      final List<Map<String, dynamic>> schedule = [];
-
-      // Add all existing schedule entries except the one being deleted
-      for (final existingEntry in _scheduleEntries) {
-        // Skip the entry being deleted
-        if (existingEntry['id'] == entry['id']) {
-          continue;
-        }
-
-        // Add entry to schedule
-        schedule.add({
-          'day_of_week': existingEntry['day_of_week'],
-          'start_time': existingEntry['start_time'],
-          'end_time': existingEntry['end_time'],
-          'start_date': existingEntry['start_date'],
-          'end_date': existingEntry['end_date'],
-          'repeat_every_n_weeks': existingEntry['repeat_every_n_weeks'],
-        });
-      }
-
-      // Call API to set schedule
-      final result = await SetStaffScheduleApi.setStaffSchedule(
-        businessId: businessId,
-        staffId: staffId,
-        schedule: schedule,
-      );
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-
-          if (result['success']) {
-            // Reload schedule
-            _loadSchedule();
-
-            // Call create_auto_staff_rota API to update the rota based on the updated schedule
-            _generateAutoStaffRota(businessId, staffId);
-
-            // Show success message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(result['message'] ?? 'Schedule entry deleted successfully'),
-                backgroundColor: AppStyles.successColor,
-              ),
-            );
-          } else {
-            // Show error message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(result['message'] ?? 'Failed to delete schedule entry'),
-                backgroundColor: AppStyles.errorColor,
-              ),
-            );
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        // Show error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('An error occurred: $e'),
-            backgroundColor: AppStyles.errorColor,
+    // Show message if still mounted
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Schedule entry marked for deletion (not yet saved)'),
+          backgroundColor: Colors.orange,
+          action: SnackBarAction(
+            label: 'SAVE ALL',
+            textColor: Colors.white,
+            onPressed: _saveAllChanges,
           ),
-        );
-      }
+        ),
+      );
     }
   }
 
@@ -402,7 +796,9 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
       _selectedScheduleEntry = entry;
 
       // Set form values
+      _selectedDayGroup = 'single';
       _selectedDay = entry['day_of_week'];
+      _selectedDays = [entry['day_of_week']];
       _startTimeController.text = entry['start_time'];
       _endTimeController.text = entry['end_time'];
       _startDateController.text = entry['start_date'];
@@ -418,7 +814,9 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
   void _clearForm() {
     setState(() {
       _selectedScheduleEntry = null;
+      _selectedDayGroup = 'single';
       _selectedDay = 'Monday';
+      _selectedDays = ['Monday'];
       _startTimeController.clear();
       _endTimeController.clear();
       _startDateController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
@@ -517,6 +915,73 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
       // Set controller text
       controller.text = formattedDate;
     }
+  }
+
+  // Show custom day selection dialog
+  Future<void> _showDaySelectionDialog() async {
+    // Create a temporary list to hold selected days
+    List<String> tempSelectedDays = List.from(_selectedDays);
+
+    // Show dialog
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Select Days'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView(
+                  shrinkWrap: true,
+                  children: _daysOfWeek.map((day) {
+                    return CheckboxListTile(
+                      title: Text(day),
+                      value: tempSelectedDays.contains(day),
+                      onChanged: (bool? value) {
+                        setState(() {
+                          if (value == true) {
+                            if (!tempSelectedDays.contains(day)) {
+                              tempSelectedDays.add(day);
+                            }
+                          } else {
+                            tempSelectedDays.remove(day);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    // Update selected days
+                    this.setState(() {
+                      _selectedDays = tempSelectedDays;
+
+                      // If no days selected, revert to single day
+                      if (_selectedDays.isEmpty) {
+                        _selectedDayGroup = 'single';
+                        _selectedDays = [_selectedDay];
+                      }
+                    });
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Apply'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -618,27 +1083,100 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Day of week dropdown
-              DropdownButtonFormField<String>(
-                value: _selectedDay,
-                decoration: AppStyles.inputDecoration('Day of Week'),
-                items: _daysOfWeek.map((day) {
-                  return DropdownMenuItem<String>(
-                    value: day,
-                    child: Text(day),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedDay = value!;
-                  });
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select a day';
-                  }
-                  return null;
-                },
+              // Day selection
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Day group dropdown
+                  DropdownButtonFormField<String>(
+                    value: _selectedDayGroup,
+                    decoration: AppStyles.inputDecoration('Day Selection'),
+                    items: _dayGroups.map((group) {
+                      return DropdownMenuItem<String>(
+                        value: group['value'],
+                        child: Text(group['name']),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedDayGroup = value!;
+
+                        // Update selected days based on group
+                        switch (value) {
+                          case 'single':
+                            _selectedDays = [_selectedDay];
+                            break;
+                          case 'weekdays':
+                            _selectedDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+                            break;
+                          case 'weekend':
+                            _selectedDays = ['Saturday', 'Sunday'];
+                            break;
+                          case 'all':
+                            _selectedDays = [..._daysOfWeek];
+                            break;
+                          case 'custom':
+                            // Show custom selection dialog
+                            Future.delayed(Duration.zero, () {
+                              _showDaySelectionDialog();
+                            });
+                            break;
+                        }
+                      });
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select a day group';
+                      }
+                      if (_selectedDays.isEmpty) {
+                        return 'Please select at least one day';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  // Show single day dropdown if 'single' is selected
+                  if (_selectedDayGroup == 'single') ...[
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _selectedDay,
+                      decoration: AppStyles.inputDecoration('Day of Week'),
+                      items: _daysOfWeek.map((day) {
+                        return DropdownMenuItem<String>(
+                          value: day,
+                          child: Text(day),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedDay = value!;
+                          _selectedDays = [_selectedDay];
+                        });
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please select a day';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+
+                  // Show selected days summary for other options
+                  if (_selectedDayGroup != 'single') ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text(
+                        'Selected days: ${_selectedDays.join(', ')}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 16),
 
@@ -875,7 +1413,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
                   // Save button
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _saveScheduleEntry,
+                      onPressed: _addScheduleEntry,
                       style: AppStyles.primaryButtonStyle,
                       child: Text(_selectedScheduleEntry == null ? 'Add Schedule' : 'Update Schedule'),
                     ),
@@ -903,21 +1441,109 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
 
   // Build schedule entries list
   Widget _buildScheduleEntriesList() {
+    // Combine existing and pending entries for display
+    List<Map<String, dynamic>> allEntries = [];
+
+    // Add existing entries that aren't being updated or deleted
+    for (final entry in _scheduleEntries) {
+      bool isBeingModified = _pendingScheduleEntries.any((pendingEntry) =>
+        (pendingEntry['action'] == 'update' || pendingEntry['action'] == 'delete') &&
+        pendingEntry['id'] == entry['id']);
+
+      if (!isBeingModified) {
+        allEntries.add(entry);
+      }
+    }
+
+    // Add all pending entries except those marked for deletion
+    for (final entry in _pendingScheduleEntries) {
+      if (entry['action'] != 'delete') {
+        allEntries.add(entry);
+      }
+    }
+
+    // Group entries by day of week for better organization
+    Map<String, List<Map<String, dynamic>>> entriesByDay = {};
+    for (final entry in allEntries) {
+      final day = entry['day_of_week'] as String;
+      if (!entriesByDay.containsKey(day)) {
+        entriesByDay[day] = [];
+      }
+      entriesByDay[day]!.add(entry);
+    }
+
+    // Sort days according to standard week order
+    final sortedDays = entriesByDay.keys.toList()
+      ..sort((a, b) {
+        final aIndex = _daysOfWeek.indexOf(a);
+        final bIndex = _daysOfWeek.indexOf(b);
+        return aIndex.compareTo(bIndex);
+      });
+
+    // Sort entries within each day by start time
+    for (final day in entriesByDay.keys) {
+      entriesByDay[day]!.sort((a, b) {
+        final aMinutes = _parseTimeToMinutes(a['start_time']);
+        final bMinutes = _parseTimeToMinutes(b['start_time']);
+        return aMinutes.compareTo(bMinutes);
+      });
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section title
-        const Text(
-          'Current Schedule',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+        // Section title with save button if there are pending changes
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          children: [
+            const Text(
+              'Current Schedule',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (_hasUnsavedChanges)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _pendingScheduleEntries = [];
+                        _hasUnsavedChanges = false;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Changes discarded'),
+                        ),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    child: const Text('Discard'),
+                  ),
+                  const SizedBox(width: 4),
+                  ElevatedButton(
+                    onPressed: _saveAllChanges,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppStyles.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
 
         // Schedule entries
-        if (_scheduleEntries.isEmpty)
+        if (allEntries.isEmpty)
           const Card(
             child: Padding(
               padding: EdgeInsets.all(16),
@@ -933,13 +1559,76 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
             ),
           )
         else
-          ..._scheduleEntries.map(_buildScheduleEntryCard),
+          // Display entries grouped by day
+          ...sortedDays.map((day) {
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Day header - cleaner, more subtle styling
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(4),
+                        topRight: Radius.circular(4),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          day,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${entriesByDay[day]!.length} time block${entriesByDay[day]!.length > 1 ? 's' : ''}',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Entries for this day
+                  ...entriesByDay[day]!.map(_buildScheduleEntryCard),
+                ],
+              ),
+            );
+          }),
+
+        // Add a "Save Schedule" button at the bottom if there are pending changes
+        if (_hasUnsavedChanges)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saveAllChanges,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppStyles.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Text('Save Schedule'),
+              ),
+            ),
+          ),
       ],
     );
   }
 
   // Build schedule entry card
   Widget _buildScheduleEntryCard(Map<String, dynamic> entry) {
+    // Check if this is a pending entry
+    final bool isPending = entry['pending'] == true;
+
     // Format repeat text
     String repeatText = '';
     if (entry['repeat_every_n_weeks'] != null) {
@@ -957,81 +1646,134 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
       dateRangeText += ' onwards';
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Day and time
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${entry['day_of_week']}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${entry['start_time']} - ${entry['end_time']}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // Date range and repeat
-            Text(
-              dateRangeText,
-              style: const TextStyle(
-                color: AppStyles.secondaryTextColor,
-              ),
-            ),
-            if (repeatText.isNotEmpty)
-              Text(
-                repeatText,
-                style: const TextStyle(
-                  color: AppStyles.secondaryTextColor,
-                ),
-              ),
-
-            const SizedBox(height: 8),
-
-            // Action buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                // Edit button
-                TextButton.icon(
-                  onPressed: () => _editScheduleEntry(entry),
-                  icon: const Icon(Icons.edit),
-                  label: const Text('Edit'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppStyles.primaryColor,
-                  ),
-                ),
-
-                // Delete button
-                TextButton.icon(
-                  onPressed: () => _deleteScheduleEntry(entry),
-                  icon: const Icon(Icons.delete),
-                  label: const Text('Delete'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red,
-                  ),
-                ),
-              ],
-            ),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey.shade300,
+            width: 1,
+          ),
         ),
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Time block
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${entry['start_time']} - ${entry['end_time']}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Date range and repeat info with action buttons
+          Padding(
+            padding: const EdgeInsets.only(left: 24, top: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        dateRangeText,
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (repeatText.isNotEmpty)
+                        Text(
+                          repeatText,
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Action buttons - more subtle styling
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Edit button
+                    IconButton(
+                      onPressed: () => _editScheduleEntry(entry),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      color: Colors.grey.shade700,
+                      tooltip: 'Edit',
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+
+                    // Delete button
+                    IconButton(
+                      onPressed: () => isPending ? _removePendingEntry(entry) : _deleteScheduleEntry(entry),
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      color: Colors.grey.shade700,
+                      tooltip: 'Delete',
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  // Remove a pending entry (local only, not sent to server)
+  void _removePendingEntry(Map<String, dynamic> entry) {
+    setState(() {
+      // If this is an update to an existing entry, restore the original
+      if (entry['action'] == 'update' && entry['original'] != null) {
+        // No need to do anything, the original entry will remain in _scheduleEntries
+      }
+
+      // Remove from pending entries
+      if (entry['temp_id'] != null) {
+        _pendingScheduleEntries.removeWhere((e) => e['temp_id'] == entry['temp_id']);
+      } else if (entry['id'] != null) {
+        _pendingScheduleEntries.removeWhere((e) =>
+          e['action'] == 'update' && e['id'] == entry['id']);
+      }
+
+      // Update unsaved changes flag
+      _hasUnsavedChanges = _pendingScheduleEntries.isNotEmpty;
+    });
+
+    // Show message if still mounted
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Change removed'),
+        ),
+      );
+    }
   }
 }
