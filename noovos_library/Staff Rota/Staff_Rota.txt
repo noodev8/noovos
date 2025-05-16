@@ -4,6 +4,8 @@ Service: Haircut (16)
 STAFF
 Andreas (21)
 Summer (31)
+Emma (20) emmajones@googlemail.com
+Robert (23) robert.smith@example.com
 
 
 SERVICES

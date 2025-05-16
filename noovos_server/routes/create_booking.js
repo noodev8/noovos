@@ -58,18 +58,8 @@ router.post('/', verifyToken, async (req, res) => {
         // Extract parameters from request body
         const { service_id, staff_id, booking_date, start_time, end_time } = req.body;
 
-        // Add debug logging for incoming request
-        console.log('=== DEBUG: Incoming Booking Request ===');
-        console.log('Raw request body:', req.body);
-        console.log('Parsed times:', {
-            start_time,
-            end_time,
-            booking_date
-        });
-
         // Validate required fields
         if (!service_id || !staff_id || !booking_date || !start_time || !end_time) {
-            console.log('DEBUG: Missing required fields');
             return res.status(400).json({
                 return_code: "MISSING_FIELDS",
                 message: "All fields are required: service_id, staff_id, booking_date, start_time, end_time"
@@ -102,88 +92,76 @@ router.post('/', verifyToken, async (req, res) => {
 
         // Check if the service exists and get its details
         const serviceQuery = `
-            SELECT 
-                s.id, 
-                s.service_name, 
-                s.duration, 
+            SELECT
+                s.id,
+                s.service_name,
+                s.duration,
                 s.buffer_time,
                 s.business_id
-            FROM 
-                service s 
-            WHERE 
+            FROM
+                service s
+            WHERE
                 s.id = $1 AND s.active = true
         `;
-        
+
         const serviceResult = await pool.query(serviceQuery, [service_id]);
-        
+
         if (serviceResult.rows.length === 0) {
             return res.status(404).json({
                 return_code: "SERVICE_NOT_FOUND",
                 message: "Service not found or inactive"
             });
         }
-        
+
         const service = serviceResult.rows[0];
         const businessId = service.business_id;
 
         // Check if the staff member exists and is assigned to this service
         const staffQuery = `
-            SELECT 
-                au.id, 
+            SELECT
+                au.id,
                 CONCAT(au.first_name, ' ', au.last_name) AS staff_name
-            FROM 
+            FROM
                 app_user au
-            JOIN 
+            JOIN
                 service_staff ss ON au.id = ss.appuser_id
-            JOIN 
+            JOIN
                 appuser_business_role abr ON au.id = abr.appuser_id AND abr.business_id = $1
-            WHERE 
-                au.id = $2 
+            WHERE
+                au.id = $2
                 AND ss.service_id = $3
                 AND abr.status = 'active'
         `;
-        
+
         const staffResult = await pool.query(staffQuery, [businessId, staff_id, service_id]);
-        
+
         if (staffResult.rows.length === 0) {
             return res.status(404).json({
                 return_code: "STAFF_NOT_FOUND",
                 message: "Staff member not found, not assigned to this service, or not active for this business"
             });
         }
-        
+
         const staff = staffResult.rows[0];
 
         // Check if the staff member is available at the requested time
         // 1. Check if they have a rota entry for that day
         const rotaQuery = `
-            SELECT 
+            SELECT
                 id,
                 start_time,
                 end_time
-            FROM 
-                staff_rota 
-            WHERE 
-                staff_id = $1 
+            FROM
+                staff_rota
+            WHERE
+                staff_id = $1
                 AND rota_date = $2
                 AND business_id = $3
         `;
-        
-        console.log('=== DEBUG: Rota Check ===');
-        console.log('Checking rota availability with params:', {
-            staff_id,
-            booking_date,
-            businessId,
-            requested_start_time: start_time,
-            requested_end_time: end_time
-        });
-        
+
         const rotaResult = await pool.query(rotaQuery, [staff_id, booking_date, businessId]);
-        
-        console.log('Found rota entries:', rotaResult.rows);
-        
+
         if (rotaResult.rows.length === 0) {
-            console.log('DEBUG: No rota entries found for this date');
             return res.status(400).json({
                 return_code: "STAFF_NOT_AVAILABLE",
                 message: "Staff member is not scheduled to work on this date"
@@ -199,40 +177,14 @@ router.post('/', verifyToken, async (req, res) => {
             const rotaStartMinutes = convertTimeToMinutes(rota.start_time);
             const rotaEndMinutes = convertTimeToMinutes(rota.end_time);
 
-            console.log('=== DEBUG: Time Comparison ===');
-            console.log('Raw times:', {
-                booking_start: start_time,
-                booking_end: end_time,
-                rota_start: rota.start_time,
-                rota_end: rota.end_time
-            });
-            console.log('Converted to minutes:', {
-                booking_start_minutes: bookingStartMinutes,
-                booking_end_minutes: bookingEndMinutes,
-                rota_start_minutes: rotaStartMinutes,
-                rota_end_minutes: rotaEndMinutes
-            });
-            console.log('Comparison results:', {
-                start_time_check: bookingStartMinutes >= rotaStartMinutes,
-                end_time_check: bookingEndMinutes <= rotaEndMinutes
-            });
-
             // Check if booking time falls within rota time
             if (bookingStartMinutes >= rotaStartMinutes && bookingEndMinutes <= rotaEndMinutes) {
-                console.log('DEBUG: Found matching rota entry:', rota.id);
                 isAvailable = true;
                 break;
-            } else {
-                console.log('DEBUG: Rota entry does not match:', {
-                    rota_id: rota.id,
-                    start_time_check: bookingStartMinutes >= rotaStartMinutes,
-                    end_time_check: bookingEndMinutes <= rotaEndMinutes
-                });
             }
         }
 
         if (!isAvailable) {
-            console.log('No matching rota entries found for the requested time');
             return res.status(400).json({
                 return_code: "STAFF_NOT_AVAILABLE",
                 message: "Staff member is not scheduled to work at the requested time"
@@ -241,12 +193,12 @@ router.post('/', verifyToken, async (req, res) => {
 
         // 2. Check for booking conflicts
         const conflictQuery = `
-            SELECT 
-                id 
-            FROM 
-                booking 
-            WHERE 
-                staff_id = $1 
+            SELECT
+                id
+            FROM
+                booking
+            WHERE
+                staff_id = $1
                 AND booking_date = $2
                 AND status = 'confirmed'
                 AND (
@@ -255,9 +207,9 @@ router.post('/', verifyToken, async (req, res) => {
                     (start_time >= $3::time AND end_time <= $4::time)
                 )
         `;
-        
+
         const conflictResult = await pool.query(conflictQuery, [staff_id, booking_date, start_time, end_time]);
-        
+
         if (conflictResult.rows.length > 0) {
             return res.status(409).json({
                 return_code: "BOOKING_CONFLICT",
@@ -268,37 +220,37 @@ router.post('/', verifyToken, async (req, res) => {
         // All checks passed, create the booking
         const createBookingQuery = `
             INSERT INTO booking (
-                customer_id, 
-                booking_date, 
-                start_time, 
-                end_time, 
-                service_id, 
-                staff_id, 
+                customer_id,
+                booking_date,
+                start_time,
+                end_time,
+                service_id,
+                staff_id,
                 status
-            ) 
+            )
             VALUES ($1, $2, $3, $4, $5, $6, 'confirmed')
-            RETURNING 
-                id, 
-                customer_id, 
-                booking_date, 
-                start_time, 
-                end_time, 
-                service_id, 
-                staff_id, 
-                status, 
+            RETURNING
+                id,
+                customer_id,
+                booking_date,
+                start_time,
+                end_time,
+                service_id,
+                staff_id,
+                status,
                 created_at,
                 updated_at
         `;
-        
+
         const createBookingResult = await pool.query(createBookingQuery, [
-            customerId, 
-            booking_date, 
-            start_time, 
-            end_time, 
-            service_id, 
+            customerId,
+            booking_date,
+            start_time,
+            end_time,
+            service_id,
             staff_id
         ]);
-        
+
         const booking = createBookingResult.rows[0];
 
         // Return success response with booking details
@@ -341,7 +293,7 @@ router.post('/', verifyToken, async (req, res) => {
 
     } catch (error) {
         console.error("Create booking error:", error);
-        
+
         return res.status(500).json({
             return_code: "SERVER_ERROR",
             message: "An error occurred while creating the booking: " + error.message

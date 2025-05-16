@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import '../../styles/app_styles.dart';
 import '../../api/get_staff_schedule_api.dart';
 import '../../api/set_staff_schedule_api.dart';
+import '../../api/create_auto_staff_rota_api.dart';
 
 class StaffScheduleScreen extends StatefulWidget {
   // Business details
@@ -205,6 +206,9 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
             // Reload schedule
             _loadSchedule();
 
+            // Call create_auto_staff_rota API to update the rota based on the new schedule
+            _generateAutoStaffRota(businessId, staffId);
+
             // Show success message
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -233,6 +237,47 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('An error occurred: $e'),
+            backgroundColor: AppStyles.errorColor,
+          ),
+        );
+      }
+    }
+  }
+
+  // Generate auto staff rota
+  Future<void> _generateAutoStaffRota(int businessId, int staffId) async {
+    try {
+      // Call API to generate auto staff rota
+      final result = await CreateAutoStaffRotaApi.createAutoStaffRota(
+        businessId: businessId,
+        staffId: staffId,
+      );
+
+      if (mounted) {
+        if (result['success']) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Staff rota generated successfully (${result['generated_count']} entries)'),
+              backgroundColor: AppStyles.successColor,
+            ),
+          );
+        } else {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Failed to generate staff rota'),
+              backgroundColor: AppStyles.errorColor,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An error occurred while generating staff rota: $e'),
             backgroundColor: AppStyles.errorColor,
           ),
         );
@@ -311,6 +356,9 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
           if (result['success']) {
             // Reload schedule
             _loadSchedule();
+
+            // Call create_auto_staff_rota API to update the rota based on the updated schedule
+            _generateAutoStaffRota(businessId, staffId);
 
             // Show success message
             ScaffoldMessenger.of(context).showSnackBar(
