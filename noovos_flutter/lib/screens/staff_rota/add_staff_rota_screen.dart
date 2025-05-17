@@ -319,7 +319,7 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
   // Delete a rota entry
   Future<void> _deleteRotaEntry(int rotaId) async {
     // Show confirmation dialog
-    final bool confirm = await showDialog(
+    final bool confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
@@ -348,7 +348,7 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
 
     try {
       // Get business ID
-      final int businessId = widget.business['id'];
+      final int businessId = widget.business['id'] as int;
 
       // Call API to delete rota entry
       final result = await DeleteStaffRotaApi.deleteStaffRota(
@@ -360,9 +360,9 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
         setState(() {
           _isLoading = false;
 
-          if (result['success']) {
+          if (result['success'] as bool) {
             // If the deleted entry was selected, clear the form
-            if (_selectedEntry != null && _selectedEntry!['id'] == rotaId) {
+            if (_selectedEntry != null && (_selectedEntry!['id'] as int) == rotaId) {
               _clearForm();
             }
 
@@ -372,7 +372,7 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
             // Show success message
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(result['message'] ?? 'Rota entry deleted successfully'),
+                content: Text(result['message'] as String? ?? 'Rota entry deleted successfully'),
                 backgroundColor: AppStyles.successColor,
               ),
             );
@@ -380,7 +380,7 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
             // Show error message
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(result['message'] ?? 'Failed to delete rota entry'),
+                content: Text(result['message'] as String? ?? 'Failed to delete rota entry'),
                 backgroundColor: AppStyles.errorColor,
               ),
             );
@@ -415,19 +415,6 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
   }
 
   // Set form values for editing an entry
-  void _editEntry(Map<String, dynamic> entry) {
-    setState(() {
-      _selectedEntry = entry;
-
-      // Set form values
-      _dateController.text = entry['rota_date'];
-      _startTimeController.text = entry['start_time'];
-      _endTimeController.text = entry['end_time'];
-    });
-
-    // Scroll to form
-    // This would require a ScrollController, which we could add if needed
-  }
 
   // Format a date string for display
   String _formatDateForDisplay(String dateStr) {
@@ -461,7 +448,7 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
     final Map<String, List<Map<String, dynamic>>> grouped = {};
 
     for (final entry in _rotaEntries) {
-      final date = entry['rota_date'] as String;
+      final String date = entry['rota_date'] as String;
 
       if (!grouped.containsKey(date)) {
         grouped[date] = [];
@@ -482,9 +469,9 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
     if (entry != null) {
       setState(() {
         _selectedEntry = entry;
-        _dateController.text = entry['rota_date'];
-        _startTimeController.text = entry['start_time'];
-        _endTimeController.text = entry['end_time'];
+        _dateController.text = entry['rota_date'] as String;
+        _startTimeController.text = entry['start_time'] as String;
+        _endTimeController.text = entry['end_time'] as String;
       });
     }
     
@@ -509,9 +496,14 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
                   ),
                   readOnly: true,
                   onTap: () async {
+                    // Ensure we have week data
+                    if (_selectedWeekData == null) {
+                      return;
+                    }
+                    
                     // Get date range for the selected week
-                    final DateTime startDate = _selectedWeekData!['startDate'];
-                    final DateTime endDate = _selectedWeekData!['endDate'];
+                    final DateTime startDate = _selectedWeekData!['startDate'] as DateTime;
+                    final DateTime endDate = _selectedWeekData!['endDate'] as DateTime;
 
                     // Show date picker
                     final pickedDate = await showDatePicker(
@@ -800,8 +792,8 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
         else
           // Entries list grouped by date
           ...groupedEntries.entries.map((entry) {
-            final date = entry.key;
-            final entries = entry.value;
+            final String date = entry.key;
+            final List<Map<String, dynamic>> entries = entry.value;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -824,7 +816,7 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
                 const SizedBox(height: 16),
               ],
             );
-          }),
+          }).toList(),
       ],
     );
   }

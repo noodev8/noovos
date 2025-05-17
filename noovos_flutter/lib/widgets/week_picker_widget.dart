@@ -114,21 +114,25 @@ class _WeekPickerWidgetState extends State<WeekPickerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if our week options are not generated yet or index is out of range
+    if (_weekOptions.isEmpty || _selectedWeekIndex >= _weekOptions.length) {
+      return const SizedBox(); // Return empty widget if no data
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Current selection text display (more detailed)
-        if (_weekOptions.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-            child: Text(
-              _weekOptions[_selectedWeekIndex]['fullDisplayText'],
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppStyles.primaryColor,
-              ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+          child: Text(
+            _weekOptions[_selectedWeekIndex]['fullDisplayText'],
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppStyles.primaryColor,
             ),
           ),
+        ),
         
         const SizedBox(height: 8),
         
@@ -141,7 +145,6 @@ class _WeekPickerWidgetState extends State<WeekPickerWidget> {
             itemCount: _weekOptions.length,
             itemBuilder: (context, index) {
               // Get start date of the week
-              final DateTime startDate = _weekOptions[index]['startDate'];
               
               // Check if this is the current week
               final bool isCurrentWeek = index == 0;
@@ -186,7 +189,7 @@ class _WeekPickerWidgetState extends State<WeekPickerWidget> {
                         const SizedBox(height: 4),
                         // Date range
                         Text(
-                          _weekOptions[index]['displayText'],
+                          _weekOptions[index]['displayText'] as String,
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
