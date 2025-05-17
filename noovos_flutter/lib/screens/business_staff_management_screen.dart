@@ -15,8 +15,8 @@ import '../styles/app_styles.dart';
 import '../api/get_business_staff_api.dart';
 import '../api/request_staff_join_api.dart';
 import '../api/remove_staff_api.dart';
-import 'staff_rota_2/business_staff_rota_screen.dart';
-import 'staff_rota_2/staff_schedule_screen.dart';
+import 'staff_rota/business_staff_rota_screen.dart';
+import 'staff_rota/staff_schedule_screen.dart';
 import 'select_service_screen.dart';
 
 class BusinessStaffManagementScreen extends StatefulWidget {
