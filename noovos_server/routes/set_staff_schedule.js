@@ -3,9 +3,9 @@
 API Route: set_staff_schedule
 =======================================================================================================================================
 Method: POST
-Purpose: Applies a new schedule to the database for a staff member
-         Includes comprehensive conflict checking with existing bookings and manual rota entries
-         (This API now incorporates the functionality previously provided by check_schedule_conflict)
+Purpose: Applies a new schedule to the database for a staff member.
+         Replaces any existing schedule entries for the staff member.
+         Validates that new schedule entries do not overlap with each other.
 Authentication: Required - This endpoint requires a valid JWT token
 =======================================================================================================================================
 Request Payload:
@@ -15,38 +15,20 @@ Request Payload:
   "schedule": [                       // array, required - Array of schedule entries
     {
       "day_of_week": "Monday",        // string, required - Day of the week (Monday, Tuesday, etc.)
-      "start_time": "09:00",          // string, required - Start time (HH:MM or HH:MM AM/PM)
-      "end_time": "17:00",            // string, required - End time (HH:MM or HH:MM AM/PM)
+      "start_time": "09:00",          // string, required - Start time in 24hr format (HH:MM)
+      "end_time": "17:00",            // string, required - End time in 24hr format (HH:MM)
       "start_date": "2023-06-01",     // string, required - Start date (YYYY-MM-DD)
       "end_date": "2023-12-31",       // string, optional - End date (YYYY-MM-DD)
       "repeat_every_n_weeks": 1       // integer, optional - Repeat frequency in weeks
     },
     ...
-  ],
-  "force": false                      // boolean, optional - Force schedule update even if booking conflicts exist (default: false)
+  ]
 }
 
 Success Response:
 {
   "return_code": "SUCCESS",
   "message": "Staff schedule updated successfully"
-}
-
-Success Response (With Warnings):
-{
-  "return_code": "SUCCESS_WITH_WARNINGS",
-  "message": "Staff schedule updated successfully, but there are booking conflicts",
-  "conflicts": [
-    {
-      "booking_id": 123,
-      "booking_date": "2023-06-05",
-      "start_time": "10:00:00",
-      "end_time": "11:00:00",
-      "service_name": "Haircut",
-      "customer_name": "John Doe"
-    },
-    ...
-  ]
 }
 
 Error Responses:
@@ -84,16 +66,11 @@ Error Responses:
 }
 {
   "return_code": "INVALID_FORMAT",
-  "message": "Invalid time format. Use HH:MM or HH:MM AM/PM format."
+  "message": "Invalid time format. Use 24-hour format HH:MM (e.g. 09:00, 17:30)"
 }
 {
   "return_code": "SCHEDULE_OVERLAP",
-  "message": "Overlapping schedule entries for [day]"
-}
-{
-  "return_code": "BOOKING_CONFLICTS",
-  "message": "The new schedule conflicts with existing bookings. Use force=true to override.",
-  "conflicts": [...]
+  "message": "Schedule entries overlap on [day] between [time1] and [time2]"
 }
 {
   "return_code": "SERVER_ERROR",
@@ -153,10 +130,7 @@ router.post('/', verifyToken, async (req, res) => {
         const userId = req.user.id;
 
         // Extract parameters from request body
-        const { business_id, staff_id, schedule, force } = req.body;
-
-        // Default force to false if not provided
-        const forceUpdate = force === true;
+        const { business_id, staff_id, schedule } = req.body;
 
         // Validate required fields
         if (!business_id) {
@@ -235,37 +209,20 @@ router.post('/', verifyToken, async (req, res) => {
                 }
 
                 // Validate times
-
-                // Helper function to parse time string to minutes
+                // Helper function to parse time string to minutes for 24-hour format
                 function parseTimeToMinutes(timeStr) {
                     // Remove any whitespace
                     timeStr = timeStr.trim();
 
-                    let hours = 0;
-                    let minutes = 0;
-                    let isPM = false;
-
-                    // Check if time includes AM/PM
-                    if (timeStr.includes('AM') || timeStr.includes('PM')) {
-                        isPM = timeStr.includes('PM');
-                        // Remove AM/PM
-                        timeStr = timeStr.replace('AM', '').replace('PM', '').trim();
-                    }
-
                     // Split into hours and minutes
                     const parts = timeStr.split(':');
                     if (parts.length === 2) {
-                        hours = parseInt(parts[0], 10);
-                        minutes = parseInt(parts[1], 10);
+                        const hours = parseInt(parts[0], 10);
+                        const minutes = parseInt(parts[1], 10);
 
-                        // Adjust for PM
-                        if (isPM && hours < 12) {
-                            hours += 12;
-                        }
-
-                        // Adjust for 12 AM
-                        if (!isPM && hours === 12) {
-                            hours = 0;
+                        // Validate hours and minutes for 24-hour format
+                        if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+                            return -1;
                         }
 
                         return hours * 60 + minutes;
@@ -290,156 +247,40 @@ router.post('/', verifyToken, async (req, res) => {
                     await client.query('ROLLBACK');
                     return res.status(400).json({
                         return_code: "INVALID_FORMAT",
-                        message: "Invalid time format. Use HH:MM or HH:MM AM/PM format."
+                        message: "Invalid time format. Use 24-hour format HH:MM (e.g. 09:00, 17:30)"
                     });
                 }
             }
 
-            // Check for overlapping time blocks within the same day
-            const dayGroups = {};
+            // Check for overlapping schedules within the same request
+            // Group schedules by day
+            const schedulesByDay = {};
             for (const entry of schedule) {
-                const key = entry.day_of_week;
-                if (!dayGroups[key]) {
-                    dayGroups[key] = [];
+                if (!schedulesByDay[entry.day_of_week]) {
+                    schedulesByDay[entry.day_of_week] = [];
                 }
-                dayGroups[key].push(entry);
-            }
-
-            for (const day in dayGroups) {
-                const entries = dayGroups[day];
-                for (let i = 0; i < entries.length; i++) {
-                    for (let j = i + 1; j < entries.length; j++) {
-                        const a = entries[i];
-                        const b = entries[j];
-
-                        // Check for overlap
-                        if ((a.start_time < b.end_time && a.end_time > b.start_time) ||
-                            (b.start_time < a.end_time && b.end_time > a.start_time)) {
-                            await client.query('ROLLBACK');
-                            return res.status(400).json({
-                                return_code: "SCHEDULE_OVERLAP",
-                                message: `Overlapping schedule entries for ${day}`
-                            });
-                        }
-                    }
-                }
-            }
-
-            // Initialize bookingConflicts array outside the conditional scope
-            let bookingConflicts = [];
-
-            // First, get all manual rota entries for this staff member
-            // These will be used to check if bookings are covered by manual entries
-            const manualRotaQuery = await client.query(
-                `SELECT
-                    rota_date,
-                    start_time,
-                    end_time
-                FROM
-                    staff_rota
-                WHERE
-                    staff_id = $1
-                    AND business_id = $2
-                    AND is_generated = false
-                    AND rota_date >= CURRENT_DATE`,
-                [staff_id, business_id]
-            );
-
-            // Create a lookup map for manual rota entries
-            // Key format: 'YYYY-MM-DD'
-            const manualRotaEntries = {};
-
-            for (const entry of manualRotaQuery.rows) {
-                const dateKey = entry.rota_date.toISOString().split('T')[0];
-
-                if (!manualRotaEntries[dateKey]) {
-                    manualRotaEntries[dateKey] = [];
-                }
-
-                manualRotaEntries[dateKey].push({
-                    start_time: entry.start_time,
-                    end_time: entry.end_time
+                schedulesByDay[entry.day_of_week].push({
+                    start: parseTimeToMinutes(entry.start_time),
+                    end: parseTimeToMinutes(entry.end_time),
+                    startTime: entry.start_time,
+                    endTime: entry.end_time
                 });
             }
 
-            // Check for conflicts with existing bookings
-            // Get all confirmed bookings for this staff member
-            const bookingsQuery = await client.query(
-                `SELECT
-                    b.id AS booking_id,
-                    b.booking_date,
-                    b.start_time,
-                    b.end_time,
-                    s.service_name,
-                    CONCAT(c.first_name, ' ', c.last_name) AS customer_name
-                FROM
-                    booking b
-                JOIN
-                    service s ON b.service_id = s.id
-                JOIN
-                    app_user c ON b.customer_id = c.id
-                WHERE
-                    b.staff_id = $1
-                    AND b.status = 'confirmed'
-                    AND b.booking_date >= CURRENT_DATE
-                ORDER BY
-                    b.booking_date, b.start_time`,
-                [staff_id]
-            );
-
-            // If there are bookings, check if they would be orphaned by the new schedule
-            if (bookingsQuery.rows.length > 0) {
-                // Check each booking against the new schedule and manual rota entries
-                for (const booking of bookingsQuery.rows) {
-                    const bookingDate = new Date(booking.booking_date);
-                    let bookingCovered = false;
-
-                    // Check if any schedule entry covers this booking
-                    for (const entry of schedule) {
-                        if (isDateInSchedule(bookingDate, entry)) {
-                            // Check if the booking time falls within the schedule time
-                            if (booking.start_time >= entry.start_time && booking.end_time <= entry.end_time) {
-                                bookingCovered = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    // If not covered by schedule, check if covered by manual rota entry
-                    if (!bookingCovered) {
-                        const dateKey = booking.booking_date.toISOString().split('T')[0];
-                        const manualEntries = manualRotaEntries[dateKey] || [];
-
-                        for (const manualEntry of manualEntries) {
-                            // Check if the booking time falls within the manual rota time
-                            if (booking.start_time >= manualEntry.start_time && booking.end_time <= manualEntry.end_time) {
-                                bookingCovered = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    // If the booking is not covered by any schedule entry or manual rota, it's a conflict
-                    if (!bookingCovered) {
-                        bookingConflicts.push({
-                            booking_id: booking.booking_id,
-                            booking_date: booking.booking_date.toISOString().split('T')[0],
-                            start_time: booking.start_time,
-                            end_time: booking.end_time,
-                            service_name: booking.service_name,
-                            customer_name: booking.customer_name
+            // Check each day's schedules for overlaps
+            for (const [day, times] of Object.entries(schedulesByDay)) {
+                // Sort by start time to make overlap checking easier
+                times.sort((a, b) => a.start - b.start);
+                
+                // Check consecutive pairs for overlap
+                for (let i = 0; i < times.length - 1; i++) {
+                    if (times[i].end > times[i + 1].start) {
+                        await client.query('ROLLBACK');
+                        return res.status(400).json({
+                            return_code: "SCHEDULE_OVERLAP",
+                            message: `Schedule entries overlap on ${day} between ${times[i].startTime}-${times[i].endTime} and ${times[i + 1].startTime}-${times[i + 1].endTime}`
                         });
                     }
-                }
-
-                // If there are conflicts and force is not true, return an error
-                if (bookingConflicts.length > 0 && !forceUpdate) {
-                    await client.query('ROLLBACK');
-                    return res.status(409).json({
-                        return_code: "BOOKING_CONFLICTS",
-                        message: "The new schedule conflicts with existing bookings. Use force=true to override or create manual rota entries for these bookings.",
-                        conflicts: bookingConflicts
-                    });
                 }
             }
 
@@ -481,15 +322,6 @@ router.post('/', verifyToken, async (req, res) => {
 
             await client.query('COMMIT');
 
-            // If there were conflicts but force was true, return success with warnings
-            if (bookingConflicts.length > 0) {
-                return res.status(200).json({
-                    return_code: "SUCCESS_WITH_WARNINGS",
-                    message: "Staff schedule updated successfully, but there are booking conflicts. Consider creating manual rota entries for these bookings.",
-                    conflicts: bookingConflicts
-                });
-            }
-
             // Return success response
             return res.status(200).json({
                 return_code: "SUCCESS",
@@ -497,21 +329,16 @@ router.post('/', verifyToken, async (req, res) => {
             });
         } catch (error) {
             await client.query('ROLLBACK');
-            console.error('Error in set_staff_schedule:', error);
-
-            return res.status(500).json({
-                return_code: "SERVER_ERROR",
-                message: "An error occurred while updating the staff schedule"
-            });
+            throw error;
         } finally {
             client.release();
         }
     } catch (error) {
         console.error('Error in set_staff_schedule:', error);
-
+        
         return res.status(500).json({
             return_code: "SERVER_ERROR",
-            message: "An error occurred while processing your request"
+            message: "An error occurred while updating the staff schedule"
         });
     }
 });
