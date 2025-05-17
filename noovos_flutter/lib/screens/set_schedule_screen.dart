@@ -100,6 +100,48 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
     });
   }
 
+  // Copy all settings from week 1 to the current week
+  void _copyFromWeekOne() {
+    // Perform the copy without confirmation
+    setState(() {
+      // Copy working days
+      workingDays[selectedWeekIndex].forEach((day, _) {
+        workingDays[selectedWeekIndex][day] = workingDays[0][day]!;
+      });
+      
+      // Copy working hours
+      workingHours[selectedWeekIndex].forEach((day, _) {
+        workingHours[selectedWeekIndex][day] = {
+          'start': workingHours[0][day]!['start']!,
+          'end': workingHours[0][day]!['end']!,
+        };
+      });
+      
+      // Copy break times
+      breakTimes[selectedWeekIndex].forEach((day, _) {
+        // Clear existing breaks
+        breakTimes[selectedWeekIndex][day] = [];
+        
+        // Copy breaks from week 1
+        for (final breakTime in breakTimes[0][day]!) {
+          breakTimes[selectedWeekIndex][day]!.add({
+            'start': breakTime['start'],
+            'end': breakTime['end'],
+          });
+        }
+      });
+    });
+    
+    // Show subtle feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Week 1 schedule copied'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: AppStyles.primaryColor.withOpacity(0.8),
+      ),
+    );
+  }
+
   // Get number of weeks based on schedule type
   int get numberOfWeeks {
     // For "Every week" return 1, otherwise parse the number
@@ -277,6 +319,8 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
       children: [
         const Text('Select Week', style: AppStyles.subheadingStyle),
         const SizedBox(height: 8),
+        
+        // Week selector buttons
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -296,6 +340,19 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
             }),
           ),
         ),
+        
+        // Copy from Week 1 button (only show for weeks 2, 3, and 4)
+        if (selectedWeekIndex > 0) ...[
+          const SizedBox(height: 16),
+          TextButton.icon(
+            onPressed: _copyFromWeekOne,
+            style: TextButton.styleFrom(
+              foregroundColor: AppStyles.primaryColor,
+            ),
+            icon: const Icon(Icons.copy, size: 18),
+            label: const Text('Copy from Week 1'),
+          ),
+        ],
       ],
     );
   }
