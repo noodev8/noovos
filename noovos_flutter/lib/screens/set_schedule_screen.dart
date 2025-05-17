@@ -69,19 +69,36 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
     },
   );
 
-  // Break times state for each day in each week
-  final List<Map<String, Map<String, TimeOfDay?>>> breakTimes = List.generate(
+  // Break times state for each day in each week (multiple breaks)
+  final List<Map<String, List<Map<String, TimeOfDay?>>>> breakTimes = List.generate(
     4,
     (_) => {
-      'MON': {'start': null, 'end': null},
-      'TUE': {'start': null, 'end': null},
-      'WED': {'start': null, 'end': null},
-      'THU': {'start': null, 'end': null},
-      'FRI': {'start': null, 'end': null},
-      'SAT': {'start': null, 'end': null},
-      'SUN': {'start': null, 'end': null},
+      'MON': [],
+      'TUE': [],
+      'WED': [],
+      'THU': [],
+      'FRI': [],
+      'SAT': [],
+      'SUN': [],
     },
   );
+
+  // Add a new break slot to a specific day
+  void _addBreak(String day) {
+    setState(() {
+      breakTimes[selectedWeekIndex][day]!.add({
+        'start': null,
+        'end': null,
+      });
+    });
+  }
+
+  // Remove a break slot from a specific day
+  void _removeBreak(String day, int breakIndex) {
+    setState(() {
+      breakTimes[selectedWeekIndex][day]!.removeAt(breakIndex);
+    });
+  }
 
   // Get number of weeks based on schedule type
   int get numberOfWeeks {
@@ -96,6 +113,11 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get staff name for display
+    final String firstName = widget.staff['first_name'] ?? '';
+    final String lastName = widget.staff['last_name'] ?? '';
+    final String fullName = '$firstName $lastName'.trim();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Set Staff Schedule'),
@@ -107,6 +129,13 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Staff name display
+            Text(
+              fullName,
+              style: AppStyles.headingStyle,
+            ),
+            const Divider(height: 32),
+
             // Schedule type selector
             _buildScheduleTypeSelector(),
             const SizedBox(height: 24),
@@ -343,34 +372,77 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
               ),
 
               // Break time section
-              const SizedBox(height: 8),
-              Row(
+              const SizedBox(height: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Break:', style: AppStyles.bodyStyle),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildBreakTimePicker(
-                      'Start',
-                      breakTimes[selectedWeekIndex][day]!['start'],
-                      (time) {
-                        setState(() {
-                          breakTimes[selectedWeekIndex][day]!['start'] = time;
-                        });
-                      },
-                    ),
+                  Row(
+                    children: [
+                      const Text('Breaks:', style: AppStyles.bodyStyle),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: () => _addBreak(day),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Break'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppStyles.primaryColor,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildBreakTimePicker(
-                      'End',
-                      breakTimes[selectedWeekIndex][day]!['end'],
-                      (time) {
-                        setState(() {
-                          breakTimes[selectedWeekIndex][day]!['end'] = time;
-                        });
-                      },
-                    ),
-                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Show existing breaks or a message if none
+                  if (breakTimes[selectedWeekIndex][day]!.isEmpty)
+                    const Text(
+                      'No breaks added',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey,
+                      ),
+                    )
+                  else
+                    ...breakTimes[selectedWeekIndex][day]!.asMap().entries.map((entry) {
+                      final breakIndex = entry.key;
+                      final breakTime = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          children: [
+                            Text('Break ${breakIndex + 1}:', style: AppStyles.captionStyle),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildBreakTimePicker(
+                                'Start',
+                                breakTime['start'],
+                                (time) {
+                                  setState(() {
+                                    breakTimes[selectedWeekIndex][day]![breakIndex]['start'] = time;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildBreakTimePicker(
+                                'End',
+                                breakTime['end'],
+                                (time) {
+                                  setState(() {
+                                    breakTimes[selectedWeekIndex][day]![breakIndex]['end'] = time;
+                                  });
+                                },
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                              onPressed: () => _removeBreak(day, breakIndex),
+                              tooltip: 'Remove break',
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                 ],
               ),
             ],
