@@ -11,6 +11,7 @@ Features:
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 import '../api/set_staff_schedule_api.dart';  // Import the API
+import '../api/get_staff_schedule_api.dart';  // Import the GET API
 
 class SetScheduleScreen extends StatefulWidget {
   // Staff and business details
@@ -41,6 +42,7 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
   int selectedWeekIndex = 0;
   DateTime? startDate;
   DateTime? endDate;
+  bool isLoading = true;
 
   // Working days state for each week (up to 4 weeks)
   final List<Map<String, bool>> workingDays = List.generate(
@@ -83,6 +85,198 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
       'Sunday': [],
     },
   );
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExistingSchedule();
+  }
+
+  // Load existing schedule from the API
+  Future<void> _loadExistingSchedule() async {
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      // Extract business and staff IDs, ensuring they are integers
+      int businessId;
+      int staffId;
+      
+      // Get business ID, handle both int and String types
+      if (widget.business['id'] is int) {
+        businessId = widget.business['id'];
+      } else if (widget.business['id'] is String) {
+        businessId = int.parse(widget.business['id']);
+      } else {
+        throw Exception('Business ID not found or invalid type');
+      }
+      
+      // Get staff ID from appuser_id field, handle both int and String types
+      if (widget.staff['appuser_id'] is int) {
+        staffId = widget.staff['appuser_id'];
+      } else if (widget.staff['appuser_id'] is String) {
+        staffId = int.parse(widget.staff['appuser_id']);
+      } else {
+        // Try user_id as fallback
+        if (widget.staff['user_id'] is int) {
+          staffId = widget.staff['user_id'];
+        } else if (widget.staff['user_id'] is String) {
+          staffId = int.parse(widget.staff['user_id']);
+        } else {
+          throw Exception('Staff ID not found (looking for appuser_id or user_id field)');
+        }
+      }
+
+      // Call API to get existing schedule
+      final result = await GetStaffScheduleApi.getStaffSchedule(
+        businessId: businessId,
+        staffId: staffId,
+      );
+
+      if (result['success'] && result['schedules'] != null) {
+        final schedules = result['schedules'] as List;
+        
+        if (schedules.isNotEmpty) {
+          // Reset all selections first
+          _resetAllSelections();
+          
+          // Determine the maximum week number to set the schedule type
+          int maxWeek = 1;
+          DateTime? firstStartDate;
+          DateTime? lastEndDate;
+          
+          for (final schedule in schedules) {
+            final week = schedule['week'] ?? 1;
+            if (week > maxWeek) {
+              maxWeek = week;
+            }
+            
+            // Get start date from the first entry
+            if (firstStartDate == null) {
+              firstStartDate = _parseDate(schedule['start_date']);
+            }
+            
+            // Keep track of end date
+            if (schedule['end_date'] != null) {
+              final parsedEndDate = _parseDate(schedule['end_date']);
+              if (parsedEndDate != null) {
+                if (lastEndDate == null || parsedEndDate.isAfter(lastEndDate)) {
+                  lastEndDate = parsedEndDate;
+                }
+              }
+            }
+          }
+          
+          // Set schedule type based on max week
+          if (maxWeek > 0 && maxWeek <= 4) {
+            setState(() {
+              selectedScheduleType = maxWeek == 1 ? 'Every week' : 'Every ${maxWeek} weeks';
+              startDate = firstStartDate;
+              endDate = lastEndDate;
+            });
+          }
+          
+          // Process each schedule entry
+          for (final schedule in schedules) {
+            final day = schedule['day_of_week'];
+            final weekNum = (schedule['week'] ?? 1) - 1; // Convert to 0-based index
+            
+            if (weekNum >= 0 && weekNum < 4 && workingDays[weekNum].containsKey(day)) {
+              // Parse times
+              final startTime = _parseTimeOfDay(schedule['start_time']);
+              final endTime = _parseTimeOfDay(schedule['end_time']);
+              
+              // Update working days and hours
+              setState(() {
+                workingDays[weekNum][day] = true;
+                if (startTime != null) {
+                  workingHours[weekNum][day]!['start'] = startTime;
+                }
+                if (endTime != null) {
+                  workingHours[weekNum][day]!['end'] = endTime;
+                }
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error loading existing schedule: $e');
+      // Show error message if needed
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading existing schedule: $e'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+  
+  // Parse date string in YYYY-MM-DD format
+  DateTime? _parseDate(String? dateStr) {
+    if (dateStr == null) return null;
+    try {
+      // Split by - and parse components
+      final parts = dateStr.split('-');
+      if (parts.length == 3) {
+        return DateTime(
+          int.parse(parts[0]), // Year
+          int.parse(parts[1]), // Month
+          int.parse(parts[2]), // Day
+        );
+      }
+    } catch (e) {
+      print('Error parsing date: $e');
+    }
+    return null;
+  }
+  
+  // Parse time string (e.g., "09:00 AM") to TimeOfDay
+  TimeOfDay? _parseTimeOfDay(String? timeStr) {
+    if (timeStr == null) return null;
+    try {
+      // Expected format: "09:00 AM" or "05:00 PM"
+      final parts = timeStr.trim().split(' ');
+      if (parts.length == 2) {
+        final timeParts = parts[0].split(':');
+        if (timeParts.length == 2) {
+          int hours = int.parse(timeParts[0]);
+          int minutes = int.parse(timeParts[1]);
+          final period = parts[1]; // "AM" or "PM"
+          
+          // Adjust for 12-hour format
+          if (period == 'PM' && hours < 12) {
+            hours += 12;
+          } else if (period == 'AM' && hours == 12) {
+            hours = 0;
+          }
+          
+          return TimeOfDay(hour: hours, minute: minutes);
+        }
+      }
+    } catch (e) {
+      print('Error parsing time: $e');
+    }
+    return null;
+  }
+  
+  // Reset all selections
+  void _resetAllSelections() {
+    for (int i = 0; i < 4; i++) {
+      workingDays[i].forEach((day, _) {
+        workingDays[i][day] = false;
+      });
+      
+      breakTimes[i].forEach((day, _) {
+        breakTimes[i][day] = [];
+      });
+    }
+  }
 
   // Add a new break slot to a specific day
   void _addBreak(String day) {
@@ -167,39 +361,43 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
         backgroundColor: AppStyles.primaryColor,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Staff name display
-            Text(
-              fullName,
-              style: AppStyles.headingStyle,
+      body: isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Staff name display
+                  Text(
+                    fullName,
+                    style: AppStyles.headingStyle,
+                  ),
+                  const Divider(height: 32),
+
+                  // Schedule type selector
+                  _buildScheduleTypeSelector(),
+                  const SizedBox(height: 24),
+
+                  // Date range selectors
+                  _buildDateRangeSelectors(),
+                  const SizedBox(height: 24),
+
+                  // Week selector tabs
+                  _buildWeekTabs(),
+                  const SizedBox(height: 16),
+
+                  // Working days and hours
+                  _buildWorkingDaysSection(),
+                  const SizedBox(height: 24),
+
+                  // Action buttons
+                  _buildActionButtons(context),
+                ],
+              ),
             ),
-            const Divider(height: 32),
-
-            // Schedule type selector
-            _buildScheduleTypeSelector(),
-            const SizedBox(height: 24),
-
-            // Date range selectors
-            _buildDateRangeSelectors(),
-            const SizedBox(height: 24),
-
-            // Week selector tabs
-            _buildWeekTabs(),
-            const SizedBox(height: 16),
-
-            // Working days and hours
-            _buildWorkingDaysSection(),
-            const SizedBox(height: 24),
-
-            // Action buttons
-            _buildActionButtons(context),
-          ],
-        ),
-      ),
     );
   }
 

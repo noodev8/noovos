@@ -26,7 +26,7 @@ Success Response:
       "end_time": "05:00 PM",          // string - End time (formatted)
       "start_date": "2023-06-01",      // string - Start date (YYYY-MM-DD)
       "end_date": "2023-12-31",        // string - End date (YYYY-MM-DD) or null if no end date
-      "repeat_every_n_weeks": 1        // integer - Repeat frequency in weeks or null if not specified
+      "week": 1                        // integer - Week number in the rotation (1, 2, etc.)
     },
     ...
   ]
@@ -110,7 +110,7 @@ router.post('/', verifyToken, async (req, res) => {
                     WHEN ss.end_date IS NOT NULL THEN TO_CHAR(ss.end_date, 'YYYY-MM-DD')
                     ELSE NULL
                 END AS end_date,
-                ss.repeat_every_n_weeks
+                ss.week
             FROM
                 staff_schedule ss
             JOIN
@@ -131,6 +131,7 @@ router.post('/', verifyToken, async (req, res) => {
             ORDER BY
                 u.last_name,
                 u.first_name,
+                ss.week,
                 ss.day_of_week,
                 ss.start_time
         `;
