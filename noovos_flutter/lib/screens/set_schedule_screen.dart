@@ -13,6 +13,7 @@ import '../styles/app_styles.dart';
 import '../api/set_staff_schedule_api.dart';  // Import the API
 import '../api/get_staff_schedule_api.dart';  // Import the GET API
 import '../api/create_auto_staff_rota_api.dart';  // Import the auto rota API
+import '../api/check_booking_integrity_api.dart';  // Import the booking integrity API
 
 class SetScheduleScreen extends StatefulWidget {
   // Staff and business details
@@ -901,26 +902,101 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
                 Navigator.of(context).pop();
                 
                 if (result['success']) {
-                  // Call create_auto_staff_rota API
-                  try {
-                    await CreateAutoStaffRotaApi.createAutoStaffRota(
-                      businessId: businessId,
-                      staffId: staffId,
-                    );
-                    // We don't need to handle the result here as we already have the schedule saved successfully
-                  } catch (e) {
-                    // Just log the error, don't show to user since the main operation succeeded
-                    // This is a follow-up operation so we don't want to confuse the user
-                  }
-                  
-                  // Show success message and return to previous screen
+                  // Show success message
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(result['message'] ?? 'Schedule saved successfully'),
                       backgroundColor: Colors.green.shade700,
                     ),
                   );
-                  Navigator.of(context).pop(true); // Return success result
+                  
+                  // Call create_auto_staff_rota API and check bookings
+                  try {
+                    // First generate the auto rota
+                    final rotaResult = await CreateAutoStaffRotaApi.createAutoStaffRota(
+                      businessId: businessId,
+                      staffId: staffId,
+                    );
+                    
+                    print('Auto rota creation result: $rotaResult');
+                    
+                    // Check for orphaned bookings
+                    final bookingIntegrityResult = await CheckBookingIntegrityApi.checkBookingIntegrity(
+                      businessId: businessId,
+                      staffId: staffId,
+                    );
+                    
+                    print('Booking integrity check result: $bookingIntegrityResult');
+                    
+                    // Only return to previous screen if no orphaned bookings or after showing the dialog
+                    bool hasShownDialog = false;
+                    
+                    if (bookingIntegrityResult['success'] == true && 
+                        bookingIntegrityResult['count'] > 0) {
+                      // Get orphaned bookings
+                      final orphanedBookings = bookingIntegrityResult['orphaned_bookings'] as List;
+                      
+                      print('Found ${orphanedBookings.length} orphaned bookings');
+                      
+                      // Display alert dialog with up to 3 orphaned bookings
+                      if (context.mounted && orphanedBookings.isNotEmpty) {
+                        hasShownDialog = true;
+                        
+                        // Build the message content
+                        final messageBuilder = StringBuffer();
+                        messageBuilder.write('The following bookings no longer have corresponding staff rota entries:\n\n');
+                        
+                        final displayCount = orphanedBookings.length > 3 ? 3 : orphanedBookings.length;
+                        
+                        for (int i = 0; i < displayCount; i++) {
+                          final booking = orphanedBookings[i];
+                          final date = booking['booking_date'] ?? 'Unknown date';
+                          final startTime = booking['start_time']?.toString().substring(0, 5) ?? 'Unknown time';
+                          final customerName = booking['customer_name'] ?? 'Unknown customer';
+                          final serviceName = booking['service_name'] ?? 'Unknown service';
+                          
+                          messageBuilder.write('• $date at $startTime - $serviceName for $customerName\n');
+                        }
+                        
+                        if (orphanedBookings.length > 3) {
+                          messageBuilder.write('\nAnd ${orphanedBookings.length - 3} more...');
+                        }
+                        
+                        // Show the alert dialog and wait for it to close before returning
+                        await showDialog(
+                          context: context,
+                          barrierDismissible: false, // User must tap button
+                          builder: (BuildContext dialogContext) {
+                            return AlertDialog(
+                              title: const Text('Affected Bookings'),
+                              content: SingleChildScrollView(
+                                child: Text(messageBuilder.toString()),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(dialogContext).pop();
+                                  },
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      }
+                    }
+                    
+                    // Now we can safely return to the previous screen
+                    if (context.mounted) {
+                      Navigator.of(context).pop(true); // Return success result
+                    }
+                  } catch (e) {
+                    print('Error in post-schedule update process: $e');
+                    // Still return to previous screen even if the additional checks fail
+                    if (context.mounted) {
+                      Navigator.of(context).pop(true);
+                    }
+                  }
                 } else {
                   // Show error message
                   ScaffoldMessenger.of(context).showSnackBar(
