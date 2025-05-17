@@ -16,7 +16,7 @@ import '../api/get_business_staff_api.dart';
 import '../api/request_staff_join_api.dart';
 import '../api/remove_staff_api.dart';
 import 'staff_rota/business_staff_rota_screen.dart';
-import 'staff_rota/staff_schedule_screen.dart';
+import 'view_staff_schedule_screen.dart';
 import 'select_service_screen.dart';
 
 class BusinessStaffManagementScreen extends StatefulWidget {
@@ -519,7 +519,7 @@ class _BusinessStaffManagementScreenState extends State<BusinessStaffManagementS
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => StaffScheduleScreen(
+                builder: (context) => ViewStaffScheduleScreen(
                   business: widget.business,
                   staff: staff,
                 ),
@@ -538,7 +538,7 @@ class _BusinessStaffManagementScreenState extends State<BusinessStaffManagementS
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => StaffScheduleScreen(
+                        builder: (context) => ViewStaffScheduleScreen(
                           business: widget.business,
                           staff: staff,
                         ),
