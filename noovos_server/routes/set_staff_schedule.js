@@ -256,25 +256,15 @@ router.post('/', verifyToken, async (req, res) => {
             // Check for overlapping schedules within the same request
             // Skip if force parameter is true (used for multi-week schedules)
             if (!force) {
-                // Group schedules by day and repeat week pattern
+                // Group schedules by day and week
                 const schedulesByDayAndWeek = {};
                 
                 for (const entry of schedule) {
-                    // Create a key that combines day_of_week with repeat pattern information
-                    const repeatWeeks = entry.repeat_every_n_weeks || 1;
+                    // Get the week number from the entry
+                    const weekNum = entry.week || 1;
                     
-                    // Parse the week offset from the start date (for multi-week schedules)
-                    let weekOffset = 0;
-                    if (repeatWeeks > 1) {
-                        const startDate = new Date(entry.start_date);
-                        const baseDate = new Date(schedule[0].start_date); // Use first entry as reference
-                        const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-                        const weeksDiff = Math.round((startDate - baseDate) / msPerWeek);
-                        weekOffset = weeksDiff % repeatWeeks;
-                    }
-                    
-                    // Create a key that includes the day and its position in the repeat cycle
-                    const key = `${entry.day_of_week}_week${weekOffset}_repeat${repeatWeeks}`;
+                    // Create a key that combines day_of_week with week number
+                    const key = `${entry.day_of_week}_week${weekNum}`;
                     
                     if (!schedulesByDayAndWeek[key]) {
                         schedulesByDayAndWeek[key] = [];
@@ -285,8 +275,7 @@ router.post('/', verifyToken, async (req, res) => {
                         end: parseTimeToMinutes(entry.end_time),
                         startTime: entry.start_time,
                         endTime: entry.end_time,
-                        repeat: repeatWeeks,
-                        offset: weekOffset
+                        week: weekNum
                     });
                 }
 
@@ -330,7 +319,7 @@ router.post('/', verifyToken, async (req, res) => {
             for (const entry of schedule) {
                 await client.query(
                     `INSERT INTO staff_schedule
-                     (staff_id, business_id, day_of_week, start_time, end_time, start_date, end_date, repeat_every_n_weeks)
+                     (staff_id, business_id, day_of_week, start_time, end_time, start_date, end_date, week)
                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
                     [
                         staff_id,
@@ -340,7 +329,7 @@ router.post('/', verifyToken, async (req, res) => {
                         entry.end_time,
                         entry.start_date,
                         entry.end_date || null,
-                        entry.repeat_every_n_weeks || null
+                        entry.week || null
                     ]
                 );
             }

@@ -5,7 +5,7 @@
 -- Dumped from database version 11.18 (Debian 11.18-0+deb10u1)
 -- Dumped by pg_dump version 17.4
 
--- Started on 2025-05-10 21:20:38
+-- Started on 2025-05-17 12:32:11
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1109,7 +1109,7 @@ CREATE TABLE public.staff_schedule (
     end_time time without time zone NOT NULL,
     start_date date NOT NULL,
     end_date date,
-    repeat_every_n_weeks integer,
+    week integer,
     business_id integer,
     CONSTRAINT staff_schedule_day_of_week_check CHECK (((day_of_week)::text = ANY ((ARRAY['Monday'::character varying, 'Tuesday'::character varying, 'Wednesday'::character varying, 'Thursday'::character varying, 'Friday'::character varying, 'Saturday'::character varying, 'Sunday'::character varying])::text[])))
 );
@@ -2169,7 +2169,7 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.staff_rota TO PUBLIC;
 
 
--- Completed on 2025-05-10 21:20:40
+-- Completed on 2025-05-17 12:32:13
 
 --
 -- PostgreSQL database dump complete

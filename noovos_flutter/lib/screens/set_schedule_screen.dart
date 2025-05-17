@@ -696,20 +696,15 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
               );
               
               try {
-                // Get repeat frequency from schedule type
-                int repeatEveryNWeeks = 1;
-                if (selectedScheduleType != 'Every week') {
-                  // Extract number from strings like "Every 2 weeks"
-                  final match = RegExp(r'Every (\d+) weeks').firstMatch(selectedScheduleType);
-                  repeatEveryNWeeks = match != null ? int.parse(match.group(1)!) : 1;
-                }
+                // Check if this is a multi-week schedule
+                bool isMultiWeekSchedule = selectedScheduleType != 'Every week';
                 
                 // Call API to save schedule
                 final result = await SetStaffScheduleApi.setStaffSchedule(
                   businessId: businessId,
                   staffId: staffId,
                   schedule: schedule,
-                  force: repeatEveryNWeeks > 1, // Force bypass conflict check for multi-week schedules
+                  force: isMultiWeekSchedule, // Force bypass conflict check for multi-week schedules
                 );
                 
                 // Close loading indicator
@@ -769,12 +764,12 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
     final List<Map<String, dynamic>> scheduleEntries = [];
     final int weeks = numberOfWeeks;
     
-    // Get repeat frequency from schedule type
-    int repeatEveryNWeeks = 1;
+    // Get repeat cycle length from schedule type (how many weeks in the full cycle)
+    int repeatCycleLength = 1;
     if (selectedScheduleType != 'Every week') {
       // Extract number from strings like "Every 2 weeks"
       final match = RegExp(r'Every (\d+) weeks').firstMatch(selectedScheduleType);
-      repeatEveryNWeeks = match != null ? int.parse(match.group(1)!) : 1;
+      repeatCycleLength = match != null ? int.parse(match.group(1)!) : 1;
     }
     
     // Format dates to YYYY-MM-DD
@@ -801,24 +796,23 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
           final String formattedStartTime = '$startHour:$startMinute';
           final String formattedEndTime = '$endHour:$endMinute';
           
+          // Calculate start date for this entry
+          String entryStartDate = formattedStartDate;
+          if (repeatCycleLength > 1 && weekIndex > 0) {
+            // Calculate the offset date by adding (weekIndex * 7) days to the start date
+            final offsetStartDate = startDate!.add(Duration(days: weekIndex * 7));
+            entryStartDate = '${offsetStartDate.year}-${offsetStartDate.month.toString().padLeft(2, '0')}-${offsetStartDate.day.toString().padLeft(2, '0')}';
+          }
+          
           // Create schedule entry
           final Map<String, dynamic> entry = {
             'day_of_week': day,
             'start_time': formattedStartTime,
             'end_time': formattedEndTime,
-            'start_date': formattedStartDate,
-            'repeat_every_n_weeks': repeatEveryNWeeks,
+            'start_date': entryStartDate,
+            // Set week to indicate which week in the rotation (1-based)
+            'week': weekIndex + 1,
           };
-
-          // For multi-week schedules, add offset to the start date based on the week index
-          if (repeatEveryNWeeks > 1 && weekIndex > 0) {
-            // Calculate the offset date by adding (weekIndex * 7) days to the start date
-            final offsetStartDate = startDate!.add(Duration(days: weekIndex * 7));
-            final String formattedOffsetStartDate = 
-                '${offsetStartDate.year}-${offsetStartDate.month.toString().padLeft(2, '0')}-${offsetStartDate.day.toString().padLeft(2, '0')}';
-            
-            entry['start_date'] = formattedOffsetStartDate;
-          }
           
           // Add end date if specified
           if (formattedEndDate != null) {
