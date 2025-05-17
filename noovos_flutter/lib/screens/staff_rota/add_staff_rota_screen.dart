@@ -473,6 +473,185 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
     return grouped;
   }
 
+  // Show add/edit entry dialog
+  Future<void> _showAddEditEntryDialog({Map<String, dynamic>? entry}) async {
+    // Reset form
+    _clearForm();
+    
+    // If we have an entry, set form values for editing
+    if (entry != null) {
+      setState(() {
+        _selectedEntry = entry;
+        _dateController.text = entry['rota_date'];
+        _startTimeController.text = entry['start_time'];
+        _endTimeController.text = entry['end_time'];
+      });
+    }
+    
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(entry == null ? 'Add Rota Entry' : 'Edit Rota Entry'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date field
+                TextFormField(
+                  controller: _dateController,
+                  decoration: AppStyles.inputDecoration(
+                    'Date',
+                    hint: 'YYYY-MM-DD',
+                    prefixIcon: const Icon(Icons.calendar_today),
+                  ),
+                  readOnly: true,
+                  onTap: () async {
+                    // Get date range for the selected week
+                    final DateTime startDate = _selectedWeekData!['startDate'];
+                    final DateTime endDate = _selectedWeekData!['endDate'];
+
+                    // Show date picker
+                    final pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: _dateController.text.isNotEmpty
+                          ? _dateFormat.parse(_dateController.text)
+                          : DateTime.now().isBefore(startDate) ? startDate : DateTime.now().isAfter(endDate) ? endDate : DateTime.now(),
+                      firstDate: startDate,
+                      lastDate: endDate,
+                    );
+
+                    if (pickedDate != null) {
+                      setState(() {
+                        _dateController.text = _dateFormat.format(pickedDate);
+                      });
+                    }
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select a date';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Start time field
+                TextFormField(
+                  controller: _startTimeController,
+                  decoration: AppStyles.inputDecoration(
+                    'Start Time',
+                    hint: 'HH:MM',
+                    prefixIcon: const Icon(Icons.access_time),
+                  ),
+                  readOnly: true,
+                  onTap: () async {
+                    // Show time picker
+                    final pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: _startTimeController.text.isNotEmpty
+                          ? TimeOfDay.fromDateTime(_timeFormat.parse(_startTimeController.text))
+                          : TimeOfDay.now(),
+                    );
+
+                    if (pickedTime != null) {
+                      setState(() {
+                        // Format time as HH:MM
+                        _startTimeController.text =
+                            '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
+                      });
+                    }
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select a start time';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // End time field
+                TextFormField(
+                  controller: _endTimeController,
+                  decoration: AppStyles.inputDecoration(
+                    'End Time',
+                    hint: 'HH:MM',
+                    prefixIcon: const Icon(Icons.access_time),
+                  ),
+                  readOnly: true,
+                  onTap: () async {
+                    // Show time picker
+                    final pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: _endTimeController.text.isNotEmpty
+                          ? TimeOfDay.fromDateTime(_timeFormat.parse(_endTimeController.text))
+                          : TimeOfDay.now(),
+                    );
+
+                    if (pickedTime != null) {
+                      setState(() {
+                        // Format time as HH:MM
+                        _endTimeController.text =
+                            '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
+                      });
+                    }
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select an end time';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          // Cancel button
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          
+          // Save button
+          ElevatedButton(
+            onPressed: _isSaving 
+              ? null 
+              : () {
+                  if (_formKey.currentState!.validate()) {
+                    Navigator.pop(context, true); // Close dialog and return true to save
+                  }
+                },
+            style: AppStyles.primaryButtonStyle,
+            child: _isSaving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Text(_selectedEntry == null ? 'Add Entry' : 'Update Entry'),
+          ),
+        ],
+      ),
+    ).then((result) async {
+      // If dialog was confirmed, save the entry
+      if (result == true) {
+        if (_selectedEntry == null) {
+          await _addRotaEntry();
+        } else {
+          await _updateRotaEntry();
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -544,12 +723,7 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
 
           const SizedBox(height: 24),
 
-          // Add/Edit form
-          _buildRotaForm(),
-
-          const SizedBox(height: 24),
-
-          // Rota entries list
+          // Rota entries list with add button
           _buildRotaEntriesList(),
         ],
       ),
@@ -562,192 +736,10 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Week Selection',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            WeekPickerWidget(
-              numberOfWeeks: 8,
-              initialWeekIndex: _selectedWeekIndex,
-              onWeekSelected: _onWeekSelected,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Build rota form
-  Widget _buildRotaForm() {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Form title
-              Text(
-                _selectedEntry == null ? 'Add Rota Entry' : 'Edit Rota Entry',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Date field
-              TextFormField(
-                controller: _dateController,
-                decoration: AppStyles.inputDecoration(
-                  'Date',
-                  hint: 'YYYY-MM-DD',
-                  prefixIcon: const Icon(Icons.calendar_today),
-                ),
-                readOnly: true,
-                onTap: () async {
-                  // Get date range for the selected week
-                  final DateTime startDate = _selectedWeekData!['startDate'];
-                  final DateTime endDate = _selectedWeekData!['endDate'];
-
-                  // Show date picker
-                  final pickedDate = await showDatePicker(
-                    context: context,
-                    initialDate: _dateController.text.isNotEmpty
-                        ? _dateFormat.parse(_dateController.text)
-                        : DateTime.now().isBefore(startDate) ? startDate : DateTime.now().isAfter(endDate) ? endDate : DateTime.now(),
-                    firstDate: startDate,
-                    lastDate: endDate,
-                  );
-
-                  if (pickedDate != null) {
-                    setState(() {
-                      _dateController.text = _dateFormat.format(pickedDate);
-                    });
-                  }
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select a date';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Start time field
-              TextFormField(
-                controller: _startTimeController,
-                decoration: AppStyles.inputDecoration(
-                  'Start Time',
-                  hint: 'HH:MM',
-                  prefixIcon: const Icon(Icons.access_time),
-                ),
-                readOnly: true,
-                onTap: () async {
-                  // Show time picker
-                  final pickedTime = await showTimePicker(
-                    context: context,
-                    initialTime: _startTimeController.text.isNotEmpty
-                        ? TimeOfDay.fromDateTime(_timeFormat.parse(_startTimeController.text))
-                        : TimeOfDay.now(),
-                  );
-
-                  if (pickedTime != null) {
-                    setState(() {
-                      // Format time as HH:MM
-                      _startTimeController.text =
-                          '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
-                    });
-                  }
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select a start time';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // End time field
-              TextFormField(
-                controller: _endTimeController,
-                decoration: AppStyles.inputDecoration(
-                  'End Time',
-                  hint: 'HH:MM',
-                  prefixIcon: const Icon(Icons.access_time),
-                ),
-                readOnly: true,
-                onTap: () async {
-                  // Show time picker
-                  final pickedTime = await showTimePicker(
-                    context: context,
-                    initialTime: _endTimeController.text.isNotEmpty
-                        ? TimeOfDay.fromDateTime(_timeFormat.parse(_endTimeController.text))
-                        : TimeOfDay.now(),
-                  );
-
-                  if (pickedTime != null) {
-                    setState(() {
-                      // Format time as HH:MM
-                      _endTimeController.text =
-                          '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
-                    });
-                  }
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select an end time';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Form buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  // Cancel button (only show when editing)
-                  if (_selectedEntry != null)
-                    TextButton(
-                      onPressed: _isSaving ? null : _clearForm,
-                      child: const Text('Cancel'),
-                    ),
-
-                  const SizedBox(width: 16),
-
-                  // Save button
-                  ElevatedButton(
-                    onPressed: _isSaving
-                        ? null
-                        : (_selectedEntry == null ? _addRotaEntry : _updateRotaEntry),
-                    style: AppStyles.primaryButtonStyle,
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(_selectedEntry == null ? 'Add Entry' : 'Update Entry'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        child: WeekPickerWidget(
+          numberOfWeeks: 8,
+          initialWeekIndex: _selectedWeekIndex,
+          onWeekSelected: _onWeekSelected,
         ),
       ),
     );
@@ -761,13 +753,31 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section title
-        const Text(
-          'Rota Entries',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+        // Section title and add button
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Rota Entries',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _showAddEditEntryDialog(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppStyles.primaryColor,
+                foregroundColor: Colors.white,
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add Entry'),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
 
@@ -850,7 +860,7 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
             // Edit button
             IconButton(
               icon: const Icon(Icons.edit),
-              onPressed: () => _editEntry(entry),
+              onPressed: () => _showAddEditEntryDialog(entry: entry),
               tooltip: 'Edit',
               color: AppStyles.primaryColor,
             ),

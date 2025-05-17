@@ -370,14 +370,6 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Select Week',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
               'Each week runs from Sunday to Saturday',
               style: TextStyle(
                 color: AppStyles.secondaryTextColor,
@@ -498,16 +490,19 @@ class _BusinessStaffRotaScreenState extends State<BusinessStaffRotaScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: InkWell(
         onTap: () {
-          // Only proceed if we have selected week data
+          // Ensure we have week data (should always be populated after initial load)
           if (_selectedWeekData == null) {
-            // Show error message
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please select a week first'),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
+            // Generate week data from the current week if not set yet
+            final DateTime now = DateTime.now();
+            final DateTime currentWeekStart = now.subtract(Duration(days: now.weekday % 7));
+            final DateTime currentWeekEnd = currentWeekStart.add(const Duration(days: 6));
+            
+            _selectedWeekData = {
+              'index': 0,
+              'startDate': currentWeekStart,
+              'endDate': currentWeekEnd,
+              'displayText': '${_formatDisplayDate(currentWeekStart)} - ${_formatDisplayDate(currentWeekEnd)}',
+            };
           }
 
           // Navigate to add staff rota screen

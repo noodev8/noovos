@@ -117,18 +117,6 @@ class _WeekPickerWidgetState extends State<WeekPickerWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header text
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Text(
-            'Select Week',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        
         // Current selection text display (more detailed)
         if (_weekOptions.isNotEmpty)
           Padding(
@@ -212,19 +200,6 @@ class _WeekPickerWidgetState extends State<WeekPickerWidget> {
                 ),
               );
             },
-          ),
-        ),
-        
-        // Instruction text
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Text(
-            'Scroll left/right to see more weeks',
-            style: TextStyle(
-              fontSize: 12,
-              fontStyle: FontStyle.italic,
-              color: Colors.grey,
-            ),
           ),
         ),
       ],
