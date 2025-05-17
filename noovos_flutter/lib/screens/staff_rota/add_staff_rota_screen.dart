@@ -12,6 +12,7 @@ import '../../api/get_staff_rota_api.dart';
 import '../../api/add_staff_rota_api.dart';
 import '../../api/update_staff_rota_api.dart';
 import '../../api/delete_staff_rota_api.dart';
+import '../../widgets/week_picker_widget.dart';
 
 class AddStaffRotaScreen extends StatefulWidget {
   // Business details
@@ -63,7 +64,7 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
 
   // Week selection
   int _selectedWeekIndex = 0;
-  List<Map<String, dynamic>> _weekOptions = [];
+  Map<String, dynamic>? _selectedWeekData;
 
   @override
   void initState() {
@@ -71,9 +72,7 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
 
     // Set initial week index from passed data
     _selectedWeekIndex = widget.weekData['index'] ?? 0;
-
-    // Generate week options (in case we want to allow changing weeks)
-    _generateWeekOptions();
+    _selectedWeekData = widget.weekData;
 
     // Load rota entries
     _loadRotaEntries();
@@ -88,37 +87,23 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
     super.dispose();
   }
 
-  // Generate week options
-  void _generateWeekOptions() {
-    // Get current date
-    final now = DateTime.now();
+  // Handle week selection from the WeekPickerWidget
+  void _onWeekSelected(int index, Map<String, dynamic> weekData) {
+    if (index != _selectedWeekIndex || _selectedWeekData != weekData) {
+      setState(() {
+        _selectedWeekIndex = index;
+        _selectedWeekData = weekData;
+      });
 
-    // Find the most recent Sunday (start of week)
-    final currentWeekStart = now.subtract(Duration(days: now.weekday % 7));
-
-    // Generate options for the next 8 weeks
-    _weekOptions = List.generate(8, (index) {
-      // Calculate start and end dates for this week
-      final weekStart = currentWeekStart.add(Duration(days: 7 * index));
-      final weekEnd = weekStart.add(const Duration(days: 6)); // Saturday
-
-      // Format dates for display and API
-      final displayText = '${DateFormat('MMM d').format(weekStart)} - ${DateFormat('MMM d').format(weekEnd)}';
-      final startDate = _dateFormat.format(weekStart);
-      final endDate = _dateFormat.format(weekEnd);
-
-      return {
-        'displayText': displayText,
-        'startDate': startDate,
-        'endDate': endDate,
-      };
-    });
+      // Reload rota entries for the new week
+      _loadRotaEntries();
+    }
   }
 
   // Load rota entries for the selected staff and week
   Future<void> _loadRotaEntries() async {
-    // Don't load if we don't have week options yet
-    if (_weekOptions.isEmpty) {
+    // Don't load if we don't have selected week data
+    if (_selectedWeekData == null) {
       return;
     }
 
@@ -133,8 +118,8 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
       final int staffId = widget.staff['appuser_id'];
 
       // Get date range for the selected week
-      final String startDate = _weekOptions[_selectedWeekIndex]['startDate'];
-      final String endDate = _weekOptions[_selectedWeekIndex]['endDate'];
+      final String startDate = _selectedWeekData!['apiStartDate'] ?? DateFormat('yyyy-MM-dd').format(_selectedWeekData!['startDate']);
+      final String endDate = _selectedWeekData!['apiEndDate'] ?? DateFormat('yyyy-MM-dd').format(_selectedWeekData!['endDate']);
 
       // Call API to get rota entries
       final result = await GetStaffRotaApi.getStaffRota(
@@ -588,28 +573,10 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<int>(
-              decoration: const InputDecoration(
-                labelText: 'Select Week',
-                border: OutlineInputBorder(),
-              ),
-              value: _selectedWeekIndex,
-              items: List.generate(_weekOptions.length, (index) {
-                return DropdownMenuItem<int>(
-                  value: index,
-                  child: Text(_weekOptions[index]['displayText']),
-                );
-              }),
-              onChanged: (value) {
-                if (value != null && value != _selectedWeekIndex) {
-                  setState(() {
-                    _selectedWeekIndex = value;
-                  });
-
-                  // Reload rota entries for the new week
-                  _loadRotaEntries();
-                }
-              },
+            WeekPickerWidget(
+              numberOfWeeks: 8,
+              initialWeekIndex: _selectedWeekIndex,
+              onWeekSelected: _onWeekSelected,
             ),
           ],
         ),
@@ -649,15 +616,15 @@ class _AddStaffRotaScreenState extends State<AddStaffRotaScreen> {
                 readOnly: true,
                 onTap: () async {
                   // Get date range for the selected week
-                  final startDate = _dateFormat.parse(_weekOptions[_selectedWeekIndex]['startDate']);
-                  final endDate = _dateFormat.parse(_weekOptions[_selectedWeekIndex]['endDate']);
+                  final DateTime startDate = _selectedWeekData!['startDate'];
+                  final DateTime endDate = _selectedWeekData!['endDate'];
 
                   // Show date picker
                   final pickedDate = await showDatePicker(
                     context: context,
                     initialDate: _dateController.text.isNotEmpty
                         ? _dateFormat.parse(_dateController.text)
-                        : startDate,
+                        : DateTime.now().isBefore(startDate) ? startDate : DateTime.now().isAfter(endDate) ? endDate : DateTime.now(),
                     firstDate: startDate,
                     lastDate: endDate,
                   );
