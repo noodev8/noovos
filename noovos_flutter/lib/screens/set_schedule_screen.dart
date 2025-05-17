@@ -10,6 +10,7 @@ Features:
 
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
+import '../api/set_staff_schedule_api.dart';  // Import the API
 
 class SetScheduleScreen extends StatefulWidget {
   // Staff and business details
@@ -45,13 +46,13 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
   final List<Map<String, bool>> workingDays = List.generate(
     4,
     (_) => {
-      'MON': false,
-      'TUE': false,
-      'WED': false,
-      'THU': false,
-      'FRI': false,
-      'SAT': false,
-      'SUN': false,
+      'Monday': false,
+      'Tuesday': false,
+      'Wednesday': false,
+      'Thursday': false,
+      'Friday': false,
+      'Saturday': false,
+      'Sunday': false,
     },
   );
 
@@ -59,13 +60,13 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
   final List<Map<String, Map<String, TimeOfDay>>> workingHours = List.generate(
     4,
     (_) => {
-      'MON': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
-      'TUE': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
-      'WED': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
-      'THU': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
-      'FRI': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
-      'SAT': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
-      'SUN': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
+      'Monday': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
+      'Tuesday': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
+      'Wednesday': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
+      'Thursday': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
+      'Friday': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
+      'Saturday': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
+      'Sunday': {'start': const TimeOfDay(hour: 9, minute: 0), 'end': const TimeOfDay(hour: 17, minute: 0)},
     },
   );
 
@@ -73,13 +74,13 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
   final List<Map<String, List<Map<String, TimeOfDay?>>>> breakTimes = List.generate(
     4,
     (_) => {
-      'MON': [],
-      'TUE': [],
-      'WED': [],
-      'THU': [],
-      'FRI': [],
-      'SAT': [],
-      'SUN': [],
+      'Monday': [],
+      'Tuesday': [],
+      'Wednesday': [],
+      'Thursday': [],
+      'Friday': [],
+      'Saturday': [],
+      'Sunday': [],
     },
   );
 
@@ -298,12 +299,24 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
               children: [
                 const Icon(Icons.calendar_today),
                 const SizedBox(width: 8),
-                Text(
-                  endDate != null
-                      ? '${endDate!.day}/${endDate!.month}/${endDate!.year}'
-                      : 'Select end date',
-                  style: AppStyles.bodyStyle,
+                Expanded(
+                  child: Text(
+                    endDate != null
+                        ? '${endDate!.day}/${endDate!.month}/${endDate!.year}'
+                        : 'Select end date',
+                    style: AppStyles.bodyStyle,
+                  ),
                 ),
+                if (endDate != null)
+                  IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    onPressed: () {
+                      setState(() => endDate = null);
+                    },
+                    tooltip: 'Clear date',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
               ],
             ),
           ),
@@ -598,14 +611,226 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
 
         // Save button
         ElevatedButton(
-          onPressed: () {
-            // TODO: Implement save functionality
-            Navigator.of(context).pop();
+          onPressed: () async {
+            if (startDate == null) {
+              // Show error if start date is not selected
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Please select a start date'),
+                  backgroundColor: Colors.red.shade700,
+                ),
+              );
+              return;
+            }
+
+            // Check if at least one day is selected in any week
+            bool hasDaysSelected = false;
+            final int weeks = numberOfWeeks;
+            
+            for (int i = 0; i < weeks; i++) {
+              final daysInWeek = workingDays[i];
+              if (daysInWeek.values.contains(true)) {
+                hasDaysSelected = true;
+                break;
+              }
+            }
+
+            if (!hasDaysSelected) {
+              // Show error if no working days are selected
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Please select at least one working day'),
+                  backgroundColor: Colors.red.shade700,
+                ),
+              );
+              return;
+            }
+
+            // Prepare schedule entries
+            final schedule = _prepareScheduleData();
+            
+            // Extract business and staff IDs, ensuring they are integers
+            int businessId;
+            int staffId;
+            
+            try {
+              // Get business ID, handle both int and String types
+              if (widget.business['id'] is int) {
+                businessId = widget.business['id'];
+              } else if (widget.business['id'] is String) {
+                businessId = int.parse(widget.business['id']);
+              } else {
+                throw Exception('Business ID not found or invalid type');
+              }
+              
+              // Get staff ID from appuser_id field, handle both int and String types
+              if (widget.staff['appuser_id'] is int) {
+                staffId = widget.staff['appuser_id'];
+              } else if (widget.staff['appuser_id'] is String) {
+                staffId = int.parse(widget.staff['appuser_id']);
+              } else {
+                // Try user_id as fallback
+                if (widget.staff['user_id'] is int) {
+                  staffId = widget.staff['user_id'];
+                } else if (widget.staff['user_id'] is String) {
+                  staffId = int.parse(widget.staff['user_id']);
+                } else {
+                  throw Exception('Staff ID not found (looking for appuser_id or user_id field)');
+                }
+              }
+              
+              // Log the IDs for debugging
+              print('Using Business ID: $businessId, Staff ID: $staffId');
+              print('Staff keys available: ${widget.staff.keys.toList()}');
+              print('Business keys available: ${widget.business.keys.toList()}');
+              
+              // Print full staff and business objects for debugging
+              print('Full staff object: ${widget.staff}');
+              print('Full business object: ${widget.business}');
+              
+              // Show loading indicator
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(child: CircularProgressIndicator()),
+              );
+              
+              try {
+                // Get repeat frequency from schedule type
+                int repeatEveryNWeeks = 1;
+                if (selectedScheduleType != 'Every week') {
+                  // Extract number from strings like "Every 2 weeks"
+                  final match = RegExp(r'Every (\d+) weeks').firstMatch(selectedScheduleType);
+                  repeatEveryNWeeks = match != null ? int.parse(match.group(1)!) : 1;
+                }
+                
+                // Call API to save schedule
+                final result = await SetStaffScheduleApi.setStaffSchedule(
+                  businessId: businessId,
+                  staffId: staffId,
+                  schedule: schedule,
+                  force: repeatEveryNWeeks > 1, // Force bypass conflict check for multi-week schedules
+                );
+                
+                // Close loading indicator
+                Navigator.of(context).pop();
+                
+                if (result['success']) {
+                  // Show success message and return to previous screen
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result['message'] ?? 'Schedule saved successfully'),
+                      backgroundColor: Colors.green.shade700,
+                    ),
+                  );
+                  Navigator.of(context).pop(true); // Return success result
+                } else {
+                  // Show error message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result['message'] ?? 'Failed to save schedule'),
+                      backgroundColor: Colors.red.shade700,
+                    ),
+                  );
+                  
+                  // Log detailed error information
+                  print('API Error - Return Code: ${result['return_code']}');
+                  print('API Error - Message: ${result['message']}');
+                }
+              } catch (e) {
+                // Close loading indicator and show error
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('An error occurred: $e'),
+                    backgroundColor: Colors.red.shade700,
+                  ),
+                );
+              }
+            } catch (e) {
+              // Show error for ID parsing
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error with business or staff ID: $e'),
+                  backgroundColor: Colors.red.shade700,
+                ),
+              );
+            }
           },
           style: AppStyles.primaryButtonStyle,
           child: const Text('Save Schedule'),
         ),
       ],
     );
+  }
+  
+  // Prepare schedule data for API
+  List<Map<String, dynamic>> _prepareScheduleData() {
+    final List<Map<String, dynamic>> scheduleEntries = [];
+    final int weeks = numberOfWeeks;
+    
+    // Get repeat frequency from schedule type
+    int repeatEveryNWeeks = 1;
+    if (selectedScheduleType != 'Every week') {
+      // Extract number from strings like "Every 2 weeks"
+      final match = RegExp(r'Every (\d+) weeks').firstMatch(selectedScheduleType);
+      repeatEveryNWeeks = match != null ? int.parse(match.group(1)!) : 1;
+    }
+    
+    // Format dates to YYYY-MM-DD
+    final String formattedStartDate = '${startDate!.year}-${startDate!.month.toString().padLeft(2, '0')}-${startDate!.day.toString().padLeft(2, '0')}';
+    
+    // Format end date if it exists
+    String? formattedEndDate;
+    if (endDate != null) {
+      formattedEndDate = '${endDate!.year}-${endDate!.month.toString().padLeft(2, '0')}-${endDate!.day.toString().padLeft(2, '0')}';
+    }
+    
+    // Process each week's schedule
+    for (int weekIndex = 0; weekIndex < weeks; weekIndex++) {
+      // Loop through each day of the week
+      workingDays[weekIndex].forEach((day, isSelected) {
+        // Only add days that are selected as working days
+        if (isSelected) {
+          // Format times to HH:MM
+          final startHour = workingHours[weekIndex][day]!['start']!.hour.toString().padLeft(2, '0');
+          final startMinute = workingHours[weekIndex][day]!['start']!.minute.toString().padLeft(2, '0');
+          final endHour = workingHours[weekIndex][day]!['end']!.hour.toString().padLeft(2, '0');
+          final endMinute = workingHours[weekIndex][day]!['end']!.minute.toString().padLeft(2, '0');
+          
+          final String formattedStartTime = '$startHour:$startMinute';
+          final String formattedEndTime = '$endHour:$endMinute';
+          
+          // Create schedule entry
+          final Map<String, dynamic> entry = {
+            'day_of_week': day,
+            'start_time': formattedStartTime,
+            'end_time': formattedEndTime,
+            'start_date': formattedStartDate,
+            'repeat_every_n_weeks': repeatEveryNWeeks,
+          };
+
+          // For multi-week schedules, add offset to the start date based on the week index
+          if (repeatEveryNWeeks > 1 && weekIndex > 0) {
+            // Calculate the offset date by adding (weekIndex * 7) days to the start date
+            final offsetStartDate = startDate!.add(Duration(days: weekIndex * 7));
+            final String formattedOffsetStartDate = 
+                '${offsetStartDate.year}-${offsetStartDate.month.toString().padLeft(2, '0')}-${offsetStartDate.day.toString().padLeft(2, '0')}';
+            
+            entry['start_date'] = formattedOffsetStartDate;
+          }
+          
+          // Add end date if specified
+          if (formattedEndDate != null) {
+            entry['end_date'] = formattedEndDate;
+          }
+          
+          // Add entry to schedule list
+          scheduleEntries.add(entry);
+        }
+      });
+    }
+    
+    return scheduleEntries;
   }
 } 

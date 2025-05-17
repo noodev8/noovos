@@ -22,7 +22,8 @@ Request Payload:
       "repeat_every_n_weeks": 1       // integer, optional - Repeat frequency in weeks
     },
     ...
-  ]
+  ],
+  "force": false                    // boolean, optional - Bypass schedule overlap checks
 }
 
 Success Response:
@@ -130,7 +131,7 @@ router.post('/', verifyToken, async (req, res) => {
         const userId = req.user.id;
 
         // Extract parameters from request body
-        const { business_id, staff_id, schedule } = req.body;
+        const { business_id, staff_id, schedule, force } = req.body;
 
         // Validate required fields
         if (!business_id) {
@@ -253,33 +254,57 @@ router.post('/', verifyToken, async (req, res) => {
             }
 
             // Check for overlapping schedules within the same request
-            // Group schedules by day
-            const schedulesByDay = {};
-            for (const entry of schedule) {
-                if (!schedulesByDay[entry.day_of_week]) {
-                    schedulesByDay[entry.day_of_week] = [];
-                }
-                schedulesByDay[entry.day_of_week].push({
-                    start: parseTimeToMinutes(entry.start_time),
-                    end: parseTimeToMinutes(entry.end_time),
-                    startTime: entry.start_time,
-                    endTime: entry.end_time
-                });
-            }
-
-            // Check each day's schedules for overlaps
-            for (const [day, times] of Object.entries(schedulesByDay)) {
-                // Sort by start time to make overlap checking easier
-                times.sort((a, b) => a.start - b.start);
+            // Skip if force parameter is true (used for multi-week schedules)
+            if (!force) {
+                // Group schedules by day and repeat week pattern
+                const schedulesByDayAndWeek = {};
                 
-                // Check consecutive pairs for overlap
-                for (let i = 0; i < times.length - 1; i++) {
-                    if (times[i].end > times[i + 1].start) {
-                        await client.query('ROLLBACK');
-                        return res.status(400).json({
-                            return_code: "SCHEDULE_OVERLAP",
-                            message: `Schedule entries overlap on ${day} between ${times[i].startTime}-${times[i].endTime} and ${times[i + 1].startTime}-${times[i + 1].endTime}`
-                        });
+                for (const entry of schedule) {
+                    // Create a key that combines day_of_week with repeat pattern information
+                    const repeatWeeks = entry.repeat_every_n_weeks || 1;
+                    
+                    // Parse the week offset from the start date (for multi-week schedules)
+                    let weekOffset = 0;
+                    if (repeatWeeks > 1) {
+                        const startDate = new Date(entry.start_date);
+                        const baseDate = new Date(schedule[0].start_date); // Use first entry as reference
+                        const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+                        const weeksDiff = Math.round((startDate - baseDate) / msPerWeek);
+                        weekOffset = weeksDiff % repeatWeeks;
+                    }
+                    
+                    // Create a key that includes the day and its position in the repeat cycle
+                    const key = `${entry.day_of_week}_week${weekOffset}_repeat${repeatWeeks}`;
+                    
+                    if (!schedulesByDayAndWeek[key]) {
+                        schedulesByDayAndWeek[key] = [];
+                    }
+                    
+                    schedulesByDayAndWeek[key].push({
+                        start: parseTimeToMinutes(entry.start_time),
+                        end: parseTimeToMinutes(entry.end_time),
+                        startTime: entry.start_time,
+                        endTime: entry.end_time,
+                        repeat: repeatWeeks,
+                        offset: weekOffset
+                    });
+                }
+
+                // Check each day/week pattern group for overlaps
+                for (const [key, times] of Object.entries(schedulesByDayAndWeek)) {
+                    // Sort by start time to make overlap checking easier
+                    times.sort((a, b) => a.start - b.start);
+                    
+                    // Check consecutive pairs for overlap
+                    for (let i = 0; i < times.length - 1; i++) {
+                        if (times[i].end > times[i + 1].start) {
+                            await client.query('ROLLBACK');
+                            const [day] = key.split('_');
+                            return res.status(400).json({
+                                return_code: "SCHEDULE_OVERLAP",
+                                message: `Schedule entries overlap on ${day} between ${times[i].startTime}-${times[i].endTime} and ${times[i + 1].startTime}-${times[i + 1].endTime}`
+                            });
+                        }
                     }
                 }
             }
