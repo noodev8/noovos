@@ -19,7 +19,7 @@ Request Payload:
       "end_time": "17:00",            // string, required - End time in 24hr format (HH:MM)
       "start_date": "2023-06-01",     // string, required - Start date (YYYY-MM-DD)
       "end_date": "2023-12-31",       // string, optional - End date (YYYY-MM-DD)
-      "repeat_every_n_weeks": 1       // integer, optional - Repeat frequency in weeks
+      "week": 1                      // integer, optional - Week in the rotation (1 or 2)
     },
     ...
   ],
@@ -110,15 +110,26 @@ function isDateInSchedule(date, schedule) {
         return false;
     }
 
-    // Check repeat pattern if specified
-    if (schedule.repeat_every_n_weeks) {
-        // Calculate weeks between schedule start date and current date
-        const msPerDay = 24 * 60 * 60 * 1000;
-        const daysDiff = Math.round(Math.abs(date - scheduleStartDate) / msPerDay);
-        const weeksDiff = Math.floor(daysDiff / 7);
-
-        // Only include dates that match the repeat pattern
-        return (weeksDiff % schedule.repeat_every_n_weeks === 0);
+    // Check week pattern if specified
+    if (schedule.week) {
+        // Get the ISO week number for the date
+        const getISOWeek = (date) => {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            // Thursday in current week decides the year
+            d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+            // January 4 is always in week 1
+            const week1 = new Date(d.getFullYear(), 0, 4);
+            // Adjust to Thursday in week 1
+            week1.setDate(week1.getDate() + 3 - (week1.getDay() + 6) % 7);
+            // Calculate full weeks to nearest Thursday
+            return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+        };
+        
+        const currentWeek = getISOWeek(date);
+        
+        // Only include dates where the week matches the schedule's week
+        return (currentWeek % 2 === schedule.week % 2);
     }
 
     return true;

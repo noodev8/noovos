@@ -266,7 +266,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
         }
 
         if (_repeatController.text.isNotEmpty) {
-          updatedEntry['repeat_every_n_weeks'] = int.tryParse(_repeatController.text) ?? 1;
+          updatedEntry['week'] = int.tryParse(_repeatController.text) ?? 1;
         }
 
         // Add to pending changes
@@ -327,7 +327,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
         }
 
         if (_repeatController.text.isNotEmpty) {
-          newEntry['repeat_every_n_weeks'] = int.tryParse(_repeatController.text) ?? 1;
+          newEntry['week'] = int.tryParse(_repeatController.text) ?? 1;
         }
 
         // Add to pending changes
@@ -448,7 +448,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
         }
 
         if (_repeatController.text.isNotEmpty) {
-          newEntry['repeat_every_n_weeks'] = int.tryParse(_repeatController.text) ?? 1;
+          newEntry['week'] = int.tryParse(_repeatController.text) ?? 1;
         }
 
         // Add to pending changes
@@ -500,7 +500,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
               'end_time': conflict['end_time'],
               'start_date': conflict['start_date'],
               'end_date': conflict['end_date'],
-              'repeat_every_n_weeks': conflict['repeat_every_n_weeks'],
+              'week': conflict['week'],
               'pending': true,
               'action': 'delete',
               'original': Map<String, dynamic>.from(conflict),
@@ -536,7 +536,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
         }
 
         if (_repeatController.text.isNotEmpty) {
-          newEntry['repeat_every_n_weeks'] = int.tryParse(_repeatController.text) ?? 1;
+          newEntry['week'] = int.tryParse(_repeatController.text) ?? 1;
         }
 
         // Add to pending changes
@@ -598,7 +598,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
             'end_time': entry['end_time'],
             'start_date': entry['start_date'],
             'end_date': entry['end_date'],
-            'repeat_every_n_weeks': entry['repeat_every_n_weeks'],
+            'week': entry['week'],
           });
         }
       }
@@ -622,8 +622,8 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
           scheduleEntry['end_date'] = entry['end_date'];
         }
 
-        if (entry['repeat_every_n_weeks'] != null) {
-          scheduleEntry['repeat_every_n_weeks'] = entry['repeat_every_n_weeks'];
+        if (entry['week'] != null) {
+          scheduleEntry['week'] = entry['week'];
         }
 
         schedule.add(scheduleEntry);
@@ -763,7 +763,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
         'end_time': entry['end_time'],
         'start_date': entry['start_date'],
         'end_date': entry['end_date'],
-        'repeat_every_n_weeks': entry['repeat_every_n_weeks'],
+        'week': entry['week'],
         'pending': true,
         'action': 'delete',
         'original': Map<String, dynamic>.from(entry),
@@ -803,7 +803,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
       _endTimeController.text = entry['end_time'];
       _startDateController.text = entry['start_date'];
       _endDateController.text = entry['end_date'] ?? '';
-      _repeatController.text = entry['repeat_every_n_weeks']?.toString() ?? '1';
+      _repeatController.text = entry['week']?.toString() ?? '1';
     });
 
     // Scroll to form
@@ -1631,8 +1631,8 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
 
     // Format repeat text
     String repeatText = '';
-    if (entry['repeat_every_n_weeks'] != null) {
-      final int repeatWeeks = entry['repeat_every_n_weeks'];
+    if (entry['week'] != null) {
+      final int repeatWeeks = entry['week'];
       repeatText = repeatWeeks == 1
           ? 'Weekly'
           : 'Every $repeatWeeks weeks';
