@@ -877,15 +877,6 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
                 }
               }
               
-              // Log the IDs for debugging
-              print('Using Business ID: $businessId, Staff ID: $staffId');
-              print('Staff keys available: ${widget.staff.keys.toList()}');
-              print('Business keys available: ${widget.business.keys.toList()}');
-              
-              // Print full staff and business objects for debugging
-              print('Full staff object: ${widget.staff}');
-              print('Full business object: ${widget.business}');
-              
               // Show loading indicator
               showDialog(
                 context: context,
@@ -925,10 +916,6 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
                       backgroundColor: Colors.red.shade700,
                     ),
                   );
-                  
-                  // Log detailed error information
-                  print('API Error - Return Code: ${result['return_code']}');
-                  print('API Error - Message: ${result['message']}');
                 }
               } catch (e) {
                 // Close loading indicator and show error
