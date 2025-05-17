@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 import '../api/set_staff_schedule_api.dart';  // Import the API
 import '../api/get_staff_schedule_api.dart';  // Import the GET API
+import '../api/create_auto_staff_rota_api.dart';  // Import the auto rota API
 
 class SetScheduleScreen extends StatefulWidget {
   // Staff and business details
@@ -900,6 +901,18 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
                 Navigator.of(context).pop();
                 
                 if (result['success']) {
+                  // Call create_auto_staff_rota API
+                  try {
+                    await CreateAutoStaffRotaApi.createAutoStaffRota(
+                      businessId: businessId,
+                      staffId: staffId,
+                    );
+                    // We don't need to handle the result here as we already have the schedule saved successfully
+                  } catch (e) {
+                    // Just log the error, don't show to user since the main operation succeeded
+                    // This is a follow-up operation so we don't want to confuse the user
+                  }
+                  
                   // Show success message and return to previous screen
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
