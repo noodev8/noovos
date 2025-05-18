@@ -68,7 +68,9 @@ class _ManageServiceStaffScreenState extends State<ManageServiceStaffScreen> {
           _errorMessage = currentStaffResponse['message'] ?? 'Failed to load current staff';
         }
         if (availableStaffResponse['success']) {
-          _availableStaff = List<Map<String, dynamic>>.from(availableStaffResponse['staff'] ?? []);
+          // Filter out staff with 'pending' status
+          _availableStaff = List<Map<String, dynamic>>.from(availableStaffResponse['staff'] ?? [])
+            .where((staff) => staff['status'] != 'pending').toList();
         } else {
           _errorMessage = availableStaffResponse['message'] ?? 'Failed to load available staff';
         }

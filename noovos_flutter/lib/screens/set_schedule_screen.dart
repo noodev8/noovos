@@ -929,7 +929,6 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
                     print('Booking integrity check result: $bookingIntegrityResult');
                     
                     // Only return to previous screen if no orphaned bookings or after showing the dialog
-                    bool hasShownDialog = false;
                     
                     if (bookingIntegrityResult['success'] == true && 
                         bookingIntegrityResult['count'] > 0) {
@@ -940,7 +939,6 @@ class _SetScheduleScreenState extends State<SetScheduleScreen> {
                       
                       // Display alert dialog with up to 3 orphaned bookings
                       if (context.mounted && orphanedBookings.isNotEmpty) {
-                        hasShownDialog = true;
                         
                         // Build the message content
                         final messageBuilder = StringBuffer();
