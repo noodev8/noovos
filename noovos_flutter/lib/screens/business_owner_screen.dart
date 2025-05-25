@@ -7,7 +7,6 @@ Provides access to business management features like staff management
 
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
-import '../helpers/auth_helper.dart';
 import '../helpers/image_helper.dart';
 import '../api/get_user_businesses_api.dart';
 import 'business_staff_management_screen.dart';
@@ -74,12 +73,9 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
     }
   }
 
-  // Handle logout
-  Future<void> _handleLogout() async {
-    await AuthHelper.logout();
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/dashboard');
-    }
+  // Handle profile navigation
+  void _handleProfile() {
+    Navigator.pushNamed(context, '/profile');
   }
 
   // Switch to customer mode
@@ -101,11 +97,11 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
             label: const Text('Search', style: TextStyle(color: Colors.white)),
             onPressed: _switchToCustomerMode,
           ),
-          // Logout button
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _handleLogout,
-            tooltip: 'Logout',
+          // Profile button
+          TextButton.icon(
+            icon: const Icon(Icons.person, color: Colors.white),
+            label: const Text('Profile', style: TextStyle(color: Colors.white)),
+            onPressed: _handleProfile,
           ),
         ],
       ),

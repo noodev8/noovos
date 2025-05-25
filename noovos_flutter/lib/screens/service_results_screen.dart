@@ -9,6 +9,7 @@ import '../styles/app_styles.dart';
 import '../api/search_service_api.dart';
 import '../helpers/image_helper.dart';
 import '../helpers/cart_helper.dart';
+import '../helpers/auth_helper.dart';
 import 'service_details_screen.dart';
 import 'staff_selection_screen.dart';
 
@@ -47,6 +48,9 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
   // Category data (if in category mode)
   Map<String, dynamic>? _categoryData;
 
+  // Login status
+  bool _isLoggedIn = false;
+
   @override
   void initState() {
     super.initState();
@@ -54,8 +58,36 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
     // Determine if we're in search mode or category mode
     _isSearchMode = widget.searchTerm != null;
 
+    // Check login status
+    _checkLoginStatus();
+
     // Load services
     _loadServices();
+  }
+
+  // Check if user is logged in
+  Future<void> _checkLoginStatus() async {
+    try {
+      final isLoggedIn = await AuthHelper.isLoggedIn();
+      setState(() {
+        _isLoggedIn = isLoggedIn;
+      });
+    } catch (e) {
+      // Handle error silently
+      setState(() {
+        _isLoggedIn = false;
+      });
+    }
+  }
+
+  // Handle profile navigation
+  void _handleProfile() {
+    Navigator.pushNamed(context, '/profile');
+  }
+
+  // Handle login navigation
+  void _handleLogin() {
+    Navigator.pushNamed(context, '/login');
   }
 
   // Load services based on search term or category
@@ -621,6 +653,19 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
         backgroundColor: AppStyles.primaryColor,
         foregroundColor: Colors.white,
         actions: [
+          // Profile or Login button
+          _isLoggedIn
+              ? TextButton.icon(
+                  icon: const Icon(Icons.person, color: Colors.white),
+                  label: const Text('Profile', style: TextStyle(color: Colors.white)),
+                  onPressed: _handleProfile,
+                )
+              : TextButton.icon(
+                  icon: const Icon(Icons.login, color: Colors.white),
+                  label: const Text('Login', style: TextStyle(color: Colors.white)),
+                  onPressed: _handleLogin,
+                ),
+
           // Cart icon
           Stack(
             alignment: Alignment.center,

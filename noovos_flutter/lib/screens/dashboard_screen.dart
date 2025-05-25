@@ -149,32 +149,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // Handle logout
-  Future<void> _handleLogout() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await AuthHelper.logout();
-
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error logging out: $e'),
-            backgroundColor: AppStyles.errorColor,
-          ),
-        );
-      }
-    }
+  // Handle profile navigation
+  void _handleProfile() {
+    Navigator.pushNamed(context, '/profile');
   }
 
   // Handle search
@@ -268,16 +245,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: _switchToBusinessOwnerMode,
             ),
 
-          // Show login or logout button based on login status
+          // Show profile or login button based on login status
           _isLoggedIn
-              ? IconButton(
-                  icon: const Icon(Icons.logout),
-                  onPressed: _handleLogout,
-                  tooltip: 'Logout',
-                )
-              : TextButton.icon(
+              ? TextButton.icon(
                   icon: const Icon(Icons.person, color: Colors.white),
                   label: const Text('Profile', style: TextStyle(color: Colors.white)),
+                  onPressed: _handleProfile,
+                )
+              : TextButton.icon(
+                  icon: const Icon(Icons.login, color: Colors.white),
+                  label: const Text('Login', style: TextStyle(color: Colors.white)),
                   onPressed: _handleLogin,
                 ),
         ],
