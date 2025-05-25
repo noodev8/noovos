@@ -84,9 +84,9 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
 
       // Check if registration was successful
       if (result['success']) {
-        // Navigate to dashboard
+        // Show success message and option to verify email
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/dashboard');
+          _showRegistrationSuccessDialog();
         }
       } else {
         // Show error message
@@ -115,6 +115,58 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
         });
       }
     }
+  }
+
+  // Show registration success dialog with email verification option
+  void _showRegistrationSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Registration Successful!'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.check_circle,
+                color: Colors.green,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Welcome! Your account has been created successfully.',
+                textAlign: TextAlign.center,
+                style: AppStyles.subheadingStyle,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'We\'ve sent a verification email to ${_emailController.text.trim()}. Please check your email to verify your account.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.pushReplacementNamed(context, '/email-verification',
+                  arguments: {'email': _emailController.text.trim()});
+              },
+              child: const Text('Verify Email'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.pushReplacementNamed(context, '/dashboard');
+              },
+              child: const Text('Skip for Now'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override

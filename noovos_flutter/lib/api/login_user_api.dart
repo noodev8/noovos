@@ -42,6 +42,7 @@ class LoginUserApi {
           'success': false,
           'message': responseData['message'] ?? 'Login failed',
           'return_code': responseData['return_code'] ?? 'UNKNOWN_ERROR',
+          'email': responseData['email'], // Include email for EMAIL_NOT_VERIFIED case
         };
       }
     } catch (e) {

@@ -52,6 +52,8 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
         return 'Please enter both email and password';
       case 'INVALID_CREDENTIALS':
         return 'Invalid email or password. Please try again.';
+      case 'EMAIL_NOT_VERIFIED':
+        return 'Please verify your email address before logging in.';
       case 'SERVER_ERROR':
         return 'Server error. Please try again later.';
       default:
@@ -110,6 +112,11 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
           setState(() {
             _errorMessage = _getUserFriendlyErrorMessage(errorCode, defaultMessage);
           });
+
+          // If email is not verified, show verification options
+          if (errorCode == 'EMAIL_NOT_VERIFIED') {
+            _showEmailVerificationDialog(result['email'] ?? _emailController.text.trim());
+          }
         }
       }
     } catch (e) {
@@ -133,6 +140,60 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
   // Navigate to dashboard
   void _navigateToDashboard() {
     Navigator.pushReplacementNamed(context, '/dashboard');
+  }
+
+  // Show email verification dialog with options
+  void _showEmailVerificationDialog(String email) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Email Verification Required'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.email_outlined,
+                color: AppStyles.primaryColor,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Your email address needs to be verified before you can log in.',
+                textAlign: TextAlign.center,
+                style: AppStyles.subheadingStyle,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Email: $email',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.pushNamed(context, '/email-verification',
+                  arguments: {'email': email});
+              },
+              child: const Text('Verify Email'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Handle secret logo tap for developer screen access
@@ -300,7 +361,19 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
                           )
                         : const Text('Login'),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 15),
+
+                  // Forgot password link
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/forgot-password');
+                    },
+                    child: const Text(
+                      'Forgot Password?',
+                      style: TextStyle(color: AppStyles.primaryColor),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
 
                   // Register link
                   Row(

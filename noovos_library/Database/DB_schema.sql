@@ -5,7 +5,7 @@
 -- Dumped from database version 11.18 (Debian 11.18-0+deb10u1)
 -- Dumped by pg_dump version 17.4
 
--- Started on 2025-05-17 12:32:11
+-- Started on 2025-05-25 18:35:23
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -84,7 +84,11 @@ CREATE TABLE public.app_user (
     postcode character varying(20),
     country character varying(100),
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    email_verified boolean,
+    verification_token character varying(64),
+    verification_expires timestamp with time zone,
+    accessed timestamp with time zone
 );
 
 
@@ -2169,7 +2173,7 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.staff_rota TO PUBLIC;
 
 
--- Completed on 2025-05-17 12:32:13
+-- Completed on 2025-05-25 18:35:25
 
 --
 -- PostgreSQL database dump complete

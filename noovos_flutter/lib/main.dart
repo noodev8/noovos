@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/login_user_screen.dart';
 import 'screens/register_user_screen.dart';
+import 'screens/forgot_password_screen.dart';
+import 'screens/reset_password_screen.dart';
+import 'screens/email_verification_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/business_owner_screen.dart';
 //import 'screens/business_staff_management_screen.dart';
@@ -111,6 +114,9 @@ class _MyAppState extends State<MyApp> {
       routes: {
         '/login': (context) => const LoginUserScreen(),
         '/register': (context) => const RegisterUserScreen(),
+        '/forgot-password': (context) => const ForgotPasswordScreen(),
+        '/reset-password': (context) => const ResetPasswordScreen(),
+        '/email-verification': (context) => const EmailVerificationScreen(),
         '/dashboard': (context) => const DashboardScreen(),
         '/business_owner': (context) => const BusinessOwnerScreen(),
         '/cart': (context) => const CartScreen(),

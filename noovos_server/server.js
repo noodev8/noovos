@@ -28,6 +28,11 @@ const pool = require('./db');
 // Import routes
 const login_user = require('./routes/login_user');
 const register_user = require('./routes/register_user');
+const reset_password = require('./routes/reset_password');
+const verify_email = require('./routes/verify_email');
+const resend_verification = require('./routes/resend_verification');
+const web_verify_email = require('./routes/web_verify_email');
+const web_reset_password = require('./routes/web_reset_password');
 const search_business = require('./routes/search_business');
 const get_categories = require('./routes/get_categories');
 //const search_category_service = require('./routes/search_category_service');
@@ -63,6 +68,11 @@ const check_booking_integrity = require('./routes/check_booking_integrity');
 // Set up routes
 app.use('/login_user', login_user);
 app.use('/register_user', register_user);
+app.use('/reset_password', reset_password);
+app.use('/verify_email', verify_email);
+app.use('/resend_verification', resend_verification);
+app.use('/verify-email', web_verify_email);
+app.use('/reset-password', web_reset_password);
 app.use('/search_business', search_business);
 app.use('/get_categories', get_categories);
 //app.use('/search_category_service', search_category_service);

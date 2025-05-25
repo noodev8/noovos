@@ -39,6 +39,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
+const { generateToken, sendVerificationEmail } = require('../utils/email_service');
 
 // POST /register_user
 router.post('/', async (req, res) => {
@@ -71,17 +72,39 @@ router.post('/', async (req, res) => {
         const saltRounds = 10;
         const passwordHash = await bcrypt.hash(password, saltRounds);
 
-        // Insert the new user into the database
+        // Generate email verification token
+        const verificationToken = generateToken(32);
+
+        // Set token expiration to 24 hours from now
+        const tokenExpiration = new Date();
+        tokenExpiration.setHours(tokenExpiration.getHours() + 24);
+
+        // Insert the new user into the database with verification fields
         const newUserQuery = await pool.query(
             `INSERT INTO app_user
-            (first_name, last_name, email, mobile, password_hash)
-            VALUES ($1, $2, $3, $4, $5)
+            (first_name, last_name, email, mobile, password_hash, email_verified, verification_token, verification_expires)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *`,
-            [first_name, last_name, email, mobile || null, passwordHash]
+            [first_name, last_name, email, mobile || null, passwordHash, false, verificationToken, tokenExpiration]
         );
 
         // Get the newly created user
         const newUser = newUserQuery.rows[0];
+
+        // Send verification email
+        try {
+            await sendVerificationEmail(
+                newUser.email,
+                `${newUser.first_name} ${newUser.last_name}`,
+                verificationToken
+            );
+
+            console.log(`Verification email sent to: ${newUser.email}`);
+        } catch (emailError) {
+            console.error("Error sending verification email:", emailError);
+            // Continue with registration even if email fails
+            // User can request resend later
+        }
 
         // Generate JWT token
         const token = jwt.sign(
@@ -101,8 +124,10 @@ router.post('/', async (req, res) => {
                 id: newUser.id,
                 name: `${newUser.first_name} ${newUser.last_name}`,
                 email: newUser.email,
+                email_verified: newUser.email_verified,
                 account_level: 'standard'  // Default account level
-            }
+            },
+            message: "Registration successful. Please check your email to verify your account."
         });
 
     } catch (error) {
