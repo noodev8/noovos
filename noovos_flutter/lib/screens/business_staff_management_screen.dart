@@ -18,6 +18,7 @@ import '../api/remove_staff_api.dart';
 import 'staff_rota/business_staff_rota_screen.dart';
 import 'set_schedule_screen.dart';
 import 'select_service_screen.dart';
+import 'service_management_screen.dart';
 
 class BusinessStaffManagementScreen extends StatefulWidget {
   // Business details
@@ -411,6 +412,45 @@ class _BusinessStaffManagementScreenState extends State<BusinessStaffManagementS
                       style: AppStyles.primaryButtonStyle,
                       icon: const Icon(Icons.assignment_ind),
                       label: const Text('Manage Service Staff'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Service Management Button
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Service Management', style: AppStyles.subheadingStyle),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Add, edit, and manage services offered by your business',
+                    style: AppStyles.bodyStyle,
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ServiceManagementScreen(
+                              business: widget.business,
+                            ),
+                          ),
+                        );
+                      },
+                      style: AppStyles.primaryButtonStyle,
+                      icon: const Icon(Icons.business_center),
+                      label: const Text('Manage Services'),
                     ),
                   ),
                 ],

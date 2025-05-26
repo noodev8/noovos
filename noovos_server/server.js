@@ -68,6 +68,9 @@ const create_booking = require('./routes/create_booking');
 const manage_staff_to_service = require('./routes/manage_staff_to_service');
 const get_business_services = require('./routes/get_business_services');
 const check_booking_integrity = require('./routes/check_booking_integrity');
+const create_service = require('./routes/create_service');
+const update_service = require('./routes/update_service');
+const delete_service = require('./routes/delete_service');
 
 // Set up routes
 app.use('/login_user', login_user);
@@ -112,6 +115,9 @@ app.use('/create_booking', create_booking);
 app.use('/manage_staff_to_service', manage_staff_to_service);
 app.use('/get_business_services', get_business_services);
 app.use('/check_booking_integrity', check_booking_integrity);
+app.use('/create_service', create_service);
+app.use('/update_service', update_service);
+app.use('/delete_service', delete_service);
 
 // Root route
 app.get('/', (req, res) => {
