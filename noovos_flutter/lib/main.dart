@@ -7,6 +7,7 @@ import 'screens/reset_password_screen.dart';
 import 'screens/email_verification_screen.dart';
 import 'screens/user_profile_screen.dart';
 import 'screens/register_business_screen.dart';
+import 'screens/update_business_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/business_owner_screen.dart';
 //import 'screens/business_staff_management_screen.dart';
@@ -121,6 +122,7 @@ class _MyAppState extends State<MyApp> {
         '/email-verification': (context) => const EmailVerificationScreen(),
         '/profile': (context) => const UserProfileScreen(),
         '/register-business': (context) => const RegisterBusinessScreen(),
+        '/update_business': (context) => const UpdateBusinessScreen(),
         '/dashboard': (context) => const DashboardScreen(),
         '/business_owner': (context) => const BusinessOwnerScreen(),
         '/cart': (context) => const CartScreen(),

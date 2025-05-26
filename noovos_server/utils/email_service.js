@@ -15,7 +15,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Email configuration from environment variables
 const EMAIL_FROM = process.env.EMAIL_FROM || 'no-reply@api.noodev8.com';
-const EMAIL_NAME = process.env.EMAIL_NAME || 'Noodev8';
+const EMAIL_NAME = process.env.EMAIL_NAME || 'Noovos';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://api.noodev8.com';
 const EMAIL_VERIFICATION_URL = process.env.EMAIL_VERIFICATION_URL || 'https://test.splitleague.noodev8.com';
 

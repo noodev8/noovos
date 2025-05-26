@@ -69,8 +69,8 @@ router.get('/', async (req, res) => {
         if (now > tokenExpiration) {
             // Clear expired token
             await pool.query(
-                `UPDATE app_user 
-                 SET verification_token = NULL, verification_expires = NULL 
+                `UPDATE app_user
+                 SET verification_token = NULL, verification_expires = NULL
                  WHERE id = $1`,
                 [user.id]
             );
@@ -85,8 +85,8 @@ router.get('/', async (req, res) => {
 
         // Mark email as verified and clear the verification token
         await pool.query(
-            `UPDATE app_user 
-             SET email_verified = true, verification_token = NULL, verification_expires = NULL 
+            `UPDATE app_user
+             SET email_verified = true, verification_token = NULL, verification_expires = NULL
              WHERE id = $1`,
             [user.id]
         );
@@ -138,7 +138,7 @@ function generateHtmlResponse(title, message, type, buttonText) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${title} - Noodev8</title>
+        <title>${title} - Noovos</title>
         <style>
             body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -202,7 +202,7 @@ function generateHtmlResponse(title, message, type, buttonText) {
             <p>${message}</p>
             ${buttonText ? `<a href="${appUrl}" class="button">${buttonText}</a>` : ''}
             <div class="footer">
-                <p>&copy; 2024 Noodev8. All rights reserved.</p>
+                <p>&copy; 2024 Noovos. All rights reserved.</p>
             </div>
         </div>
     </body>

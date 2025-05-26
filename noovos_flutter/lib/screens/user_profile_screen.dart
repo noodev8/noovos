@@ -27,6 +27,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   // Error message
   String? _errorMessage;
 
+  // Business owner status
+  bool _isBusinessOwner = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +55,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           setState(() {
             _userData = result['user'];
           });
+
+          // Check if user is a business owner
+          final isBusinessOwner = await AuthHelper.isBusinessOwner();
+          if (mounted) {
+            setState(() {
+              _isBusinessOwner = isBusinessOwner;
+            });
+          }
         } else {
           setState(() {
             _errorMessage = result['message'] ?? 'Failed to load profile';
@@ -201,14 +212,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           // Clear auth and redirect to login
           await AuthHelper.logout();
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Account deleted successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Account deleted successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
 
-          Navigator.pushReplacementNamed(context, '/login');
+            Navigator.pushReplacementNamed(context, '/login');
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -234,6 +247,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   // Navigate to business registration
   void _navigateToBusinessRegistration() {
     Navigator.pushNamed(context, '/register-business');
+  }
+
+  // Navigate to update business details
+  void _navigateToUpdateBusiness() {
+    Navigator.pushNamed(context, '/update_business');
+  }
+
+  // Navigate to forgot password screen
+  void _navigateToForgotPassword() {
+    Navigator.pushNamed(context, '/forgot-password');
   }
 
   // Show support contact dialog
@@ -433,6 +456,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
                 const SizedBox(height: 16),
 
+                // Reset password button
+                ElevatedButton.icon(
+                  onPressed: _navigateToForgotPassword,
+                  icon: const Icon(Icons.lock_reset),
+                  label: const Text('Reset Password'),
+                  style: AppStyles.primaryButtonStyle,
+                ),
+                const SizedBox(height: 12),
+
                 // Logout button
                 ElevatedButton.icon(
                   onPressed: _showLogoutDialog,
@@ -470,7 +502,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Business registration
+          // Business registration/management
           Container(
             padding: const EdgeInsets.all(20),
             decoration: AppStyles.cardDecoration,
@@ -485,15 +517,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Want to offer services through our platform?',
+                Text(
+                  _isBusinessOwner
+                    ? 'Manage your business details and settings.'
+                    : 'Want to offer services through our platform?',
                   style: AppStyles.subheadingStyle,
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
-                  onPressed: _navigateToBusinessRegistration,
-                  icon: const Icon(Icons.business),
-                  label: const Text('Register a Business'),
+                  onPressed: _isBusinessOwner
+                    ? _navigateToUpdateBusiness
+                    : _navigateToBusinessRegistration,
+                  icon: Icon(_isBusinessOwner ? Icons.business_center : Icons.business),
+                  label: Text(_isBusinessOwner
+                    ? 'Update Business Details'
+                    : 'Register a Business'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,

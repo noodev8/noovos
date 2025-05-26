@@ -58,8 +58,8 @@ router.get('/', async (req, res) => {
         if (now > tokenExpiration) {
             // Clear expired token
             await pool.query(
-                `UPDATE app_user 
-                 SET verification_token = NULL, verification_expires = NULL 
+                `UPDATE app_user
+                 SET verification_token = NULL, verification_expires = NULL
                  WHERE id = $1`,
                 [user.id]
             );
@@ -193,7 +193,7 @@ function generateHtmlResponse(title, message, type, buttonText, token = null) {
                     <strong>Instructions:</strong>
                     <ol>
                         <li>Copy the token above</li>
-                        <li>Open the Noodev8 app</li>
+                        <li>Open the Noovos app</li>
                         <li>Go to "Reset Password"</li>
                         <li>Paste the token and enter your new password</li>
                     </ol>
@@ -201,7 +201,7 @@ function generateHtmlResponse(title, message, type, buttonText, token = null) {
             ` : ''}
             ${buttonText ? `<a href="${appUrl}" class="button">${buttonText}</a>` : ''}
             <div class="footer">
-                <p>&copy; 2024 Noodev8. All rights reserved.</p>
+                <p>&copy; 2024 Noovos. All rights reserved.</p>
             </div>
         </div>
     </body>
