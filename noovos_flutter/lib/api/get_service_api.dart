@@ -10,7 +10,7 @@ import 'base_api_client.dart';
 class GetServiceApi {
   // Endpoint for get service
   static const String _endpoint = '/get_service';
-  
+
   // Endpoint for get business services
   static const String _businessServicesEndpoint = '/get_business_services';
 

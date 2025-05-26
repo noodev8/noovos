@@ -59,7 +59,7 @@ class _SelectServiceScreenState extends State<SelectServiceScreen> {
 
           if (result['success']) {
             _services = List<Map<String, dynamic>>.from(result['services'] ?? []);
-            
+
             // If no services found, set an error message
             if (_services.isEmpty) {
               _errorMessage = 'No services found for this business.';
@@ -87,7 +87,7 @@ class _SelectServiceScreenState extends State<SelectServiceScreen> {
         builder: (context) => ManageServiceStaffScreen(
           serviceId: service['id'].toString(),
           businessId: widget.business['id'].toString(),
-          serviceName: service['name'] ?? 'Unknown Service',
+          serviceName: service['service_name'] ?? 'Unknown Service',
         ),
       ),
     );
@@ -145,7 +145,7 @@ class _SelectServiceScreenState extends State<SelectServiceScreen> {
                     return Card(
                       margin: const EdgeInsets.only(bottom: 16),
                       child: ListTile(
-                        title: Text(service['name'] ?? 'Unknown Service'),
+                        title: Text(service['service_name'] ?? 'Unknown Service'),
                         subtitle: Text(
                           service['description'] ?? 'No description available',
                           maxLines: 2,
@@ -159,4 +159,4 @@ class _SelectServiceScreenState extends State<SelectServiceScreen> {
                 ),
     );
   }
-} 
+}

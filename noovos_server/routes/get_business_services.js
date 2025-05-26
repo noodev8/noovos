@@ -64,11 +64,12 @@ router.post('/', async (req, res) => {
         const servicesQuery = `
             SELECT
                 s.id,
-                s.service_name AS name,
+                s.service_name,
                 s.description,
                 s.duration,
                 s.price,
                 s.currency,
+                s.active,
                 s.category_id,
                 c.name AS category_name,
                 -- Get service image if available
@@ -113,4 +114,4 @@ router.post('/', async (req, res) => {
     }
 });
 
-module.exports = router; 
+module.exports = router;

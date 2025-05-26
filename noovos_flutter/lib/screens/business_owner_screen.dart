@@ -10,6 +10,7 @@ import '../styles/app_styles.dart';
 import '../helpers/image_helper.dart';
 import '../api/get_user_businesses_api.dart';
 import 'business_staff_management_screen.dart';
+import 'service_management_screen.dart';
 
 class BusinessOwnerScreen extends StatefulWidget {
   const BusinessOwnerScreen({Key? key}) : super(key: key);
@@ -387,31 +388,63 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Manage button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Navigate to staff management screen
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BusinessStaffManagementScreen(
-                              business: business,
+                  // Management buttons
+                  Row(
+                    children: [
+                      // Manage Services button
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // Navigate to service management screen
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ServiceManagementScreen(
+                                  business: business,
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppStyles.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppStyles.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          child: const Text('Services'),
                         ),
                       ),
-                      child: const Text('Manage Staff'),
-                    ),
+
+                      const SizedBox(width: 12),
+
+                      // Manage Staff button
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // Navigate to staff management screen
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => BusinessStaffManagementScreen(
+                                  business: business,
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppStyles.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text('Staff'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

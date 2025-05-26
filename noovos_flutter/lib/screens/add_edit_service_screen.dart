@@ -370,6 +370,7 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
                         Expanded(
                           child: DropdownButtonFormField<int>(
                             value: _selectedCategoryId,
+                            isExpanded: true,
                             decoration: AppStyles.inputDecoration(
                               'Category',
                               prefixIcon: const Icon(Icons.category),
@@ -383,7 +384,10 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
                               ..._categories.map<DropdownMenuItem<int>>((category) {
                                 return DropdownMenuItem<int>(
                                   value: category['id'],
-                                  child: Text(category['name']),
+                                  child: Text(
+                                    category['name'],
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 );
                               }),
                             ],
@@ -418,33 +422,7 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
 
-                    // Help text
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppStyles.primaryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Tips:',
-                            style: AppStyles.bodyStyle.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '• Duration: How long the service takes to complete\n'
-                            '• Buffer Time: Extra time needed for cleanup/preparation\n'
-                            '• Category: Helps customers find your service more easily\n'
-                            '• Description: Explain what\'s included in your service',
-                            style: AppStyles.captionStyle,
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
