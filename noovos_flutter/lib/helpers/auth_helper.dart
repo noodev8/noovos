@@ -5,6 +5,7 @@ Provides methods for checking if user is logged in
 */
 
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api/get_user_businesses_api.dart';
 
@@ -95,6 +96,12 @@ class AuthHelper {
       // Call the API to get user businesses
       final result = await GetUserBusinessesApi.getUserBusinesses();
 
+      // Check if token has expired - if so, clear auth data and return false
+      if (isTokenExpired(result)) {
+        await logout();
+        return false;
+      }
+
       // If the API call was successful and returned businesses, the user is a business owner
       if (result['success'] && result['businesses'] != null) {
         final businesses = result['businesses'] as List;
@@ -108,5 +115,55 @@ class AuthHelper {
       // Handle error silently
       return false;
     }
+  }
+
+  /*
+  * Handle token expiration by logging out user and redirecting to login
+  * This method should be called whenever an API returns TOKEN_EXPIRED, UNAUTHORIZED, or INVALID_TOKEN
+  *
+  * @param context The build context for navigation
+  * @param showMessage Whether to show a message to the user (default: true)
+  */
+  static Future<void> handleTokenExpiration(BuildContext context, {bool showMessage = true}) async {
+    try {
+      // Clear authentication data
+      await logout();
+
+      // Show message to user if requested
+      if (showMessage && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Your session has expired. Please log in again.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // Navigate to login screen and clear navigation stack
+      if (context.mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/login',
+          (route) => false, // Remove all previous routes
+        );
+      }
+    } catch (e) {
+      // Handle error silently
+    }
+  }
+
+  /*
+  * Check if an API response indicates token expiration or authentication failure
+  * Returns true if the response indicates the user should be logged out
+  *
+  * @param result The API response result map
+  * @return bool True if token has expired or is invalid
+  */
+  static bool isTokenExpired(Map<String, dynamic> result) {
+    final returnCode = result['return_code']?.toString();
+    return returnCode == 'TOKEN_EXPIRED' ||
+           returnCode == 'UNAUTHORIZED' ||
+           returnCode == 'INVALID_TOKEN';
   }
 }

@@ -8,6 +8,7 @@ Provides access to business management features like staff management
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 import '../helpers/image_helper.dart';
+import '../helpers/auth_helper.dart';
 import '../api/get_user_businesses_api.dart';
 import 'business_staff_management_screen.dart';
 import 'service_management_screen.dart';
@@ -50,6 +51,12 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
       final result = await GetUserBusinessesApi.getUserBusinesses();
 
       if (mounted) {
+        // Check if it's a token expiration error first
+        if (!result['success'] && AuthHelper.isTokenExpired(result)) {
+          await AuthHelper.handleTokenExpiration(context);
+          return;
+        }
+
         setState(() {
           _isLoading = false;
 

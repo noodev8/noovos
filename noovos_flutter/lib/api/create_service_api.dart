@@ -20,6 +20,7 @@ class CreateServiceApi {
     required double price,
     int? bufferTime,
     int? categoryId,
+    String? imageName,
   }) async {
     try {
       // Get auth token
@@ -50,6 +51,9 @@ class CreateServiceApi {
       }
       if (categoryId != null) {
         requestBody['category_id'] = categoryId;
+      }
+      if (imageName != null && imageName.isNotEmpty) {
+        requestBody['image_name'] = imageName;
       }
 
       // Send POST request using the base client with auth token

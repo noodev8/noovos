@@ -19,8 +19,9 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// Increase body parser limits for image uploads (base64 images can be large)
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
 // Import database connection
 const pool = require('./db');
@@ -73,6 +74,7 @@ const check_booking_integrity = require('./routes/check_booking_integrity');
 const create_service = require('./routes/create_service');
 const update_service = require('./routes/update_service');
 const delete_service = require('./routes/delete_service');
+const upload_image = require('./routes/upload_image');
 
 // Set up routes
 app.use('/login_user', login_user);
@@ -122,6 +124,7 @@ app.use('/check_booking_integrity', check_booking_integrity);
 app.use('/create_service', create_service);
 app.use('/update_service', update_service);
 app.use('/delete_service', delete_service);
+app.use('/upload_image', upload_image);
 
 // Root route
 app.get('/', (req, res) => {

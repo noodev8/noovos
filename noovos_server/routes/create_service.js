@@ -13,7 +13,8 @@ Request Payload:
   "duration": 60,                        // integer, required - Duration in minutes
   "price": 25.50,                        // number, required - Price of the service
   "buffer_time": 15,                     // integer, optional - Buffer time in minutes (default: 0)
-  "category_id": 5                       // integer, optional - Category ID from category table
+  "category_id": 5,                      // integer, optional - Category ID from category table
+  "image_name": "services_123_1234567890" // string, optional - Image filename from upload_image API
 }
 
 Success Response:
@@ -78,14 +79,15 @@ router.post('/', verifyToken, async (req, res) => {
         const userId = req.user.id;
 
         // Extract parameters from request body
-        const { 
-            business_id, 
-            service_name, 
-            description, 
-            duration, 
-            price, 
-            buffer_time, 
-            category_id 
+        const {
+            business_id,
+            service_name,
+            description,
+            duration,
+            price,
+            buffer_time,
+            category_id,
+            image_name
         } = req.body;
 
         // Validate required fields
@@ -132,8 +134,8 @@ router.post('/', verifyToken, async (req, res) => {
         // User must be either a business owner or staff member with active status
         const permissionQuery = await pool.query(
             `SELECT 1 FROM appuser_business_role
-             WHERE appuser_id = $1 AND business_id = $2 
-             AND (role = 'business_owner' OR role = 'Staff') 
+             WHERE appuser_id = $1 AND business_id = $2
+             AND (role = 'business_owner' OR role = 'Staff')
              AND status = 'active'`,
             [userId, business_id]
         );
@@ -176,14 +178,14 @@ router.post('/', verifyToken, async (req, res) => {
         // Create the service
         const createServiceQuery = `
             INSERT INTO service (
-                business_id, 
-                service_name, 
-                description, 
-                duration, 
-                price, 
-                currency, 
-                active, 
-                buffer_time, 
+                business_id,
+                service_name,
+                description,
+                duration,
+                price,
+                currency,
+                active,
+                buffer_time,
                 category_id,
                 created_at,
                 updated_at
@@ -203,6 +205,35 @@ router.post('/', verifyToken, async (req, res) => {
         ]);
 
         const newService = serviceResult.rows[0];
+
+        // If image_name is provided, insert it into the media table
+        if (image_name && image_name.trim() !== '') {
+            try {
+                const mediaQuery = `
+                    INSERT INTO media (
+                        service_id,
+                        business_id,
+                        image_name,
+                        position,
+                        media_type,
+                        is_active
+                    ) VALUES ($1, $2, $3, 1, 'image', true)
+                    RETURNING id
+                `;
+
+                const mediaResult = await pool.query(mediaQuery, [
+                    newService.id,
+                    business_id,
+                    image_name.trim()
+                ]);
+
+                console.log(`Service image added to media table: ${image_name}, Media ID: ${mediaResult.rows[0].id}`);
+            } catch (mediaError) {
+                console.error('Error adding service image to media table:', mediaError);
+                // Don't fail the service creation if image insertion fails
+                // The service was created successfully, just log the media error
+            }
+        }
 
         console.log(`Service created successfully: ID ${newService.id}, Name: ${newService.service_name}, Business: ${business_id}`);
 

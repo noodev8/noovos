@@ -64,14 +64,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             });
           }
         } else {
+          // Handle authentication errors by redirecting to login
+          if (AuthHelper.isTokenExpired(result)) {
+            await AuthHelper.handleTokenExpiration(context);
+            return; // Don't show error message, just redirect
+          }
+
           setState(() {
             _errorMessage = result['message'] ?? 'Failed to load profile';
           });
-
-          // If unauthorized, redirect to login
-          if (result['return_code'] == 'UNAUTHORIZED') {
-            _handleLogout();
-          }
         }
       }
     } catch (e) {

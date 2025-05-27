@@ -21,6 +21,7 @@ class UpdateServiceApi {
     int? bufferTime,
     int? categoryId,
     bool? active,
+    String? imageName,
   }) async {
     try {
       // Get auth token
@@ -60,6 +61,9 @@ class UpdateServiceApi {
       }
       if (active != null) {
         requestBody['active'] = active;
+      }
+      if (imageName != null) {
+        requestBody['image_name'] = imageName;
       }
 
       // Send POST request using the base client with auth token

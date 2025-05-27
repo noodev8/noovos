@@ -14,7 +14,8 @@ Request Payload:
   "price": 35.00,                        // number, optional - Price of the service
   "buffer_time": 20,                     // integer, optional - Buffer time in minutes
   "category_id": 5,                      // integer, optional - Category ID from category table
-  "active": true                         // boolean, optional - Active status
+  "active": true,                        // boolean, optional - Active status
+  "image_name": "services_123_1234567890" // string, optional - Image filename from upload_image API
 }
 
 Success Response:
@@ -81,15 +82,16 @@ router.post('/', verifyToken, async (req, res) => {
         const userId = req.user.id;
 
         // Extract parameters from request body
-        const { 
+        const {
             service_id,
-            service_name, 
-            description, 
-            duration, 
-            price, 
-            buffer_time, 
+            service_name,
+            description,
+            duration,
+            price,
+            buffer_time,
             category_id,
-            active
+            active,
+            image_name
         } = req.body;
 
         // Validate required fields
@@ -147,8 +149,8 @@ router.post('/', verifyToken, async (req, res) => {
         // Check if the user has permission to update services for this business
         const permissionQuery = await pool.query(
             `SELECT 1 FROM appuser_business_role
-             WHERE appuser_id = $1 AND business_id = $2 
-             AND (role = 'business_owner' OR role = 'Staff') 
+             WHERE appuser_id = $1 AND business_id = $2
+             AND (role = 'business_owner' OR role = 'Staff')
              AND status = 'active'`,
             [userId, currentService.business_id]
         );
@@ -233,7 +235,7 @@ router.post('/', verifyToken, async (req, res) => {
 
         // Update the service
         const updateQuery = `
-            UPDATE service 
+            UPDATE service
             SET ${updateFields.join(', ')}
             WHERE id = $${paramCount}
             RETURNING *
@@ -241,6 +243,48 @@ router.post('/', verifyToken, async (req, res) => {
 
         const updatedServiceQuery = await pool.query(updateQuery, updateValues);
         const updatedService = updatedServiceQuery.rows[0];
+
+        // Handle image update if image_name is provided
+        if (image_name !== undefined) {
+            try {
+                if (image_name && image_name.trim() !== '') {
+                    // Check if service already has an image
+                    const existingImageQuery = await pool.query(
+                        `SELECT id FROM media WHERE service_id = $1 AND media_type = 'image'`,
+                        [service_id]
+                    );
+
+                    if (existingImageQuery.rows.length > 0) {
+                        // Update existing image
+                        await pool.query(
+                            `UPDATE media SET image_name = $1, updated_at = NOW()
+                             WHERE service_id = $2 AND media_type = 'image'`,
+                            [image_name.trim(), service_id]
+                        );
+                        console.log(`Service image updated: ${image_name}`);
+                    } else {
+                        // Insert new image
+                        const mediaInsertResult = await pool.query(
+                            `INSERT INTO media (service_id, business_id, image_name, position, media_type, is_active)
+                             VALUES ($1, $2, $3, 1, 'image', true)
+                             RETURNING id`,
+                            [service_id, currentService.business_id, image_name.trim()]
+                        );
+                        console.log(`Service image added: ${image_name}, Media ID: ${mediaInsertResult.rows[0].id}`);
+                    }
+                } else {
+                    // Remove existing image if image_name is empty
+                    await pool.query(
+                        `DELETE FROM media WHERE service_id = $1 AND media_type = 'image'`,
+                        [service_id]
+                    );
+                    console.log(`Service image removed for service ID: ${service_id}`);
+                }
+            } catch (mediaError) {
+                console.error('Error updating service image in media table:', mediaError);
+                // Don't fail the service update if image update fails
+            }
+        }
 
         console.log(`Service updated successfully: ID ${service_id}, Name: ${updatedService.service_name}`);
 

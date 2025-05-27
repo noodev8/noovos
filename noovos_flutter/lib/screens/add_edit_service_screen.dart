@@ -9,12 +9,16 @@ Features:
 - Description with character limit
 */
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../styles/app_styles.dart';
 import '../api/create_service_api.dart';
 import '../api/update_service_api.dart';
 import '../api/get_categories_api.dart';
+import '../api/upload_image_api.dart';
+import '../helpers/image_picker_helper.dart';
+import '../helpers/auth_helper.dart';
 
 class AddEditServiceScreen extends StatefulWidget {
   final Map<String, dynamic> business;
@@ -44,6 +48,11 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
   int? _selectedCategoryId;
   bool _isLoading = false;
   bool _isLoadingCategories = true;
+
+  // Image upload related variables
+  File? _selectedImage;
+  String? _uploadedImageName;
+  bool _isUploadingImage = false;
 
   @override
   void initState() {
@@ -148,6 +157,7 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
               ? 0
               : int.parse(_bufferTimeController.text),
           categoryId: _selectedCategoryId,
+          imageName: _uploadedImageName,
         );
       } else {
         // Create new service
@@ -163,6 +173,7 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
               ? 0
               : int.parse(_bufferTimeController.text),
           categoryId: _selectedCategoryId,
+          imageName: _uploadedImageName,
         );
       }
 
@@ -401,6 +412,11 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
                       ],
                     ),
 
+                    const SizedBox(height: 24),
+
+                    // Service Image Section
+                    _buildImageSection(),
+
                     const SizedBox(height: 32),
 
                     // Save Button
@@ -428,5 +444,192 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
               ),
             ),
     );
+  }
+
+  // Build the image upload section
+  Widget _buildImageSection() {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.image, color: Colors.grey),
+                const SizedBox(width: 8),
+                const Text(
+                  'Service Image',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                if (_isUploadingImage)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Image preview or placeholder
+            Container(
+              width: double.infinity,
+              height: 120,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.grey.shade50,
+              ),
+              child: _selectedImage != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        _selectedImage!,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  : const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.image_outlined,
+                          size: 48,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'No image selected',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Upload buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isUploadingImage ? null : _selectAndUploadImage,
+                    icon: const Icon(Icons.add_photo_alternate),
+                    label: Text(_selectedImage != null ? 'Change Image' : 'Add Image'),
+                  ),
+                ),
+                if (_selectedImage != null) ...[
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: _isUploadingImage ? null : _removeImage,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Remove'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+
+            if (_uploadedImageName != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '✓ Image uploaded successfully',
+                  style: TextStyle(
+                    color: Colors.green.shade600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Select and upload image
+  Future<void> _selectAndUploadImage() async {
+    try {
+      // Select image
+      final imageFile = await ImagePickerHelper.showImageSourceDialog(context);
+
+      if (imageFile != null && mounted) {
+        setState(() {
+          _selectedImage = imageFile;
+          _isUploadingImage = true;
+        });
+
+        // Upload image to Cloudinary
+        final result = await UploadImageApi.uploadImage(
+          imageFile,
+          folder: 'noovos',
+        );
+
+        if (mounted) {
+          setState(() {
+            _isUploadingImage = false;
+          });
+
+          if (result['success']) {
+            setState(() {
+              _uploadedImageName = result['image_name'];
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Image uploaded successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else {
+            // Check if it's a token expiration error
+            if (AuthHelper.isTokenExpired(result)) {
+              await AuthHelper.handleTokenExpiration(context);
+              return;
+            }
+
+            setState(() {
+              _selectedImage = null;
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to upload image: ${result['message']}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isUploadingImage = false;
+          _selectedImage = null;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error selecting image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Remove selected image
+  void _removeImage() {
+    setState(() {
+      _selectedImage = null;
+      _uploadedImageName = null;
+    });
   }
 }
