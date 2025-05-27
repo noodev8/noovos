@@ -74,6 +74,14 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const verifyToken = require('../middleware/auth');
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary with environment variables
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // POST /update_service
 router.post('/', verifyToken, async (req, res) => {
@@ -250,20 +258,39 @@ router.post('/', verifyToken, async (req, res) => {
                 if (image_name && image_name.trim() !== '') {
                     // Check if service already has an image
                     const existingImageQuery = await pool.query(
-                        `SELECT id FROM media WHERE service_id = $1 AND media_type = 'image'`,
+                        `SELECT id, image_name FROM media WHERE service_id = $1 AND media_type = 'image'`,
                         [service_id]
                     );
 
                     if (existingImageQuery.rows.length > 0) {
-                        // Update existing image
+                        // Get the old image name for deletion from Cloudinary
+                        const oldImageName = existingImageQuery.rows[0].image_name;
+
+                        // Only delete from Cloudinary if the image name is different (i.e., it's being replaced)
+                        if (oldImageName && oldImageName !== image_name.trim()) {
+                            try {
+                                // Delete old image from Cloudinary using filename
+                                // Filename format: noovos_123_1234567890
+                                const publicId = `noovos/${oldImageName}`;
+                                const deleteResult = await cloudinary.uploader.destroy(publicId, {
+                                    resource_type: 'image'
+                                });
+                                console.log(`Old image deleted from Cloudinary: ${publicId}, Result: ${deleteResult.result}`);
+                            } catch (cloudinaryError) {
+                                console.error('Error deleting old image from Cloudinary:', cloudinaryError);
+                                // Continue with database update even if Cloudinary deletion fails
+                            }
+                        }
+
+                        // Update existing image record in database
                         await pool.query(
-                            `UPDATE media SET image_name = $1, updated_at = NOW()
+                            `UPDATE media SET image_name = $1
                              WHERE service_id = $2 AND media_type = 'image'`,
                             [image_name.trim(), service_id]
                         );
                         console.log(`Service image updated: ${image_name}`);
                     } else {
-                        // Insert new image
+                        // Insert new image record
                         const mediaInsertResult = await pool.query(
                             `INSERT INTO media (service_id, business_id, image_name, position, media_type, is_active)
                              VALUES ($1, $2, $3, 1, 'image', true)
@@ -273,7 +300,32 @@ router.post('/', verifyToken, async (req, res) => {
                         console.log(`Service image added: ${image_name}, Media ID: ${mediaInsertResult.rows[0].id}`);
                     }
                 } else {
-                    // Remove existing image if image_name is empty
+                    // Remove existing image if image_name is empty or null
+                    const existingImageQuery = await pool.query(
+                        `SELECT image_name FROM media WHERE service_id = $1 AND media_type = 'image'`,
+                        [service_id]
+                    );
+
+                    // Delete from Cloudinary if image exists
+                    if (existingImageQuery.rows.length > 0) {
+                        const oldImageName = existingImageQuery.rows[0].image_name;
+                        if (oldImageName) {
+                            try {
+                                // Delete image from Cloudinary using filename
+                                // Filename format: noovos_123_1234567890
+                                const publicId = `noovos/${oldImageName}`;
+                                const deleteResult = await cloudinary.uploader.destroy(publicId, {
+                                    resource_type: 'image'
+                                });
+                                console.log(`Image deleted from Cloudinary: ${publicId}, Result: ${deleteResult.result}`);
+                            } catch (cloudinaryError) {
+                                console.error('Error deleting image from Cloudinary:', cloudinaryError);
+                                // Continue with database deletion even if Cloudinary deletion fails
+                            }
+                        }
+                    }
+
+                    // Remove image record from database
                     await pool.query(
                         `DELETE FROM media WHERE service_id = $1 AND media_type = 'image'`,
                         [service_id]

@@ -22,8 +22,12 @@ class AppConfig {
   static const String appName = 'Noovos';
   static const String appVersion = '1.01';
 
-  // Image Server URL
+  // Image Server URL (Legacy - for old images)
   static const String imageBaseUrl = 'https://noovos.brookfieldcomfort.com/image';
+
+  // Cloudinary Configuration (for new images)
+  static const String cloudinaryCloudName = 'dnrevr0pi';
+  static const String cloudinaryFolder = 'noovos';
 
   // Timeout Settings (in seconds)
   static const int connectionTimeout = 30;

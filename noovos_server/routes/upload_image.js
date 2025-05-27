@@ -100,6 +100,7 @@ router.post('/', verifyToken, async (req, res) => {
             // Resize image to maximum 1000x1000 pixels while maintaining aspect ratio
             // Convert to JPEG with 85% quality for optimal size/quality balance
             processedImageBuffer = await sharp(imageBuffer)
+                .rotate()                    // Auto-rotate based on EXIF orientation data
                 .resize(1000, 1000, {
                     fit: 'inside',           // Maintain aspect ratio, fit within bounds
                     withoutEnlargement: true // Don't enlarge smaller images

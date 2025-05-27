@@ -75,6 +75,7 @@ const create_service = require('./routes/create_service');
 const update_service = require('./routes/update_service');
 const delete_service = require('./routes/delete_service');
 const upload_image = require('./routes/upload_image');
+const delete_image = require('./routes/delete_image');
 
 // Set up routes
 app.use('/login_user', login_user);
@@ -125,6 +126,7 @@ app.use('/create_service', create_service);
 app.use('/update_service', update_service);
 app.use('/delete_service', delete_service);
 app.use('/upload_image', upload_image);
+app.use('/delete_image', delete_image);
 
 // Root route
 app.get('/', (req, res) => {

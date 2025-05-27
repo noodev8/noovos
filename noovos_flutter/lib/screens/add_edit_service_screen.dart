@@ -17,8 +17,10 @@ import '../api/create_service_api.dart';
 import '../api/update_service_api.dart';
 import '../api/get_categories_api.dart';
 import '../api/upload_image_api.dart';
+import '../api/delete_image_api.dart';
 import '../helpers/image_picker_helper.dart';
 import '../helpers/auth_helper.dart';
+import '../helpers/cloudinary_helper.dart';
 
 class AddEditServiceScreen extends StatefulWidget {
   final Map<String, dynamic> business;
@@ -53,6 +55,15 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
   File? _selectedImage;
   String? _uploadedImageName;
   bool _isUploadingImage = false;
+
+  // Existing image information for editing
+  String? _existingImageName;
+
+  // Track if there are unsaved changes
+  bool _hasUnsavedChanges = false;
+
+  // Track if image was just uploaded (to show success message)
+  bool _imageJustUploaded = false;
 
   @override
   void initState() {
@@ -128,6 +139,14 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
 
     // Set selected category
     _selectedCategoryId = service['category_id'];
+
+    // Load existing image information if available
+    final imageName = service['image_name'];
+    if (imageName != null && imageName.toString().isNotEmpty) {
+      _existingImageName = imageName.toString();
+      // Set uploaded image name to existing image so it doesn't get overwritten unless user selects new image
+      _uploadedImageName = _existingImageName;
+    }
   }
 
   // Save the service (create or update)
@@ -183,6 +202,11 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
         });
 
         if (result['success']) {
+          // Clear unsaved changes flag
+          _hasUnsavedChanges = false;
+          // Clear upload success flag
+          _imageJustUploaded = false;
+
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -220,9 +244,74 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
     }
   }
 
+  // Show warning dialog for unsaved changes
+  Future<bool> _showUnsavedChangesDialog() async {
+    if (!_hasUnsavedChanges) return true;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unsaved Changes'),
+        content: const Text(
+          'You have unsaved changes. Are you sure you want to leave without saving?'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              // Clean up orphaned image if user uploaded but didn't save
+              await _cleanupOrphanedImage();
+              if (context.mounted) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
+  }
+
+  // Clean up orphaned image when leaving without saving
+  Future<void> _cleanupOrphanedImage() async {
+    // Only clean up if we have a newly uploaded image that wasn't saved
+    if (_uploadedImageName != null && _hasUnsavedChanges) {
+      try {
+        // Check if this is a new image (not the original existing image)
+        final originalImageName = widget.service?['image_name'];
+        final isNewImage = widget.service == null ||
+                          originalImageName != _uploadedImageName;
+
+        if (isNewImage) {
+          // Delete the orphaned image from Cloudinary
+          await DeleteImageApi.deleteImage(_uploadedImageName!);
+          // Silently handle cleanup - don't show errors to user
+        }
+      } catch (e) {
+        // Don't block navigation if cleanup fails
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+
+        final shouldPop = await _showUnsavedChangesDialog();
+        if (shouldPop && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(widget.isEditing ? 'Edit Service' : 'Add Service'),
         backgroundColor: AppStyles.primaryColor,
@@ -443,6 +532,7 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
                 ),
               ),
             ),
+      ),
     );
   }
 
@@ -486,29 +576,7 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
                 borderRadius: BorderRadius.circular(8),
                 color: Colors.grey.shade50,
               ),
-              child: _selectedImage != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        _selectedImage!,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  : const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.image_outlined,
-                          size: 48,
-                          color: Colors.grey,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'No image selected',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
+              child: _buildImagePreview(),
             ),
 
             const SizedBox(height: 12),
@@ -520,10 +588,10 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _isUploadingImage ? null : _selectAndUploadImage,
                     icon: const Icon(Icons.add_photo_alternate),
-                    label: Text(_selectedImage != null ? 'Change Image' : 'Add Image'),
+                    label: Text(_getUploadButtonText()),
                   ),
                 ),
-                if (_selectedImage != null) ...[
+                if (_hasAnyImage()) ...[
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
                     onPressed: _isUploadingImage ? null : _removeImage,
@@ -537,7 +605,7 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
               ],
             ),
 
-            if (_uploadedImageName != null)
+            if (_imageJustUploaded)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
@@ -552,6 +620,98 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
         ),
       ),
     );
+  }
+
+  // Helper method to check if any image is available (selected or existing)
+  bool _hasAnyImage() {
+    return _selectedImage != null || (_existingImageName != null && _existingImageName!.isNotEmpty);
+  }
+
+  // Helper method to get appropriate button text
+  String _getUploadButtonText() {
+    if (_selectedImage != null) {
+      return 'Change Image';
+    } else if (_existingImageName != null && _existingImageName!.isNotEmpty) {
+      return 'Replace Image';
+    } else {
+      return 'Add Image';
+    }
+  }
+
+  // Build image preview widget
+  Widget _buildImagePreview() {
+    // Priority: 1. Selected new image, 2. Existing image from server, 3. Placeholder
+    if (_selectedImage != null) {
+      // Show newly selected image file
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.file(
+          _selectedImage!,
+          fit: BoxFit.cover,
+        ),
+      );
+    } else if (_existingImageName != null && _existingImageName!.isNotEmpty) {
+      // Always treat as Cloudinary image - construct URL
+      final cloudinaryUrl = CloudinaryHelper.getCloudinaryUrl(_existingImageName);
+
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          cloudinaryUrl,
+          fit: BoxFit.cover,
+          // Add cache-busting to prevent showing old cached images
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.broken_image,
+                  size: 48,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Failed to load image',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'URL: $cloudinaryUrl',
+                  style: const TextStyle(color: Colors.grey, fontSize: 10),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    } else {
+      // Show placeholder when no image is available
+      return const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_outlined,
+            size: 48,
+            color: Colors.grey,
+          ),
+          SizedBox(height: 8),
+          Text(
+            'No image selected',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      );
+    }
   }
 
   // Select and upload image
@@ -579,13 +739,23 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
 
           if (result['success']) {
             setState(() {
+              // Store only the filename in database, not the full URL
               _uploadedImageName = result['image_name'];
+              // Update existing image name so UI shows new image immediately
+              _existingImageName = result['image_name'];
+              // Clear selected image since it's now uploaded
+              _selectedImage = null;
+              // Mark as having unsaved changes
+              _hasUnsavedChanges = true;
+              // Show success message for this upload
+              _imageJustUploaded = true;
             });
 
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Image uploaded successfully'),
+                content: Text('Image uploaded successfully. Don\'t forget to save!'),
                 backgroundColor: Colors.green,
+                duration: Duration(seconds: 4),
               ),
             );
           } else {
@@ -630,6 +800,12 @@ class _AddEditServiceScreenState extends State<AddEditServiceScreen> {
     setState(() {
       _selectedImage = null;
       _uploadedImageName = null;
+      // Clear existing image information to indicate removal
+      _existingImageName = null;
+      // Mark as having unsaved changes
+      _hasUnsavedChanges = true;
+      // Clear upload success flag
+      _imageJustUploaded = false;
     });
   }
 }
