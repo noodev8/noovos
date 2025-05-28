@@ -73,7 +73,7 @@ router.post('/', verifyToken, async (req, res) => {
                 (
                     SELECT m.image_name
                     FROM media m
-                    WHERE m.business_id = b.id AND m.position = 1 AND m.is_active = TRUE
+                    WHERE m.business_id = b.id AND m.service_id IS NULL AND m.position = 1 AND m.is_active = TRUE
                     LIMIT 1
                 ) AS business_image
             FROM

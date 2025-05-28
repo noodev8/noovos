@@ -49,7 +49,7 @@ router.post('/', verifyToken, async (req, res) => {
     try {
         // Extract user ID from JWT token
         const userId = req.user.id;
-        
+
         // Query to get pending invitations for the user
         const query = `
             SELECT
@@ -74,16 +74,16 @@ router.post('/', verifyToken, async (req, res) => {
             ORDER BY
                 abr.requested_at DESC
         `;
-        
+
         // Execute the query
         const result = await pool.query(query, [userId]);
-        
+
         // Return success response with invitations
         return res.status(200).json({
             return_code: "SUCCESS",
             invitations: result.rows
         });
-        
+
     } catch (error) {
         console.error("Error in get_staff_invitations:", error);
         return res.status(500).json({

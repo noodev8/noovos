@@ -4,11 +4,13 @@ API Route: update_business
 =======================================================================================================================================
 Method: POST
 Purpose: Updates business details for an existing business owned by the authenticated user.
+         Also handles business image management through the media table.
 =======================================================================================================================================
 Request Payload:
 {
   "business_id": 1,                       // integer, required - ID of the business to update
   "name": "Updated Business Name",        // string, optional
+  "image_name": "business_123_1234567890", // string, optional - filename for business image
   "email": "updated@example.com",         // string, optional
   "phone": "1234567890",                  // string, optional
   "website": "https://example.com",       // string, optional
@@ -66,7 +68,8 @@ Content-Type: application/json
   "city": "Manchester",
   "postcode": "M1 1AA",
   "country": "United Kingdom",
-  "description": "An updated test business"
+  "description": "An updated test business",
+  "image_name": "noovos_123_1234567890"
 }
 =======================================================================================================================================
 */
@@ -75,6 +78,14 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const auth = require('../middleware/auth');
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary with environment variables
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // POST /update_business
 router.post('/', auth, async (req, res) => {
@@ -83,17 +94,18 @@ router.post('/', auth, async (req, res) => {
         const userId = req.user.id;
 
         // Extract business details from request body
-        const { 
+        const {
             business_id,
-            name, 
-            email, 
-            phone, 
-            website, 
-            address, 
-            city, 
-            postcode, 
-            country, 
-            description 
+            name,
+            email,
+            phone,
+            website,
+            address,
+            city,
+            postcode,
+            country,
+            description,
+            image_name
         } = req.body;
 
         // Check if business_id is provided
@@ -204,7 +216,7 @@ router.post('/', auth, async (req, res) => {
 
         // Update the business
         const updateQuery = `
-            UPDATE business 
+            UPDATE business
             SET ${updateFields.join(', ')}
             WHERE id = $${paramCount}
             RETURNING *
@@ -213,7 +225,88 @@ router.post('/', auth, async (req, res) => {
         const updatedBusinessQuery = await pool.query(updateQuery, updateValues);
         const updatedBusiness = updatedBusinessQuery.rows[0];
 
-        console.log(`Business updated successfully: ID ${business_id}, Name: ${updatedBusiness.name}`);
+        // Handle business image update if image_name is provided
+        if (image_name !== undefined) {
+            try {
+                // Check if business already has an image in the media table
+                const existingImageQuery = await pool.query(
+                    `SELECT image_name FROM media
+                     WHERE business_id = $1 AND service_id IS NULL AND media_type = 'image' AND position = 1`,
+                    [business_id]
+                );
+
+                if (image_name && image_name.trim() !== '') {
+                    // Image is being added or updated
+                    if (existingImageQuery.rows.length > 0) {
+                        // Get the old image name for potential Cloudinary cleanup
+                        const oldImageName = existingImageQuery.rows[0].image_name;
+
+                        // Only delete from Cloudinary if the image name is different (i.e., it's being replaced)
+                        if (oldImageName && oldImageName !== image_name.trim()) {
+                            try {
+                                // Delete old image from Cloudinary using filename
+                                const publicId = `noovos/${oldImageName}`;
+                                const deleteResult = await cloudinary.uploader.destroy(publicId, {
+                                    resource_type: 'image'
+                                });
+
+                            } catch (cloudinaryError) {
+                                console.error('Error deleting old business image from Cloudinary:', cloudinaryError);
+                                // Continue with database update even if Cloudinary deletion fails
+                            }
+                        }
+
+                        // Update existing image record in database
+                        await pool.query(
+                            `UPDATE media SET image_name = $1
+                             WHERE business_id = $2 AND service_id IS NULL AND media_type = 'image' AND position = 1`,
+                            [image_name.trim(), business_id]
+                        );
+
+                    } else {
+                        // Insert new image record
+                        const mediaInsertResult = await pool.query(
+                            `INSERT INTO media (business_id, image_name, position, media_type, is_active)
+                             VALUES ($1, $2, 1, 'image', true)
+                             RETURNING id`,
+                            [business_id, image_name.trim()]
+                        );
+
+                    }
+                } else {
+                    // Empty image_name means remove the image
+                    if (existingImageQuery.rows.length > 0) {
+                        const oldImageName = existingImageQuery.rows[0].image_name;
+
+                        // Delete from Cloudinary
+                        if (oldImageName) {
+                            try {
+                                const publicId = `noovos/${oldImageName}`;
+                                const deleteResult = await cloudinary.uploader.destroy(publicId, {
+                                    resource_type: 'image'
+                                });
+
+                            } catch (cloudinaryError) {
+                                console.error('Error deleting business image from Cloudinary:', cloudinaryError);
+                                // Continue with database deletion even if Cloudinary deletion fails
+                            }
+                        }
+
+                        // Remove image record from database
+                        await pool.query(
+                            `DELETE FROM media
+                             WHERE business_id = $1 AND service_id IS NULL AND media_type = 'image' AND position = 1`,
+                            [business_id]
+                        );
+
+                    }
+                }
+            } catch (imageError) {
+                console.error('Error handling business image:', imageError);
+                // Don't fail the business update if image handling fails
+                // The business was updated successfully, just log the image error
+            }
+        }
 
         // Return success response with updated business data
         return res.status(200).json({

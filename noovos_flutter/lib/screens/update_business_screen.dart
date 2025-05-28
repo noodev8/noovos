@@ -1,12 +1,18 @@
 /*
 Update Business Screen
-Allows business owners to update their business details
+Allows business owners to update their business details and manage business images
 Loads current business information and provides form to update
+Includes image upload functionality similar to service management
 */
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../api/get_user_businesses_api.dart';
 import '../api/update_business_api.dart';
+import '../api/upload_image_api.dart';
+import '../helpers/image_picker_helper.dart';
+import '../helpers/auth_helper.dart';
+import '../helpers/cloudinary_helper.dart';
 import '../styles/app_styles.dart';
 
 class UpdateBusinessScreen extends StatefulWidget {
@@ -23,11 +29,19 @@ class _UpdateBusinessScreenState extends State<UpdateBusinessScreen> {
   // Loading states
   bool _isLoading = true;
   bool _isUpdating = false;
+  bool _isUploadingImage = false;
 
   // Business data
   List<dynamic> _businesses = [];
   Map<String, dynamic>? _selectedBusiness;
   int? _selectedBusinessId;
+
+  // Image management
+  File? _selectedImage;
+  String? _existingImageName;
+  String? _uploadedImageName;
+  bool _hasUnsavedChanges = false;
+  bool _imageJustUploaded = false;
 
   // Error message
   String? _errorMessage;
@@ -127,6 +141,14 @@ class _UpdateBusinessScreenState extends State<UpdateBusinessScreen> {
     _postcodeController.text = business['postcode'] ?? '';
     _countryController.text = business['country'] ?? '';
     _descriptionController.text = business['description'] ?? '';
+
+    // Load existing business image
+    setState(() {
+      _existingImageName = business['business_image'];
+      _uploadedImageName = null;
+      _hasUnsavedChanges = false;
+      _imageJustUploaded = false;
+    });
   }
 
   // Handle business update
@@ -152,6 +174,7 @@ class _UpdateBusinessScreenState extends State<UpdateBusinessScreen> {
         postcode: _postcodeController.text.trim().isEmpty ? null : _postcodeController.text.trim(),
         country: _countryController.text.trim().isEmpty ? null : _countryController.text.trim(),
         description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+        imageName: _uploadedImageName,
       );
 
       if (mounted) {
@@ -160,6 +183,12 @@ class _UpdateBusinessScreenState extends State<UpdateBusinessScreen> {
         });
 
         if (result['success']) {
+          // Reset image state after successful save
+          setState(() {
+            _hasUnsavedChanges = false;
+            _imageJustUploaded = false;
+            _uploadedImageName = null;
+          });
           _showSuccessDialog();
         } else {
           setState(() {
@@ -221,20 +250,193 @@ class _UpdateBusinessScreenState extends State<UpdateBusinessScreen> {
     );
   }
 
+  // Check if there's any image (existing or uploaded)
+  bool _hasAnyImage() {
+    return _existingImageName != null || _uploadedImageName != null;
+  }
+
+  // Get the current image name to display
+  String? _getCurrentImageName() {
+    return _uploadedImageName ?? _existingImageName;
+  }
+
+  // Get upload button text based on current state
+  String _getUploadButtonText() {
+    if (_isUploadingImage) {
+      return 'Uploading...';
+    } else if (_hasAnyImage()) {
+      return 'Replace Image';
+    } else {
+      return 'Upload Image';
+    }
+  }
+
+  // Select and upload image
+  Future<void> _selectAndUploadImage() async {
+    try {
+      // Select image
+      final imageFile = await ImagePickerHelper.showImageSourceDialog(context);
+
+      if (imageFile != null && mounted) {
+        setState(() {
+          _selectedImage = imageFile;
+          _isUploadingImage = true;
+        });
+
+        // Upload image to Cloudinary
+        final result = await UploadImageApi.uploadImage(
+          imageFile,
+          folder: 'noovos',
+        );
+
+        if (mounted) {
+          setState(() {
+            _isUploadingImage = false;
+          });
+
+          if (result['success']) {
+            setState(() {
+              // Store only the filename in database, not the full URL
+              _uploadedImageName = result['image_name'];
+              // Update existing image name so UI shows new image immediately
+              _existingImageName = result['image_name'];
+              // Clear selected image since it's now uploaded
+              _selectedImage = null;
+              // Mark as having unsaved changes
+              _hasUnsavedChanges = true;
+              // Show success message for this upload
+              _imageJustUploaded = true;
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Image uploaded successfully. Don\'t forget to save!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          } else {
+            // Check if it's a token expiration error
+            if (AuthHelper.isTokenExpired(result)) {
+              await AuthHelper.handleTokenExpiration(context);
+              return;
+            }
+
+            setState(() {
+              _selectedImage = null;
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to upload image: ${result['message']}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isUploadingImage = false;
+          _selectedImage = null;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error selecting image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Remove image
+  Future<void> _removeImage() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Image'),
+        content: const Text('Are you sure you want to remove this image?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _uploadedImageName = '';  // Empty string means remove image
+        _existingImageName = null;
+        _hasUnsavedChanges = true;
+        _imageJustUploaded = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Image removed. Don\'t forget to save!'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppStyles.backgroundColor,
-      appBar: AppBar(
-        title: const Text('Update Business'),
-        backgroundColor: AppStyles.primaryColor,
-        foregroundColor: Colors.white,
+    return PopScope(
+      canPop: !_hasUnsavedChanges,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop && _hasUnsavedChanges) {
+          final shouldLeave = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Unsaved Changes'),
+              content: const Text('You have unsaved changes. Are you sure you want to leave?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Stay'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  child: const Text('Leave'),
+                ),
+              ],
+            ),
+          );
+          if (shouldLeave == true && context.mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppStyles.backgroundColor,
+        appBar: AppBar(
+          title: const Text('Update Business'),
+          backgroundColor: AppStyles.primaryColor,
+          foregroundColor: Colors.white,
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? _buildErrorView()
+                : _buildUpdateForm(),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? _buildErrorView()
-              : _buildUpdateForm(),
     );
   }
 
@@ -569,6 +771,10 @@ class _UpdateBusinessScreenState extends State<UpdateBusinessScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 20),
+
+              // Business Image
+              _buildImageSection(),
             ],
 
             // Show error message if any
@@ -618,5 +824,148 @@ class _UpdateBusinessScreenState extends State<UpdateBusinessScreen> {
         ),
       ),
     );
+  }
+
+  // Build image section
+  Widget _buildImageSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: AppStyles.cardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Business Image',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Current image preview
+          Container(
+            width: double.infinity,
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: _buildImagePreview(),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Upload buttons
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _isUploadingImage ? null : _selectAndUploadImage,
+                  icon: const Icon(Icons.add_photo_alternate),
+                  label: Text(_getUploadButtonText()),
+                ),
+              ),
+              if (_hasAnyImage()) ...[
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: _isUploadingImage ? null : _removeImage,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Remove'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          if (_imageJustUploaded)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                '✓ Image uploaded successfully',
+                style: TextStyle(
+                  color: Colors.green.shade600,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Build image preview widget
+  Widget _buildImagePreview() {
+    // Priority: 1. Selected new image, 2. Existing image from server, 3. Placeholder
+    if (_selectedImage != null) {
+      // Show newly selected image file
+      return Image.file(
+        _selectedImage!,
+        fit: BoxFit.cover,
+      );
+    } else if (_existingImageName != null && _existingImageName!.isNotEmpty) {
+      // Always treat as Cloudinary image - construct URL
+      final cloudinaryUrl = CloudinaryHelper.getCloudinaryUrl(_existingImageName);
+
+      return Image.network(
+        cloudinaryUrl,
+        fit: BoxFit.cover,
+        // Add cache-busting to prevent showing old cached images
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return const Center(
+            child: CircularProgressIndicator(strokeWidth: 2),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.broken_image,
+                size: 48,
+                color: Colors.grey,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Failed to load image',
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'URL: $cloudinaryUrl',
+                style: const TextStyle(color: Colors.grey, fontSize: 10),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      // Show placeholder when no image is available
+      return const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.business,
+            size: 48,
+            color: Colors.grey,
+          ),
+          SizedBox(height: 8),
+          Text(
+            'No image selected',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      );
+    }
   }
 }

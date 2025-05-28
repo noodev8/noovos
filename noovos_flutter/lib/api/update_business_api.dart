@@ -1,6 +1,7 @@
 /*
 API service for business update
 Communicates with the update_business endpoint on the server
+Supports updating business details and managing business images
 */
 
 import 'dart:convert';
@@ -23,6 +24,7 @@ class UpdateBusinessApi {
     String? postcode,
     String? country,
     String? description,
+    String? imageName,
   }) async {
     try {
       // Get auth token
@@ -51,6 +53,7 @@ class UpdateBusinessApi {
       if (postcode != null) requestBody['postcode'] = postcode;
       if (country != null) requestBody['country'] = country;
       if (description != null) requestBody['description'] = description;
+      if (imageName != null) requestBody['image_name'] = imageName;
 
       // Make API call
       final response = await BaseApiClient.postWithAuth(
@@ -79,7 +82,7 @@ class UpdateBusinessApi {
       }
     } catch (e) {
       // Handle network or parsing errors
-      print('Error in updateBusiness: $e');
+      // Log error for debugging (in production, use proper logging framework)
       return {
         'success': false,
         'message': 'Network error. Please check your connection and try again.',
