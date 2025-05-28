@@ -91,6 +91,7 @@ class _BusinessOwnerScreenState extends State<BusinessOwnerScreen> {
 
   // Switch to customer mode
   void _switchToCustomerMode() {
+    // Navigate to dashboard and refresh it
     Navigator.pushReplacementNamed(context, '/dashboard');
   }
 

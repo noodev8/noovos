@@ -149,6 +149,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // Public method to refresh login status (can be called from other screens)
+  Future<void> refreshLoginStatus() async {
+    await _checkLoginStatus();
+  }
+
   // Handle profile navigation
   void _handleProfile() {
     Navigator.pushNamed(context, '/profile');

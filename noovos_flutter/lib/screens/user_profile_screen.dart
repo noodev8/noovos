@@ -246,8 +246,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   // Navigate to business registration
-  void _navigateToBusinessRegistration() {
-    Navigator.pushNamed(context, '/register-business');
+  Future<void> _navigateToBusinessRegistration() async {
+    final result = await Navigator.pushNamed(context, '/register-business');
+
+    // If business was successfully registered, refresh the business owner status
+    if (result == true && mounted) {
+      final isBusinessOwner = await AuthHelper.isBusinessOwner();
+      setState(() {
+        _isBusinessOwner = isBusinessOwner;
+      });
+    }
   }
 
   // Navigate to update business details

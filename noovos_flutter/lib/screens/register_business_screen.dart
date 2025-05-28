@@ -171,6 +171,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
+                // Navigate to business owner screen and signal that business status should be refreshed
                 Navigator.pushReplacementNamed(context, '/business_owner');
               },
               child: const Text('Go to Business Dashboard'),
@@ -178,7 +179,8 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.pop(context);
+                // Return to previous screen with a result indicating business was created
+                Navigator.pop(context, true);
               },
               child: const Text('Back to Profile'),
             ),
