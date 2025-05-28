@@ -343,6 +343,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               style: AppStyles.primaryButtonStyle,
               child: const Text('Retry'),
             ),
+            const SizedBox(height: 10),
+            // Add logout button as fallback option
+            TextButton(
+              onPressed: _handleLogout,
+              child: const Text(
+                'Logout and Return to Login',
+                style: TextStyle(color: AppStyles.primaryColor),
+              ),
+            ),
           ],
         ),
       ),

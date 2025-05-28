@@ -164,6 +164,7 @@ class AuthHelper {
     final returnCode = result['return_code']?.toString();
     return returnCode == 'TOKEN_EXPIRED' ||
            returnCode == 'UNAUTHORIZED' ||
-           returnCode == 'INVALID_TOKEN';
+           returnCode == 'INVALID_TOKEN' ||
+           returnCode == 'USER_NOT_FOUND'; // User deleted or doesn't exist
   }
 }

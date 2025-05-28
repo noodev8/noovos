@@ -50,8 +50,6 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
     switch (errorCode) {
       case 'MISSING_FIELDS':
         return 'Please enter both email and password';
-      case 'INVALID_CREDENTIALS':
-        return 'Invalid email or password. Please try again.';
       case 'EMAIL_NOT_VERIFIED':
         return 'Please verify your email address before logging in.';
       case 'SERVER_ERROR':
@@ -104,18 +102,28 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
           }
         }
       } else {
-        // Show error message
+        // Handle different error cases
         final errorCode = result['return_code'] ?? 'UNKNOWN_ERROR';
         final defaultMessage = result['message'] ?? 'Login failed. Please try again.';
 
         if (mounted) {
-          setState(() {
-            _errorMessage = _getUserFriendlyErrorMessage(errorCode, defaultMessage);
-          });
+          // For INVALID_CREDENTIALS (user not found), silently clear form and stay on login page
+          if (errorCode == 'INVALID_CREDENTIALS') {
+            setState(() {
+              _errorMessage = null; // Don't show error message
+              _emailController.clear();
+              _passwordController.clear();
+            });
+          } else {
+            // Show error message for other error types
+            setState(() {
+              _errorMessage = _getUserFriendlyErrorMessage(errorCode, defaultMessage);
+            });
 
-          // If email is not verified, show verification options
-          if (errorCode == 'EMAIL_NOT_VERIFIED') {
-            _showEmailVerificationDialog(result['email'] ?? _emailController.text.trim());
+            // If email is not verified, show verification options
+            if (errorCode == 'EMAIL_NOT_VERIFIED') {
+              _showEmailVerificationDialog(result['email'] ?? _emailController.text.trim());
+            }
           }
         }
       }

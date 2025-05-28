@@ -4,7 +4,6 @@ Communicates with the register_user endpoint on the server
 */
 
 import 'dart:convert';
-import '../helpers/auth_helper.dart';
 import 'base_api_client.dart';
 
 class RegisterUserApi {
@@ -37,10 +36,7 @@ class RegisterUserApi {
 
       // Check if registration was successful
       if (response.statusCode == 201 && responseData['return_code'] == 'SUCCESS') {
-        // Save token and user data
-        await AuthHelper.saveToken(responseData['token']);
-        await AuthHelper.saveUserData(responseData['user']);
-
+        // Do not save token or user data - user must verify email first
         return {
           'success': true,
           'data': responseData,

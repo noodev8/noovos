@@ -159,9 +159,9 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.pushReplacementNamed(context, '/dashboard');
+                Navigator.pushReplacementNamed(context, '/login');
               },
-              child: const Text('Skip for Now'),
+              child: const Text('Back to Login'),
             ),
           ],
         );

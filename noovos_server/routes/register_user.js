@@ -16,14 +16,9 @@ Request Payload:
 
 Success Response:
 {
-  "return_code": "SUCCESS"
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", // string, JWT token for auth
-  "user": {
-    "id": 123,                         // integer, unique user ID
-    "name": "John Doe",                // string, user's name
-    "email": "user@example.com",       // string, user's email
-    "account_level": "standard"        // string, e.g. 'standard', 'premium', 'admin'
-  }
+  "return_code": "SUCCESS",
+  "message": "Registration successful. Please check your email to verify your account before logging in.",
+  "email": "user@example.com"         // string, user's email for verification
 }
 =======================================================================================================================================
 Return Codes:
@@ -106,28 +101,11 @@ router.post('/', async (req, res) => {
             // User can request resend later
         }
 
-        // Generate JWT token
-        const token = jwt.sign(
-            {
-                id: newUser.id,
-                email: newUser.email
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        // Return success response with token and user details
+        // Return success response without token (user must verify email first)
         return res.status(201).json({
             return_code: "SUCCESS",
-            token: token,
-            user: {
-                id: newUser.id,
-                name: `${newUser.first_name} ${newUser.last_name}`,
-                email: newUser.email,
-                email_verified: newUser.email_verified,
-                account_level: 'standard'  // Default account level
-            },
-            message: "Registration successful. Please check your email to verify your account."
+            message: "Registration successful. Please check your email to verify your account before logging in.",
+            email: newUser.email
         });
 
     } catch (error) {
