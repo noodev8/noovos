@@ -31,6 +31,11 @@ class BaseApiClient {
         'Content-Type': 'application/json',
       },
       body: jsonEncode(body),
+    ).timeout(
+      const Duration(seconds: 30),
+      onTimeout: () {
+        throw Exception('Request timed out after 30 seconds');
+      },
     );
   }
 
@@ -45,6 +50,11 @@ class BaseApiClient {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(body),
+    ).timeout(
+      const Duration(seconds: 30),
+      onTimeout: () {
+        throw Exception('Request timed out after 30 seconds');
+      },
     );
   }
 

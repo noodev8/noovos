@@ -35,11 +35,22 @@ class GetCategoriesApi {
         };
       }
     } catch (e) {
-      // Return error
+      // Enhanced error handling for network issues
+      String errorMessage;
+      if (e.toString().contains('errno = 113') || e.toString().contains('No route to host')) {
+        errorMessage = 'Network connection error. Please check your internet connection and server availability.';
+      } else if (e.toString().contains('Connection refused')) {
+        errorMessage = 'Server is not responding. Please try again later.';
+      } else if (e.toString().contains('timeout')) {
+        errorMessage = 'Request timed out. Please check your connection and try again.';
+      } else {
+        errorMessage = 'Network error: $e';
+      }
+
       return {
         'success': false,
-        'message': 'An error occurred: $e',
-        'return_code': 'SERVER_ERROR',
+        'message': errorMessage,
+        'return_code': 'NETWORK_ERROR',
       };
     }
   }

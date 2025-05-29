@@ -117,6 +117,41 @@ class AuthHelper {
     }
   }
 
+  // Check if user is staff for any business by querying the appuser_business_role table
+  // This makes an API call to get_user_businesses which checks if the user has any businesses
+  // with a 'Staff' role. The role is stored in the appuser_business_role table.
+  static Future<bool> isStaff() async {
+    try {
+      // First check if user is logged in
+      final isLoggedIn = await AuthHelper.isLoggedIn();
+      if (!isLoggedIn) {
+        return false;
+      }
+
+      // Call the API to get user businesses
+      final result = await GetUserBusinessesApi.getUserBusinesses();
+
+      // Check if token has expired - if so, clear auth data and return false
+      if (isTokenExpired(result)) {
+        await logout();
+        return false;
+      }
+
+      // If the API call was successful and returned businesses, check if user is staff
+      if (result['success'] && result['businesses'] != null) {
+        final businesses = result['businesses'] as List;
+        // Check if any of the businesses have the user with a Staff role
+        return businesses.any((business) =>
+          business['role']?.toString().toLowerCase() == 'staff');
+      }
+
+      return false;
+    } catch (e) {
+      // Handle error silently
+      return false;
+    }
+  }
+
   /*
   * Handle token expiration by logging out user and redirecting to login
   * This method should be called whenever an API returns TOKEN_EXPIRED, UNAUTHORIZED, or INVALID_TOKEN

@@ -14,6 +14,7 @@ import '../helpers/staff_invitation_helper.dart';
 import '../api/get_categories_api.dart';
 import '../helpers/image_helper.dart';
 import '../screens/service_results_screen.dart';
+import '../screens/staff_bookings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
@@ -46,6 +47,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Business owner state
   bool _isBusinessOwner = false;
+
+  // Staff state - indicates if user is staff for any business
+  bool _isStaff = false;
 
   // Categories state
   bool _isLoadingCategories = false;
@@ -108,10 +112,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     } catch (e) {
-      // Handle error
+      // Enhanced error handling for categories
+      String errorMessage;
+      if (e.toString().contains('errno = 113') || e.toString().contains('No route to host')) {
+        errorMessage = 'Network connection error. Please check server availability.';
+      } else if (e.toString().contains('Connection refused')) {
+        errorMessage = 'Server is not responding. Please check if the server is running.';
+      } else if (e.toString().contains('timeout')) {
+        errorMessage = 'Request timed out. Please check your connection.';
+      } else {
+        errorMessage = 'Network error: $e';
+      }
+
       setState(() {
         _categories = [];
-        _categoriesErrorMessage = 'An error occurred: $e';
+        _categoriesErrorMessage = errorMessage;
         _isLoadingCategories = false;
       });
     }
@@ -125,26 +140,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  // Check if user is logged in and if they are a business owner
+  // Check if user is logged in and if they are a business owner or staff
   Future<void> _checkLoginStatus() async {
     try {
       final isLoggedIn = await AuthHelper.isLoggedIn();
       bool isBusinessOwner = false;
+      bool isStaff = false;
 
-      // If logged in, check if user is a business owner
+      // If logged in, check if user is a business owner or staff
       if (isLoggedIn) {
         isBusinessOwner = await AuthHelper.isBusinessOwner();
+        isStaff = await AuthHelper.isStaff();
       }
 
       setState(() {
         _isLoggedIn = isLoggedIn;
         _isBusinessOwner = isBusinessOwner;
+        _isStaff = isStaff;
       });
     } catch (e) {
       // Handle error silently
       setState(() {
         _isLoggedIn = false;
         _isBusinessOwner = false;
+        _isStaff = false;
       });
     }
   }
@@ -212,6 +231,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.pushReplacementNamed(context, '/business_owner');
   }
 
+  // Navigate to staff bookings screen
+  // This is the key method that shows staff their bookings, indicating their business connection
+  void _navigateToStaffBookings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const StaffBookingsScreen(),
+      ),
+    );
+  }
+
   // Navigate to service results screen with category
   void _navigateToCategoryServices(Map<String, dynamic> category) {
     // Get the current search term and location if any
@@ -248,6 +278,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: const Icon(Icons.business, color: Colors.white),
               label: const Text('My Business', style: TextStyle(color: Colors.white)),
               onPressed: _switchToBusinessOwnerMode,
+            ),
+
+          // Show staff bookings button ONLY if user is staff AND NOT a business owner
+          // Business owners should see "My Business" instead of "My Bookings"
+          // This ensures business owners get business management, not just their personal bookings
+          if (_isLoggedIn && _isStaff && !_isBusinessOwner)
+            TextButton.icon(
+              icon: const Icon(Icons.calendar_today, color: Colors.white),
+              label: const Text('My Bookings', style: TextStyle(color: Colors.white)),
+              onPressed: _navigateToStaffBookings,
             ),
 
           // Show profile or login button based on login status
