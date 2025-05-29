@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 import '../api/search_service_api.dart';
 import '../helpers/image_helper.dart';
+import '../helpers/cloudinary_helper.dart';
 import '../helpers/cart_helper.dart';
 import '../helpers/auth_helper.dart';
 import 'service_details_screen.dart';
@@ -237,7 +238,7 @@ class _ServiceResultsScreenState extends State<ServiceResultsScreen> {
                   ),
                   child: serviceImage != null
                       ? ImageHelper.getCachedNetworkImage(
-                          imageUrl: serviceImage,
+                          imageUrl: CloudinaryHelper.getCloudinaryUrl(serviceImage),
                           width: double.infinity,
                           height: 150,
                           fit: BoxFit.cover,

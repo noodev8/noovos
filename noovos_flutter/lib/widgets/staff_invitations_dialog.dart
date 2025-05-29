@@ -6,6 +6,7 @@ This widget displays pending staff invitations and allows users to accept or rej
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 import '../helpers/image_helper.dart';
+import '../helpers/cloudinary_helper.dart';
 import '../api/respond_to_staff_invitation_api.dart';
 
 class StaffInvitationsDialog extends StatefulWidget {
@@ -152,7 +153,7 @@ class _StaffInvitationsDialogState extends State<StaffInvitationsDialog> {
                                   borderRadius: BorderRadius.circular(8),
                                   child: businessImage != null
                                       ? ImageHelper.getCachedNetworkImage(
-                                          imageUrl: businessImage,
+                                          imageUrl: CloudinaryHelper.getCloudinaryUrl(businessImage),
                                           width: 60,
                                           height: 60,
                                           fit: BoxFit.cover,

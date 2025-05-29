@@ -6,6 +6,7 @@ This screen allows users to select a staff member for a service or choose "Any S
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 import '../helpers/image_helper.dart';
+import '../helpers/cloudinary_helper.dart';
 import '../helpers/cart_helper.dart';
 import '../api/get_service_staff_api.dart';
 
@@ -334,7 +335,7 @@ class _StaffSelectionScreenState extends State<StaffSelectionScreen> {
                   child: ClipOval(
                     child: imageName != null
                         ? ImageHelper.getCachedNetworkImage(
-                            imageUrl: imageName,
+                            imageUrl: CloudinaryHelper.getCloudinaryUrl(imageName),
                             fit: BoxFit.cover,
                             errorWidget: const Icon(
                               Icons.person,

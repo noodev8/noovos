@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 import '../helpers/cart_helper.dart';
 import '../helpers/image_helper.dart';
+import '../helpers/cloudinary_helper.dart';
 import 'service_details_screen.dart';
 import 'availability_check_screen.dart';
 
@@ -262,7 +263,7 @@ class _CartScreenState extends State<CartScreen> {
                 height: 80,
                 child: item.serviceImage != null
                     ? ImageHelper.getCachedNetworkImage(
-                        imageUrl: item.serviceImage!,
+                        imageUrl: CloudinaryHelper.getCloudinaryUrl(item.serviceImage!),
                         fit: BoxFit.cover,
                         errorWidget: const Icon(
                           Icons.image_not_supported,

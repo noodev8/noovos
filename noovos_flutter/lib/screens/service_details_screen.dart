@@ -9,6 +9,7 @@ import '../styles/app_styles.dart';
 import '../api/get_service_api.dart';
 import '../api/get_service_staff_api.dart';
 import '../helpers/image_helper.dart';
+import '../helpers/cloudinary_helper.dart';
 import '../helpers/cart_helper.dart';
 
 import 'staff_selection_screen.dart';
@@ -408,7 +409,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               width: double.infinity,
               height: 200,
               child: ImageHelper.getCachedNetworkImage(
-                imageUrl: serviceImage,
+                imageUrl: CloudinaryHelper.getCloudinaryUrl(serviceImage),
                 fit: BoxFit.cover,
                 errorWidget: const Icon(
                   Icons.image_not_supported,
@@ -422,7 +423,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               width: double.infinity,
               height: 200,
               child: ImageHelper.getCachedNetworkImage(
-                imageUrl: businessImage,
+                imageUrl: CloudinaryHelper.getCloudinaryUrl(businessImage),
                 fit: BoxFit.cover,
                 errorWidget: const Icon(
                   Icons.image_not_supported,

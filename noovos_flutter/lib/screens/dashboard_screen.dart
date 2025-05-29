@@ -13,6 +13,7 @@ import '../helpers/staff_invitation_helper.dart';
 
 import '../api/get_categories_api.dart';
 import '../helpers/image_helper.dart';
+import '../helpers/cloudinary_helper.dart';
 import '../screens/service_results_screen.dart';
 import '../screens/staff_bookings_screen.dart';
 
@@ -650,7 +651,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     height: 80,
                     color: Colors.grey[200],
                     child: ImageHelper.getCachedNetworkImage(
-                      imageUrl: serviceImage,
+                      imageUrl: serviceImage != null
+                          ? CloudinaryHelper.getCloudinaryUrl(serviceImage)
+                          : null,
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
@@ -697,7 +700,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               height: 20,
                               color: Colors.grey[200],
                               child: ImageHelper.getCachedNetworkImage(
-                                imageUrl: businessProfile,
+                                imageUrl: businessProfile != null
+                                    ? CloudinaryHelper.getCloudinaryUrl(businessProfile)
+                                    : null,
                                 width: 20,
                                 height: 20,
                                 fit: BoxFit.cover,
