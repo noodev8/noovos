@@ -47,13 +47,14 @@ class CartItem {
   // Create from JSON
   factory CartItem.fromJson(Map<String, dynamic> json) {
     return CartItem(
-      serviceId: json['serviceId'],
-      serviceName: json['serviceName'],
-      businessId: json['businessId'],
-      businessName: json['businessName'],
-      price: json['price'],
+      serviceId: json['serviceId'] ?? 0,
+      serviceName: json['serviceName'] ?? 'Unknown Service',
+      businessId: json['businessId'] ?? 0,
+      businessName: json['businessName'] ?? 'Unknown Business',
+      price: (json['price'] is num) ? json['price'].toDouble() :
+             (json['price'] is String) ? double.tryParse(json['price']) ?? 0.0 : 0.0,
       serviceImage: json['serviceImage'],
-      duration: json['duration'],
+      duration: json['duration'] ?? 0,
       staffId: json['staffId'],
       staffName: json['staffName'],
     );
@@ -117,6 +118,14 @@ class CartHelper {
       try {
         final List<dynamic> cartList = jsonDecode(cartJson);
         _cartItems = cartList.map((item) => CartItem.fromJson(item)).toList();
+
+        // Check for cart items with zero prices (legacy data) and clear them
+        // This handles the case where cart items were saved before the price fix
+        bool hasZeroPriceItems = _cartItems.any((item) => item.price == 0.0);
+        if (hasZeroPriceItems) {
+          _cartItems = [];
+          await _saveCart(); // Save the cleared cart
+        }
       } catch (e) {
         // Handle error silently
         _cartItems = [];

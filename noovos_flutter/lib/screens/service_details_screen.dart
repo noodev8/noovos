@@ -202,6 +202,29 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     }
   }
 
+  // Get service price - handles both 'price' and 'cost' field names
+  // Search results use 'cost' while service details use 'price'
+  double _getServicePrice() {
+    if (_serviceDetails == null) return 0.0;
+
+    // Try 'price' first (from service details API)
+    var priceValue = _serviceDetails!['price'];
+
+    // If 'price' is null, try 'cost' (from search results API)
+    priceValue ??= _serviceDetails!['cost'];
+
+    // Handle different data types
+    if (priceValue == null) {
+      return 0.0;
+    } else if (priceValue is String) {
+      return double.tryParse(priceValue) ?? 0.0;
+    } else if (priceValue is num) {
+      return priceValue.toDouble();
+    } else {
+      return 0.0;
+    }
+  }
+
   // Add service to cart with 'Any Staff'
   void _addToCartWithAnyStaff() {
     // Create cart item with 'Any Staff'
@@ -210,13 +233,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       serviceName: _serviceDetails!['service_name'],
       businessId: _serviceDetails!['business_id'] ?? 0,
       businessName: _serviceDetails!['business_name'],
-      price: _serviceDetails!['price'] != null
-          ? (_serviceDetails!['price'] is String
-              ? double.tryParse(_serviceDetails!['price']) ?? 0.0
-              : _serviceDetails!['price'] is num
-                  ? _serviceDetails!['price'].toDouble()
-                  : 0.0)
-          : 0.0,
+      price: _getServicePrice(),
       serviceImage: _serviceDetails!['service_image'],
       duration: _serviceDetails!['duration'],
       staffId: null,
@@ -381,10 +398,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     final serviceImage = _serviceDetails!['service_image'];
     final businessImage = _serviceDetails!['business_image'];
 
-    // Handle price/cost which might be a string or a number
-    var priceValue = _serviceDetails!['price'] ?? 0.0;
-    // Convert to double if it's a string
-    final double price = priceValue is String ? double.tryParse(priceValue) ?? 0.0 : priceValue.toDouble();
+    // Get price using the helper method that handles both 'price' and 'cost' fields
+    final double price = _getServicePrice();
 
     final duration = _serviceDetails!['duration'] ?? 0;
     final currency = _serviceDetails!['currency'] ?? 'GBP';

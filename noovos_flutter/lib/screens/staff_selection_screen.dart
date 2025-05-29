@@ -91,6 +91,27 @@ class _StaffSelectionScreenState extends State<StaffSelectionScreen> {
     }
   }
 
+  // Get service price - handles both 'price' and 'cost' field names
+  // Search results use 'cost' while service details use 'price'
+  double _getServicePrice() {
+    // Try 'price' first (from service details API)
+    var priceValue = widget.serviceDetails['price'];
+
+    // If 'price' is null, try 'cost' (from search results API)
+    priceValue ??= widget.serviceDetails['cost'];
+
+    // Handle different data types
+    if (priceValue == null) {
+      return 0.0;
+    } else if (priceValue is String) {
+      return double.tryParse(priceValue) ?? 0.0;
+    } else if (priceValue is num) {
+      return priceValue.toDouble();
+    } else {
+      return 0.0;
+    }
+  }
+
   // Add service to cart with selected staff
   void _addToCartWithStaff() {
     // Create cart item with selected staff
@@ -99,13 +120,7 @@ class _StaffSelectionScreenState extends State<StaffSelectionScreen> {
       serviceName: widget.serviceDetails['service_name'] ?? 'Unknown Service',
       businessId: widget.serviceDetails['business_id'] ?? 0,
       businessName: widget.serviceDetails['business_name'] ?? 'Unknown Business',
-      price: widget.serviceDetails['price'] != null
-          ? (widget.serviceDetails['price'] is String
-              ? double.tryParse(widget.serviceDetails['price']) ?? 0.0
-              : widget.serviceDetails['price'] is num
-                  ? widget.serviceDetails['price'].toDouble()
-                  : 0.0)
-          : 0.0,
+      price: _getServicePrice(),
       serviceImage: widget.serviceDetails['service_image'],
       duration: widget.serviceDetails['duration'] ?? 0,
       staffId: _selectedStaffId,

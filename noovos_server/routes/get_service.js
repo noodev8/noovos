@@ -109,6 +109,18 @@ router.post('/', async (req, res) => {
         // Get the service details
         const service = serviceResult.rows[0];
 
+        // Ensure numeric fields are properly converted
+        // PostgreSQL numeric types may be returned as strings
+        if (service.price !== null && service.price !== undefined) {
+            service.price = parseFloat(service.price);
+        }
+        if (service.duration !== null && service.duration !== undefined) {
+            service.duration = parseInt(service.duration);
+        }
+        if (service.buffer_time !== null && service.buffer_time !== undefined) {
+            service.buffer_time = parseInt(service.buffer_time);
+        }
+
         // Return success response
         return res.status(200).json({
             return_code: "SUCCESS",

@@ -127,6 +127,7 @@ router.post('/', async (req, res) => {
                          WHERE m.business_id = b.id AND m.position = 1 AND m.is_active = TRUE
                          ORDER BY m.id LIMIT 1)
                     ) AS service_image,
+                    s.duration,
                     s.price AS cost,
                     b.city,
                     b.postcode,
@@ -236,6 +237,15 @@ router.post('/', async (req, res) => {
                 postcode_match,
                 ...serviceData
             } = row;
+
+            // Ensure numeric fields are properly converted
+            // PostgreSQL numeric types may be returned as strings
+            if (serviceData.cost !== null && serviceData.cost !== undefined) {
+                serviceData.cost = parseFloat(serviceData.cost);
+            }
+            if (serviceData.duration !== null && serviceData.duration !== undefined) {
+                serviceData.duration = parseInt(serviceData.duration);
+            }
 
             return serviceData;
         });
