@@ -1,23 +1,23 @@
 /*
-Staff Bookings Screen
-This screen shows bookings assigned to the logged-in staff member
-This is the key screen that indicates a user is connected to a business as staff
-Staff can see their upcoming appointments, customer details, and business information
+User Bookings Screen
+This screen shows bookings made by the logged-in user as a customer
+Users can see their upcoming appointments, service details, and business information
+This is for regular users to view their own bookings
 */
 
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
-import '../api/get_staff_bookings_api.dart';
+import '../api/get_user_bookings_api.dart';
 import '../helpers/auth_helper.dart';
 
-class StaffBookingsScreen extends StatefulWidget {
-  const StaffBookingsScreen({super.key});
+class UserBookingsScreen extends StatefulWidget {
+  const UserBookingsScreen({super.key});
 
   @override
-  State<StaffBookingsScreen> createState() => _StaffBookingsScreenState();
+  State<UserBookingsScreen> createState() => _UserBookingsScreenState();
 }
 
-class _StaffBookingsScreenState extends State<StaffBookingsScreen> {
+class _UserBookingsScreenState extends State<UserBookingsScreen> {
   // State variables for managing the screen
   bool _isLoading = true;
   String? _errorMessage;
@@ -26,21 +26,21 @@ class _StaffBookingsScreenState extends State<StaffBookingsScreen> {
   @override
   void initState() {
     super.initState();
-    // Load staff bookings when screen initializes
-    _loadStaffBookings();
+    // Load user bookings when screen initializes
+    _loadUserBookings();
   }
 
-  // Load staff bookings from the API
-  // This method calls the get_staff_bookings endpoint
-  Future<void> _loadStaffBookings() async {
+  // Load user bookings from the API
+  // This method calls the get_user_bookings endpoint
+  Future<void> _loadUserBookings() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      // Call the API to get staff bookings
-      final result = await GetStaffBookingsApi.getStaffBookings();
+      // Call the API to get user bookings
+      final result = await GetUserBookingsApi.getUserBookings();
 
       if (mounted) {
         setState(() {
@@ -81,7 +81,7 @@ class _StaffBookingsScreenState extends State<StaffBookingsScreen> {
           // Refresh button to reload bookings
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadStaffBookings,
+            onPressed: _loadUserBookings,
             tooltip: 'Refresh Bookings',
           ),
         ],
@@ -125,7 +125,7 @@ class _StaffBookingsScreenState extends State<StaffBookingsScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _loadStaffBookings,
+              onPressed: _loadUserBookings,
               style: AppStyles.primaryButtonStyle,
               child: const Text('Try Again'),
             ),
@@ -160,7 +160,7 @@ class _StaffBookingsScreenState extends State<StaffBookingsScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'You don\'t have any bookings assigned to you at the moment.',
+                'You don\'t have any bookings at the moment.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppStyles.secondaryTextColor,
@@ -168,7 +168,7 @@ class _StaffBookingsScreenState extends State<StaffBookingsScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: _loadStaffBookings,
+                onPressed: _loadUserBookings,
                 style: AppStyles.primaryButtonStyle,
                 child: const Text('Refresh'),
               ),
@@ -180,7 +180,7 @@ class _StaffBookingsScreenState extends State<StaffBookingsScreen> {
 
     // Show list of bookings with pull-to-refresh
     return RefreshIndicator(
-      onRefresh: _loadStaffBookings,
+      onRefresh: _loadUserBookings,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _bookings.length,
@@ -230,14 +230,12 @@ class _StaffBookingsScreenState extends State<StaffBookingsScreen> {
   }
 
   // Build individual booking card
-  // This shows all the important booking information
+  // This shows all the important booking information for the user
   Widget _buildBookingCard(Map<String, dynamic> booking) {
     // Extract booking data with safe defaults
     final serviceName = booking['service_name'] ?? 'Unknown Service';
     final businessName = booking['business_name'] ?? 'Unknown Business';
-    final customerName = booking['customer_name'] ?? 'Unknown Customer';
-    final customerEmail = booking['customer_email'] ?? '';
-    final customerMobile = booking['customer_mobile'] ?? '';
+    final staffName = booking['staff_name'] ?? 'Unknown Staff';
     final bookingDate = booking['booking_date'] ?? '';
     final startTime = booking['start_time'] ?? '';
     final endTime = booking['end_time'] ?? '';
@@ -339,34 +337,19 @@ class _StaffBookingsScreenState extends State<StaffBookingsScreen> {
             ),
             const SizedBox(height: 8),
 
-            // Customer information
+            // Staff information
             Row(
               children: [
                 const Icon(Icons.person, size: 16, color: AppStyles.primaryColor),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    customerName,
+                    'Staff: $staffName',
                     style: const TextStyle(fontSize: 14),
                   ),
                 ),
               ],
             ),
-
-            // Customer mobile (if available)
-            if (customerMobile.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(Icons.phone, size: 16, color: AppStyles.primaryColor),
-                  const SizedBox(width: 8),
-                  Text(
-                    customerMobile,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ],
-              ),
-            ],
             const SizedBox(height: 8),
 
             // Price information
