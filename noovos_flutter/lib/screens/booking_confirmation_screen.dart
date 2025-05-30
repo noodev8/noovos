@@ -5,6 +5,7 @@ This screen shows the booking details and provides options to view or manage the
 
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
+import 'comprehensive_bookings_screen.dart';
 
 class BookingConfirmationScreen extends StatelessWidget {
   final Map<String, dynamic> bookingDetails;
@@ -100,10 +101,11 @@ class BookingConfirmationScreen extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // TODO: Implement view booking details
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('View booking details coming soon!'),
+                  // Navigate to comprehensive bookings screen to view all user bookings
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ComprehensiveBookingsScreen(),
                     ),
                   );
                 },
@@ -115,7 +117,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('View Booking Details'),
+                child: const Text('View My Bookings'),
               ),
             ),
             const SizedBox(height: 12),
@@ -185,4 +187,4 @@ class BookingConfirmationScreen extends StatelessWidget {
       ),
     );
   }
-} 
+}

@@ -16,6 +16,7 @@ import '../helpers/image_helper.dart';
 import '../helpers/cloudinary_helper.dart';
 import '../screens/service_results_screen.dart';
 import '../screens/staff_bookings_screen.dart';
+import '../screens/comprehensive_bookings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
@@ -243,6 +244,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // Navigate to comprehensive bookings screen
+  // This method shows all user bookings (customer bookings, staff appointments, business management)
+  void _navigateToBookings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ComprehensiveBookingsScreen(),
+      ),
+    );
+  }
+
   // Navigate to service results screen with category
   void _navigateToCategoryServices(Map<String, dynamic> category) {
     // Get the current search term and location if any
@@ -281,14 +293,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: _switchToBusinessOwnerMode,
             ),
 
-          // Show staff bookings button ONLY if user is staff AND NOT a business owner
-          // Business owners should see "My Business" instead of "My Bookings"
-          // This ensures business owners get business management, not just their personal bookings
-          if (_isLoggedIn && _isStaff && !_isBusinessOwner)
+          // Show bookings button for ALL logged-in users
+          // This will show comprehensive bookings (customer bookings, staff appointments, business management)
+          // based on the user's roles
+          if (_isLoggedIn)
             TextButton.icon(
               icon: const Icon(Icons.calendar_today, color: Colors.white),
               label: const Text('My Bookings', style: TextStyle(color: Colors.white)),
-              onPressed: _navigateToStaffBookings,
+              onPressed: _navigateToBookings,
             ),
 
           // Show profile or login button based on login status

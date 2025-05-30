@@ -8,9 +8,9 @@ and comment out the others. This file is the single source of truth for the API 
 */
 
 class AppConfig {
-  static const String apiBaseUrl = 'http://192.168.1.88:3000'; // Home
+  // static const String apiBaseUrl = 'http://192.168.1.88:3000'; // Home
   // static const String apiBaseUrl = 'http://192.168.1.88:3000'; // Grays Aunty
-  // static const String apiBaseUrl = 'http://192.168.1.96:3000'; // 3 Cumberland
+  static const String apiBaseUrl = 'http://192.168.1.97:3000'; // 3 Cumberland
   // static const String apiBaseUrl = 'http://192.168.1.174:3000'; // Chippy
 
   // VPS Server

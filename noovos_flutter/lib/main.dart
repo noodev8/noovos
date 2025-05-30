@@ -13,6 +13,7 @@ import 'screens/business_owner_screen.dart';
 //import 'screens/business_staff_management_screen.dart';
 import 'screens/cart_screen.dart';
 import 'screens/availability_check_screen.dart';
+import 'screens/comprehensive_bookings_screen.dart';
 import 'styles/app_styles.dart';
 import 'helpers/cart_helper.dart';
 import 'helpers/config_helper.dart';
@@ -127,6 +128,7 @@ class _MyAppState extends State<MyApp> {
         '/business_owner': (context) => const BusinessOwnerScreen(),
         '/cart': (context) => const CartScreen(),
         '/availability': (context) => const AvailabilityCheckScreen(),
+        '/bookings': (context) => const ComprehensiveBookingsScreen(),
       },
     );
   }

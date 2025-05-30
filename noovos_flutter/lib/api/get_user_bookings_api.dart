@@ -4,11 +4,12 @@ This API allows users to retrieve their own bookings as customers
 */
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../helpers/config.dart';
 import '../helpers/auth_helper.dart';
+import 'base_api_client.dart';
 
 class GetUserBookingsApi {
+  // Endpoint for get user bookings
+  static const String _endpoint = '/get_user_bookings';
 
   /*
   * Get all bookings for the logged-in user as a customer
@@ -35,24 +36,21 @@ class GetUserBookingsApi {
 
       // Create request body
       final Map<String, dynamic> requestBody = {};
-      
+
       // Add optional filters if provided
       if (startDate != null && startDate.isNotEmpty) {
         requestBody['start_date'] = startDate;
       }
-      
+
       if (endDate != null && endDate.isNotEmpty) {
         requestBody['end_date'] = endDate;
       }
 
-      // Make the API request
-      final response = await http.post(
-        Uri.parse('${Config.baseUrl}/get_user_bookings'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(requestBody),
+      // Make the API request using BaseApiClient
+      final response = await BaseApiClient.postWithAuth(
+        _endpoint,
+        requestBody,
+        token,
       );
 
       // Parse the response
