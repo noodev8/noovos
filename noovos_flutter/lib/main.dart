@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'screens/splash_screen.dart';
 import 'screens/login_user_screen.dart';
 import 'screens/register_user_screen.dart';
 import 'screens/forgot_password_screen.dart';
@@ -42,66 +43,9 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  // Initial route - always start with dashboard
-  String _initialRoute = '/dashboard';
-
-  // Loading state
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _setupMockData();
-  }
-
-  // Setup for dashboard
-  Future<void> _setupMockData() async {
-    try {
-      // Just set the initial route to dashboard without creating mock user data
-      // since we've redesigned the dashboard to work without user data
-      if (mounted) {
-        setState(() {
-          _initialRoute = '/dashboard';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return MaterialApp(
-        title: 'Noovos',
-        theme: ThemeData(
-          primaryColor: AppStyles.primaryColor,
-          colorScheme: ColorScheme.fromSeed(seedColor: AppStyles.primaryColor),
-          useMaterial3: true,
-        ),
-        home: const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
-        ),
-      );
-    }
-
-    // Determine which screen to show based on login status
-    Widget initialScreen;
-    if (_initialRoute == '/dashboard') {
-      initialScreen = const DashboardScreen();
-    } else if (_initialRoute == '/register') {
-      initialScreen = const RegisterUserScreen();
-    } else {
-      initialScreen = const LoginUserScreen();
-    }
-
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Noovos',
@@ -110,8 +54,10 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: AppStyles.primaryColor),
         useMaterial3: true,
       ),
-      home: VersionPopupWrapper(child: initialScreen),
+      // Always start with splash screen
+      home: const SplashScreen(),
       routes: {
+        '/splash': (context) => const SplashScreen(),
         '/login': (context) => const LoginUserScreen(),
         '/register': (context) => const RegisterUserScreen(),
         '/forgot-password': (context) => const ForgotPasswordScreen(),
