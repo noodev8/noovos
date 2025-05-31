@@ -277,133 +277,184 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-
+    final screenSize = MediaQuery.of(context).size;
+    final isTablet = screenSize.width > 600;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Noovos'),
-        backgroundColor: AppStyles.primaryColor,
-        foregroundColor: Colors.white,
-        actions: [
-          // Show business owner button if user is a business owner
-          if (_isLoggedIn && _isBusinessOwner)
-            TextButton.icon(
-              icon: const Icon(Icons.business, color: Colors.white),
-              label: const Text('My Business', style: TextStyle(color: Colors.white)),
-              onPressed: _switchToBusinessOwnerMode,
-            ),
-
-          // Show bookings button for ALL logged-in users
-          // This will show comprehensive bookings (customer bookings, staff appointments, business management)
-          // based on the user's roles
-          if (_isLoggedIn)
-            TextButton.icon(
-              icon: const Icon(Icons.calendar_today, color: Colors.white),
-              label: const Text('My Bookings', style: TextStyle(color: Colors.white)),
-              onPressed: _navigateToBookings,
-            ),
-
-          // Show profile or login button based on login status
-          _isLoggedIn
-              ? TextButton.icon(
-                  icon: const Icon(Icons.person, color: Colors.white),
-                  label: const Text('Profile', style: TextStyle(color: Colors.white)),
-                  onPressed: _handleProfile,
-                )
-              : TextButton.icon(
-                  icon: const Icon(Icons.login, color: Colors.white),
-                  label: const Text('Login', style: TextStyle(color: Colors.white)),
-                  onPressed: _handleLogin,
-                ),
+      backgroundColor: Colors.grey[100],
+      body: Column(
+        children: [
+          // Header section with gradient background
+          _buildGradientHeader(isTablet),
+          // Main content section
+          Expanded(
+            child: _buildMainContent(isTablet),
+          ),
         ],
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  // Build the gradient header section
+  Widget _buildGradientHeader(bool isTablet) {
+    final headerHeight = isTablet ? 200.0 : 160.0;
+
+    return Container(
+      height: headerHeight,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            Color(0xFF4F46E5), // Blue
+            Color(0xFF7C3AED), // Purple
+            Color(0xFFEC4899), // Pink
+          ],
+          stops: [0.0, 0.5, 1.0],
+        ),
+      ),
+      child: SafeArea(
+        child: Stack(
+          children: [
+            // Navigation buttons in top right
+            Positioned(
+              top: 10,
+              right: 16,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Search section
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: AppStyles.cardDecoration,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Search heading
-                        const Text(
-                          'Find Salons & Services',
-                          style: AppStyles.subheadingStyle,
+                  // Show business owner button if user is a business owner
+                  if (_isLoggedIn && _isBusinessOwner)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.business, color: Colors.white, size: 18),
+                        label: const Text('My Business', style: TextStyle(color: Colors.white, fontSize: 12)),
+                        onPressed: _switchToBusinessOwnerMode,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                         ),
-                        const SizedBox(height: 15),
+                      ),
+                    ),
 
-                        // Search description
-                        const Text(
-                          'Search for salons and services near you',
-                          style: AppStyles.bodyStyle,
+                  // Show bookings button for ALL logged-in users
+                  if (_isLoggedIn)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.calendar_today, color: Colors.white, size: 18),
+                        label: const Text('Bookings', style: TextStyle(color: Colors.white, fontSize: 12)),
+                        onPressed: _navigateToBookings,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                         ),
-                        const SizedBox(height: 20),
+                      ),
+                    ),
 
-                        // Service search field
-                        TextField(
-                          controller: _searchController,
-                          decoration: AppStyles.inputDecoration(
-                            'Service or Salon',
-                            hint: 'e.g. massage, haircut, spa, salon name',
-                            prefixIcon: const Icon(Icons.search),
+                  // Show profile or login button based on login status
+                  _isLoggedIn
+                      ? TextButton.icon(
+                          icon: const Icon(Icons.person, color: Colors.white, size: 18),
+                          label: const Text('Profile', style: TextStyle(color: Colors.white, fontSize: 12)),
+                          onPressed: _handleProfile,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           ),
-                          onSubmitted: (_) => _handleSearch(),
-                        ),
-                        const SizedBox(height: 15),
-
-                        // Location search field
-                        TextField(
-                          controller: _locationController,
-                          decoration: AppStyles.inputDecoration(
-                            'Location',
-                            hint: 'Town, City or Postcode (optional)',
-                            prefixIcon: const Icon(Icons.location_on_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: 15),
-
-                        // Search button
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _isSearching ? null : _handleSearch,
-                            style: AppStyles.primaryButtonStyle,
-                            child: _isSearching
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Text('Search'),
+                        )
+                      : TextButton.icon(
+                          icon: const Icon(Icons.login, color: Colors.white, size: 18),
+                          label: const Text('Login', style: TextStyle(color: Colors.white, fontSize: 12)),
+                          onPressed: _handleLogin,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           ),
                         ),
-
-                        // Error message
-                        if (_searchErrorMessage != null) ...[
-                          const SizedBox(height: 15),
-                          Text(
-                            _searchErrorMessage!,
-                            style: const TextStyle(
-                              color: AppStyles.errorColor,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ],
+                ],
+              ),
+            ),
+            // Main content centered
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo/Icon
+                  _buildLogo(isTablet),
+                  const SizedBox(height: 16),
+                  // App title
+                  Text(
+                    'noovos',
+                    style: TextStyle(
+                      fontSize: isTablet ? 28 : 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 2.0,
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 6),
+                  // Tagline
+                  Text(
+                    'Booking without the faff.',
+                    style: TextStyle(
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w300,
+                      color: Colors.white.withValues(alpha: 0.9),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build the logo/icon
+  Widget _buildLogo(bool isTablet) {
+    final logoSize = isTablet ? 60.0 : 48.0;
+
+    return Container(
+      width: logoSize,
+      height: logoSize,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.asset(
+          'assets/noovos_app_icon.png',
+          width: logoSize,
+          height: logoSize,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+
+  // Build the main content section
+  Widget _buildMainContent(bool isTablet) {
+    return _isLoading
+        ? const Center(
+            child: CircularProgressIndicator(),
+          )
+        : SingleChildScrollView(
+            padding: EdgeInsets.all(isTablet ? 30 : 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Search section
+                _buildSearchSection(isTablet),
+                const SizedBox(height: 30),
 
                   // Categories section
                   if (_isLoadingCategories) ...[
@@ -508,11 +559,157 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       },
                     ),
                   ],
+                ],
+              ),
+            );
+  }
 
+  // Build search section
+  Widget _buildSearchSection(bool isTablet) {
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 24 : 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Search heading
+          Text(
+            'Find Salons & Services',
+            style: TextStyle(
+              fontSize: isTablet ? 22 : 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
 
-                    ],
-                  ),
+          // Search description
+          Text(
+            'Search for salons and services near you',
+            style: TextStyle(
+              fontSize: isTablet ? 16 : 14,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Service search field
+          _buildCleanTextField(
+            controller: _searchController,
+            hintText: 'Service or Salon (e.g. massage, haircut, spa)',
+            prefixIcon: Icons.search,
+            onSubmitted: (_) => _handleSearch(),
+          ),
+          const SizedBox(height: 16),
+
+          // Location search field
+          _buildCleanTextField(
+            controller: _locationController,
+            hintText: 'Location (Town, City or Postcode - optional)',
+            prefixIcon: Icons.location_on_outlined,
+          ),
+          const SizedBox(height: 20),
+
+          // Search button
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _handleSearch,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7C3AED),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
+              ),
+              child: Text(
+                'Search',
+                style: TextStyle(
+                  fontSize: isTablet ? 18 : 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+
+          // Search error message
+          if (_searchErrorMessage != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red[600], size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _searchErrorMessage!,
+                      style: TextStyle(color: Colors.red[600], fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Build clean text field matching the design
+  Widget _buildCleanTextField({
+    required TextEditingController controller,
+    required String hintText,
+    IconData? prefixIcon,
+    void Function(String)? onSubmitted,
+  }) {
+    return TextField(
+      controller: controller,
+      onSubmitted: onSubmitted,
+      style: const TextStyle(
+        fontSize: 16,
+        color: Colors.black87,
+      ),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(
+          color: Colors.grey[400],
+          fontSize: 16,
+        ),
+        prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: Colors.grey[500]) : null,
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
     );
   }
 
