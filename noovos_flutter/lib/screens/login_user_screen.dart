@@ -234,95 +234,185 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isTablet = screenSize.width > 600;
+
     return Scaffold(
-      backgroundColor: AppStyles.backgroundColor,
-      appBar: AppBar(
-        title: const Text('Login'),
-        backgroundColor: AppStyles.primaryColor,
-        foregroundColor: Colors.white,
-        actions: [
-          // Dashboard button
-          TextButton.icon(
-            icon: const Icon(Icons.search, color: Colors.white),
-            label: const Text('Search', style: TextStyle(color: Colors.white)),
-            onPressed: _navigateToDashboard,
+      backgroundColor: Colors.grey[100],
+      body: Column(
+        children: [
+          // Header section with gradient background
+          _buildGradientHeader(isTablet),
+          // Form section
+          Expanded(
+            child: _buildFormSection(isTablet),
           ),
         ],
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 400),
-            padding: const EdgeInsets.all(20),
-            decoration: AppStyles.cardDecoration,
-            child: Form(
-              key: _formKey,
+    );
+  }
+
+  // Build the gradient header section
+  Widget _buildGradientHeader(bool isTablet) {
+    final headerHeight = isTablet ? 280.0 : 240.0;
+
+    return Container(
+      height: headerHeight,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            Color(0xFF4F46E5), // Blue
+            Color(0xFF7C3AED), // Purple
+            Color(0xFFEC4899), // Pink
+          ],
+          stops: [0.0, 0.5, 1.0],
+        ),
+      ),
+      child: SafeArea(
+        child: Stack(
+          children: [
+            // Dashboard/Search button in top right
+            Positioned(
+              top: 10,
+              right: 16,
+              child: TextButton.icon(
+                icon: const Icon(Icons.search, color: Colors.white, size: 20),
+                label: const Text('Search', style: TextStyle(color: Colors.white, fontSize: 14)),
+                onPressed: _navigateToDashboard,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+            ),
+            // Main content centered
+            Center(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo or app name with secret tap detection
+                  // Logo/Icon with secret tap detection
                   GestureDetector(
                     onTap: _handleLogoTap,
-                    child: const Text(
-                      'Noovos',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: AppStyles.primaryColor,
-                      ),
-                      textAlign: TextAlign.center,
+                    child: _buildLogo(isTablet),
+                  ),
+                  const SizedBox(height: 20),
+                  // Welcome title
+                  Text(
+                    'Welcome Back',
+                    style: TextStyle(
+                      fontSize: isTablet ? 32 : 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1.0,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Login to your account',
-                    style: AppStyles.subheadingStyle,
-                    textAlign: TextAlign.center,
+                  const SizedBox(height: 8),
+                  // Tagline
+                  Text(
+                    'Booking without the faff.',
+                    style: TextStyle(
+                      fontSize: isTablet ? 18 : 16,
+                      fontWeight: FontWeight.w300,
+                      color: Colors.white.withValues(alpha: 0.9),
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                  const SizedBox(height: 30),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-                  // Error message
-                  if (_errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppStyles.errorColor.withAlpha(25),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppStyles.errorColor.withAlpha(50)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            color: AppStyles.errorColor,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: const TextStyle(
-                                color: AppStyles.errorColor,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
+  // Build the logo/icon
+  Widget _buildLogo(bool isTablet) {
+    final logoSize = isTablet ? 80.0 : 64.0;
+
+    return Container(
+      width: logoSize,
+      height: logoSize,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.asset(
+          'assets/noovos_app_icon.png',
+          width: logoSize,
+          height: logoSize,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+
+  // Build the form section
+  Widget _buildFormSection(bool isTablet) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(isTablet ? 40 : 24),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Sign In heading
+            Text(
+              'Sign In',
+              style: TextStyle(
+                fontSize: isTablet ? 28 : 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 30),
+
+            // Error message
+            if (_errorMessage != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red[200]!),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red[600], size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: Colors.red[600], fontSize: 14),
                       ),
                     ),
-                    const SizedBox(height: 20),
                   ],
+                ),
+              ),
+            ],
 
+            // Form
+            Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                   // Email field
-                  TextFormField(
+                  _buildCleanTextField(
                     controller: _emailController,
-                    decoration: AppStyles.inputDecoration(
-                      'Email',
-                      hint: 'Enter your email',
-                      prefixIcon: const Icon(Icons.email),
-                    ),
+                    hintText: 'Email',
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -334,17 +424,13 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
                   // Password field
-                  TextFormField(
+                  _buildCleanTextField(
                     controller: _passwordController,
-                    decoration: AppStyles.inputDecoration(
-                      'Password',
-                      hint: 'Enter your password',
-                      prefixIcon: const Icon(Icons.lock),
-                    ),
-                    obscureText: true,
+                    hintText: 'Password',
+                    isPassword: true,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your password';
@@ -352,60 +438,142 @@ class _LoginUserScreenState extends State<LoginUserScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 40),
 
                   // Login button
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    style: AppStyles.primaryButtonStyle,
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text('Login'),
-                  ),
-                  const SizedBox(height: 15),
+                  _buildLoginButton(),
+                  const SizedBox(height: 20),
 
                   // Forgot password link
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/forgot-password');
-                    },
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(color: AppStyles.primaryColor),
+                  Center(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.pushNamed(context, '/forgot-password');
+                      },
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          color: Color(0xFF7C3AED),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 20),
 
                   // Register link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        'Don\'t have an account?',
-                        style: AppStyles.captionStyle,
+                      Text(
+                        'Don\'t have an account? ',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
                       ),
-                      TextButton(
-                        onPressed: () {
+                      GestureDetector(
+                        onTap: () {
                           Navigator.pushReplacementNamed(context, '/register');
                         },
-                        child: const Text('Register'),
+                        child: const Text(
+                          'Register',
+                          style: TextStyle(
+                            color: Color(0xFF7C3AED),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-
-
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build clean text field matching the design
+  Widget _buildCleanTextField({
+    required TextEditingController controller,
+    required String hintText,
+    bool isPassword = false,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword,
+      keyboardType: keyboardType,
+      validator: validator,
+      style: const TextStyle(
+        fontSize: 16,
+        color: Colors.black87,
+      ),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(
+          color: Colors.grey[400],
+          fontSize: 16,
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+    );
+  }
+
+  // Build the Login button
+  Widget _buildLoginButton() {
+    return SizedBox(
+      height: 50,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _handleLogin,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: Colors.grey[300]!),
           ),
         ),
+        child: _isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.black54,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Text(
+                'Login',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }

@@ -1,7 +1,7 @@
 /*
 Splash Screen for Noovos Application
-Displays the Noovos logo with gradient background
-Shows for 3 seconds then navigates to dashboard
+Displays the Noovos logo with tagline "Booking without the faff" on gradient background
+Shows for 5 seconds then navigates to dashboard
 Responsive design that scales well on mobile and tablet
 */
 
@@ -72,7 +72,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   // Navigate to dashboard after 3 seconds
   Future<void> _navigateToDashboard() async {
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 5));
     
     if (mounted) {
       Navigator.of(context).pushReplacement(
@@ -133,7 +133,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  // Build the Noovos logo
+  // Build the Noovos logo with tagline
   Widget _buildLogo(bool isTablet) {
     // Calculate responsive logo size
     final logoSize = isTablet ? 180.0 : 140.0;
@@ -143,6 +143,10 @@ class _SplashScreenState extends State<SplashScreen>
       children: [
         // Main logo text
         _buildNoovosText(logoSize),
+        // Spacing between logo and tagline
+        const SizedBox(height: 20),
+        // Tagline text
+        _buildTagline(isTablet),
       ],
     );
   }
@@ -164,6 +168,30 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ],
       ),
+    );
+  }
+
+  // Build the tagline text with complementary styling
+  Widget _buildTagline(bool isTablet) {
+    // Calculate responsive tagline size (smaller than logo)
+    final taglineSize = isTablet ? 18.0 : 16.0;
+
+    return Text(
+      'Booking without the faff',
+      style: TextStyle(
+        fontSize: taglineSize,
+        fontWeight: FontWeight.w300,
+        color: Colors.white.withValues(alpha: 0.9),
+        letterSpacing: 1.5,
+        shadows: [
+          Shadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            offset: const Offset(0, 2),
+            blurRadius: 4,
+          ),
+        ],
+      ),
+      textAlign: TextAlign.center,
     );
   }
 }
