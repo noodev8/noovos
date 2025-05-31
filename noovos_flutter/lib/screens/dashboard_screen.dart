@@ -380,7 +380,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   // Logo/Icon
                   _buildLogo(isTablet),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   // App title
                   Text(
                     'noovos',
@@ -389,17 +389,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                       letterSpacing: 2.0,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  // Tagline
-                  Text(
-                    'Booking without the faff.',
-                    style: TextStyle(
-                      fontSize: isTablet ? 16 : 14,
-                      fontWeight: FontWeight.w300,
-                      color: Colors.white.withValues(alpha: 0.9),
-                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
