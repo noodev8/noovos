@@ -35,7 +35,7 @@ class CreateBookingApi {
       if (token == null) {
         return {
           'success': false,
-          'message': 'Authentication required',
+          'message': 'Please register or login to make a booking',
           'return_code': 'UNAUTHORIZED',
         };
       }
