@@ -1,14 +1,13 @@
 /*
-Version popup widget
-Shows the app version in a simple popup dialog when the app starts
+Welcome popup widget
+Shows a welcome message in a simple popup dialog
 */
 
 import 'package:flutter/material.dart';
-import '../config/app_config.dart';
 import '../styles/app_styles.dart';
 
 class VersionPopup {
-  // Show the version popup
+  // Show the welcome popup
   static void show(BuildContext context) {
     // Show dialog
     showDialog(
@@ -20,32 +19,9 @@ class VersionPopup {
             'Welcome to Noovos',
             style: AppStyles.subheadingStyle,
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Thank you for using Noovos!',
-                style: AppStyles.bodyStyle,
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  const Text(
-                    'App Version: ',
-                    style: AppStyles.bodyStyle,
-                  ),
-                  Text(
-                    AppConfig.appVersion,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppStyles.primaryColor,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+          content: const Text(
+            'Thank you for using Noovos!',
+            style: AppStyles.bodyStyle,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),

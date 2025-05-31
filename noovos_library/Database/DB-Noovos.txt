@@ -21,7 +21,6 @@ staff_rota
 staff_schedule
 booking
 
-app_version_requirement
 appuser_business_role
 search_log
 service

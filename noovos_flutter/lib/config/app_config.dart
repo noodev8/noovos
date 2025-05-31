@@ -8,14 +8,14 @@ and comment out the others. This file is the single source of truth for the API 
 */
 
 class AppConfig {
-  // static const String apiBaseUrl = 'http://192.168.1.88:3000'; // Home
+  static const String apiBaseUrl = 'http://192.168.1.88:3000'; // Home
   // static const String apiBaseUrl = 'http://192.168.1.88:3000'; // Grays Aunty
   // static const String apiBaseUrl = 'http://192.168.1.97:3000'; // 3 Cumberland
   // static const String apiBaseUrl = 'http://192.168.1.174:3000'; // Chippy
 
   // VPS Server
   // static const String apiBaseUrl = 'https://api.noovos.com';
-  static const String apiBaseUrl = 'http://77.68.13.150:3001'; // Test Server
+  // static const String apiBaseUrl = 'http://77.68.13.150:3001'; // Test Server
 
   // App Settings
   static const String appName = 'Noovos';

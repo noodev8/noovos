@@ -95,45 +95,6 @@ CREATE TABLE public.app_user (
 ALTER TABLE public.app_user OWNER TO noovos_dev_user;
 
 --
--- TOC entry 251 (class 1259 OID 22325)
--- Name: app_version_requirement; Type: TABLE; Schema: public; Owner: noovos_dev_user
---
-
-CREATE TABLE public.app_version_requirement (
-    id integer NOT NULL,
-    platform text NOT NULL,
-    minimum_version numeric(4,2) NOT NULL
-);
-
-
-ALTER TABLE public.app_version_requirement OWNER TO noovos_dev_user;
-
---
--- TOC entry 250 (class 1259 OID 22323)
--- Name: app_version_requirement_id_seq; Type: SEQUENCE; Schema: public; Owner: noovos_dev_user
---
-
-CREATE SEQUENCE public.app_version_requirement_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.app_version_requirement_id_seq OWNER TO noovos_dev_user;
-
---
--- TOC entry 3354 (class 0 OID 0)
--- Dependencies: 250
--- Name: app_version_requirement_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: noovos_dev_user
---
-
-ALTER SEQUENCE public.app_version_requirement_id_seq OWNED BY public.app_version_requirement.id;
-
-
---
 -- TOC entry 245 (class 1259 OID 22161)
 -- Name: appuser_business_role; Type: TABLE; Schema: public; Owner: noovos_dev_user
 --
@@ -1265,14 +1226,6 @@ ALTER TABLE ONLY public.app_user ALTER COLUMN id SET DEFAULT nextval('public.use
 
 
 --
--- TOC entry 3106 (class 2604 OID 22328)
--- Name: app_version_requirement id; Type: DEFAULT; Schema: public; Owner: noovos_dev_user
---
-
-ALTER TABLE ONLY public.app_version_requirement ALTER COLUMN id SET DEFAULT nextval('public.app_version_requirement_id_seq'::regclass);
-
-
---
 -- TOC entry 3076 (class 2604 OID 20413)
 -- Name: audit_log id; Type: DEFAULT; Schema: public; Owner: noovos_dev_user
 --
@@ -1462,15 +1415,6 @@ ALTER TABLE ONLY public.subscription ALTER COLUMN id SET DEFAULT nextval('public
 --
 
 ALTER TABLE ONLY public.synonyms ALTER COLUMN id SET DEFAULT nextval('public.synonyms_id_seq'::regclass);
-
-
---
--- TOC entry 3214 (class 2606 OID 22333)
--- Name: app_version_requirement app_version_requirement_pkey; Type: CONSTRAINT; Schema: public; Owner: noovos_dev_user
---
-
-ALTER TABLE ONLY public.app_version_requirement
-    ADD CONSTRAINT app_version_requirement_pkey PRIMARY KEY (id);
 
 
 --

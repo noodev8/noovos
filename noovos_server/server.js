@@ -49,7 +49,7 @@ const get_service_staff = require('./routes/get_service_staff');
 const get_service_slot_x1 = require('./routes/get_service_slot_x1');
 const get_service_slot_x2 = require('./routes/get_service_slot_x2');
 const get_service_slot_x3 = require('./routes/get_service_slot_x3');
-const get_app_version = require('./routes/get_app_version');
+
 const get_user_businesses = require('./routes/get_user_businesses');
 const get_business_staff = require('./routes/get_business_staff');
 const request_staff_join = require('./routes/request_staff_join');
@@ -102,7 +102,7 @@ app.use('/get_service_staff', get_service_staff);
 app.use('/get_service_slot_x1', get_service_slot_x1);
 app.use('/get_service_slot_x2', get_service_slot_x2);
 app.use('/get_service_slot_x3', get_service_slot_x3);
-app.use('/get_app_version', get_app_version);
+
 app.use('/get_user_businesses', get_user_businesses);
 app.use('/get_business_staff', get_business_staff);
 app.use('/request_staff_join', request_staff_join);
