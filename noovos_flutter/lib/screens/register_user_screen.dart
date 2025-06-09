@@ -78,7 +78,8 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
       final fullName = _firstNameController.text.trim();
       final nameParts = fullName.split(' ');
       final firstName = nameParts.isNotEmpty ? nameParts[0] : '';
-      final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+      // If no last name provided, use a space as default to satisfy server requirements
+      final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : ' ';
 
       // Call register API
       final result = await RegisterUserApi.registerUser(
