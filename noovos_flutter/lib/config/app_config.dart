@@ -15,11 +15,11 @@ class AppConfig {
 
   // VPS Server
   // static const String apiBaseUrl = 'https://api.noovos.com';
-  static const String apiBaseUrl = 'http://77.68.13.150:3001'; // Test Server
+  static const String apiBaseUrl = 'https://test.noovos.noodev8.com'; // Test Server
 
   // App Settings
   static const String appName = 'Noovos';
-  static const String appVersion = '1.0.6';
+  static const String appVersion = '1.0.7';
 
   // Image Server URL (Legacy - for old images)
   static const String imageBaseUrl = 'https://noovos.brookfieldcomfort.com/image';
